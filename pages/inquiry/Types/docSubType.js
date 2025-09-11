@@ -11,10 +11,8 @@ export default function DocSubType({ type }) {
         return "Screen Print";
       case 4:
         return "DTF";
-      case 6:
-        return "Option Image";
       default:
-        return "Common";
+        return "-";
     }
   };
 
