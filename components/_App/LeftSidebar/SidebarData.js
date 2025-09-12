@@ -79,6 +79,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Packages", path: "/master/package/", categoryId: 65, isAvailable: true },
                 { title: "Time Slots", path: "/master/time-slots/", categoryId: 66, isAvailable: true },
                 { title: "Day Type", path: "/master/day-type/", categoryId: 76, isAvailable: true },
+                { title: "OT Type", path: "/master/ot-type/", categoryId: 78, isAvailable: true },
             ],
         },
         {
