@@ -135,10 +135,10 @@ export default function PendingQuotation() {
                   quotationList.map((quotation, index) => (
                     <TableRow key={index}>
                       <TableCell>{quotation.inqCode}</TableCell>
-                      <TableCell>{quotation.customerDetils ? (
+                      <TableCell>{quotation.customerDetails ? (
                         <>
-                          {quotation.customerDetils.firstName}{" "}
-                          {quotation.customerDetils.lastName}
+                          {quotation.customerDetails.firstName}{" "}
+                          {quotation.customerDetails.lastName}
                         </>
                       ) : (
                         ""

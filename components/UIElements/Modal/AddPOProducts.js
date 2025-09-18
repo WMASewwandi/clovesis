@@ -49,13 +49,13 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
   const handleOpen = () => setOpen(true);
   const [poReceivedQtyValues, setPoReceivedQtyValues] = useState({});
 
-  const handleInputChange = (shipmentId, value, shipmentReceivedQty,poQty) => {
+  const handleInputChange = (shipmentId, value, shipmentReceivedQty, poQty) => {
     if (isNaN(value) || value < 0) {
       toast.error("Please enter a valid quantity");
       return;
     }
     const x = parseFloat(poQty) - parseFloat(shipmentReceivedQty);
-    
+
     if (parseFloat(value) > shipmentReceivedQty) {
       toast.error(
         "Entered value cannot be more than Shipment Received Quantity"
@@ -102,7 +102,7 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
       );
 
       const avgUnitPrice = unitPrice / count;
-      const avgFDCost = (additionaCost + freightDutyCost) ;
+      const avgFDCost = (additionaCost + freightDutyCost);
       setTotalUnitPrice(unitPrice);
       setTotalAdditionalCost(additionaCost);
       setTotalFreightDutyCost(freightDutyCost);
@@ -131,7 +131,7 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
 
     setSubmittingStatus((prev) => ({
       ...prev,
-      [shipmentId]: true, 
+      [shipmentId]: true,
     }));
 
     try {
@@ -157,10 +157,12 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
     } finally {
       setSubmittingStatus((prev) => ({
         ...prev,
-        [shipmentId]: false, 
+        [shipmentId]: false,
       }));
     }
   };
+
+  console.log(shipments);
 
   return (
     <>
@@ -230,9 +232,14 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
                             </TableCell>
                             <TableCell>
                               <TextField
+                                // value={
+                                //   poReceivedQtyValues[shipment.id] ||
+                                //   shipment.poReceivedQty
+                                // }
                                 value={
-                                  poReceivedQtyValues[shipment.id] ||
-                                  shipment.poReceivedQty
+                                  poReceivedQtyValues[shipment.id] !== undefined
+                                    ? poReceivedQtyValues[shipment.id] || ''
+                                    : shipment.poReceivedQty || ''
                                 }
                                 size="small"
                                 type="number"

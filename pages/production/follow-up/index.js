@@ -106,7 +106,6 @@ export default function FollowUp() {
                                 <TableRow>
                                     <TableCell>Customer Name</TableCell>
                                     <TableCell>Inquiry Code</TableCell>
-                                    <TableCell>Option Name</TableCell>
                                     <TableCell>Style Name</TableCell>
                                     <TableCell align="right">View Details</TableCell>
                                 </TableRow>
@@ -123,7 +122,6 @@ export default function FollowUp() {
                                         <TableRow key={index}>
                                             <TableCell>{item.customerName}</TableCell>
                                             <TableCell>{item.inquiryCode}</TableCell>
-                                            <TableCell>{item.optionName}</TableCell>
                                             <TableCell>{item.styleName}</TableCell>
                                             <TableCell align="right">
                                                 <ViewComments item={item}/>

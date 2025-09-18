@@ -46,7 +46,7 @@ export default function PrintQuotation({ quotationDet, fetchItems }) {
   const [disabled, setDisabled] = useState(true);
   const handleOpen = (scrollType) => {
     setScroll(scrollType);
-    if (quotationDet.customerDetils) {
+    if (quotationDet.customerDetails) {
       setOpen(true);
     } else {
       setErrorOpen(true);

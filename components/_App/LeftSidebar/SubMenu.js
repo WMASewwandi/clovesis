@@ -3,15 +3,18 @@ import { styled } from "@mui/material/styles";
 import styles from "@/components/_App/LeftSidebar/SubMenu.module.css";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import BASE_URL from "Base/api";
 
 const SidebarLabel = styled("span")(({ theme }) => ({
   position: "relative",
   top: "-3px",
 }));
 
-const SubMenu = ({ item, allItems }) => {
-  const [subnav, setSubnav] = useState(false);
+const SubMenu = ({ item, allItems,onCheckPermission }) => {
+  const [subnav, setSubnav] = useState(false);  
+  const [cat, setCat] = useState(null);  
   const router = useRouter();
+  const role = localStorage.getItem("role");
 
   const isActive = router.asPath === item.path || router.asPath.startsWith(item.path);
 
@@ -19,10 +22,35 @@ const SubMenu = ({ item, allItems }) => {
     setSubnav(!subnav);
   };
 
+
   const handleSubNavClick = (subItem) => {
     sessionStorage.setItem("moduleid", item.ModuleId);
     sessionStorage.setItem("category", subItem.categoryId);
     router.push(subItem.path);
+  };
+
+  const fetchPermission = async (cId) => {
+    try {
+      const response = await fetch(`${BASE_URL}/User/GetModuleCategoryNavigationPermissions?roleId=${role}&categoryId=${cId}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch');
+      }
+
+      const result = await response.json();
+      if(onCheckPermission){
+        onCheckPermission(result.result)
+      }
+
+    } catch (err) {
+      //
+    }
   };
 
   useEffect(() => {
@@ -35,12 +63,19 @@ const SubMenu = ({ item, allItems }) => {
           normalize(subItem.path) === currentPath ||
           currentPath.startsWith(normalize(subItem.path))
       );
-      if (matchedSub) {
+      if (matchedSub) {        
         sessionStorage.setItem("moduleid", item.ModuleId);
         sessionStorage.setItem("category", matchedSub.categoryId);
+        setCat(matchedSub.categoryId);
       }
     });
-  }, []);
+  }, [router.asPath, allItems]);
+
+  useEffect(() => {
+      if (cat) {
+        fetchPermission(cat);
+      }
+    }, [cat]);
 
   const availableSubNav = item.subNav?.filter((subItem) => subItem.isAvailable) || [];
 
@@ -94,7 +129,7 @@ const SubMenu = ({ item, allItems }) => {
             >
               <div>
                 {subItem.icon}
-                <SidebarLabel className="ml-1">{subItem.title} {subItem.categoryId === 60 ? "(POS)" : "" }</SidebarLabel>
+                <SidebarLabel className="ml-1">{subItem.title} {subItem.categoryId === 60 ? "(POS)" : ""}</SidebarLabel>
               </div>
             </div>
           </div>

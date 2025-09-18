@@ -128,15 +128,6 @@ const POCreate = () => {
         return;
       }
 
-      // const invalidRows = data.GoodReceivedNoteLineDetails.filter(
-      //     (line) => line.SellingPrice === undefined || line.SellingPrice <= 0
-      // );
-
-      // if (invalidRows.length > 0) {
-      //     toast.error("All line details must have a selling price.");
-      //     return;
-      // }
-
       try {
         setIsSubmitting(true);
         const response = await fetch(
@@ -173,14 +164,6 @@ const POCreate = () => {
       }
     }
   };
-
-  // useEffect(() => {
-  //     const gross = selectedRows.reduce(
-  //         (gross, row) => gross + (Number(row.totalPrice) || 0),
-  //         0
-  //     );
-  //     setGrossTotal(gross.toFixed(2));
-  // }, [selectedRows]);
 
   useEffect(() => {
     if (pOrderNo) {
@@ -244,11 +227,6 @@ const POCreate = () => {
     updatedRows[index].remark = value;
     setSelectedRows(updatedRows);
   };
-  // const handleStatusChange = (index, value) => {
-  //     const updatedRows = [...selectedRows];
-  //     updatedRows[index].status = value;
-  //     setSelectedRows(updatedRows);
-  // };
 
   const handleAddRow = (item) => {
     if (supplier !== "") {
@@ -282,43 +260,6 @@ const POCreate = () => {
   const handlePOTypeChange = (value) => {
     setPOType(value);
   };
-
-  // const handleFreightChange = (index, newPrice) => {
-  //     setFreight(newPrice);
-  //     const updatedRows = [...selectedRows];
-  //     const row = updatedRows[index];
-
-  //     const oldTotalPrice = parseFloat(row.totalPrice) || 0;
-  //     const averagePrice = parseFloat(row.averagePrice) || 0;
-  //     const quantity = parseFloat(row.quantity) || 0;
-  //     const costPF = averagePrice + (parseFloat(newPrice) || 0);
-
-  //     row.costPrice = costPF;
-  //     row.totalPrice = costPF * quantity;
-
-  //     setSelectedRows(updatedRows);
-  //     setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
-  // };
-
-  // const handleUnitPriceChange = (index, newPrice) => {
-  //     const updatedRows = [...selectedRows];
-  //     const row = { ...updatedRows[index] };
-
-  //     const oldTotalPrice = parseFloat(row.totalPrice) || 0;
-  //     const quantity = parseFloat(row.quantity) || 0;
-  //     const freightCost = parseFloat(freight) || 0;
-  //     const unitPrice = parseFloat(newPrice) || 0;
-  //     const costP = unitPrice + freightCost;
-
-  //     row.costPrice = costP;
-  //     row.averagePrice = unitPrice;
-  //     row.totalPrice = quantity * costP;
-
-  //     updatedRows[index] = row;
-
-  //     setSelectedRows(updatedRows);
-  //     setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
-  // };
 
   return (
     <>
@@ -517,25 +458,6 @@ const POCreate = () => {
               </Box>
             </Grid> : ""}
             <Grid item xs={12} mt={3} mb={1}>
-              {/* <Autocomplete
-                sx={{ mt: 3, mb: 1 }}
-                options={filteredItems} // Use filteredItems instead of the global items list
-                getOptionLabel={(option) => option.name || ""}
-                loading={loadingItems} // Show loading spinner while fetching items
-                onChange={(event, value) => {
-                  if (value) {
-                    handleAddRow(value);
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    fullWidth
-                    placeholder="Search Items"
-                  />
-                )}
-              /> */}
               <SearchDropdown
                 label="Search"
                 placeholder="Search Items by name"
@@ -565,29 +487,8 @@ const POCreate = () => {
                       <TableCell sx={{ color: "#fff" }}>
                         Exp&nbsp;Date
                       </TableCell>
-                      <TableCell sx={{ color: "#fff" }}>Qty</TableCell>
-                      {/* <TableCell sx={{ color: "#fff" }}>
-                                                Free
-                                            </TableCell>
-                                            <TableCell sx={{ color: "#fff" }}>
-                                                Unit&nbsp;Price
-                                            </TableCell>
-                                            <TableCell sx={{ color: "#fff" }}>
-                                                Cost&nbsp;Price
-                                            </TableCell>
-                                            <TableCell sx={{ color: "#fff" }}>
-                                                Selling&nbsp;Price
-                                            </TableCell>
-                                            <TableCell sx={{ color: "#fff" }}>
-                                                Discount
-                                            </TableCell>
-                                            <TableCell sx={{ color: "#fff" }}>
-                                                Status
-                                            </TableCell> */}
+                      <TableCell sx={{ color: "#fff" }}>Qty</TableCell>                      
                       <TableCell sx={{ color: "#fff" }}>Remark</TableCell>
-                      {/* <TableCell sx={{ color: "#fff" }}>
-                                                Total&nbsp;Cost
-                                            </TableCell> */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -671,208 +572,19 @@ const POCreate = () => {
                             }}
                           />
                         </TableCell>
-                        {/* <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        sx={{ width: "100px" }}
-                                                        size="small"
-                                                        type="number"
-                                                        fullWidth
-                                                        name=""
-                                                        value={row.free || "0"}
-                                                        onChange={(e) => {
-                                                            const updatedRows =
-                                                                [
-                                                                    ...selectedRows,
-                                                                ];
-                                                            updatedRows[
-                                                                index
-                                                            ].free =
-                                                                e.target.value;
-                                                            setSelectedRows(
-                                                                updatedRows
-                                                            );
-                                                        }}
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        fullWidth
-                                                        name=""
-                                                        sx={{ width: "150px" }}
-                                                        value={
-                                                            selectedRows[index]
-                                                                ?.averagePrice ||
-                                                            ""
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleUnitPriceChange(
-                                                                index,
-                                                                Number(
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            )
-                                                        }
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        fullWidth
-                                                        name=""
-                                                        sx={{ width: "150px" }}
-                                                        value={
-                                                            selectedRows[index]
-                                                                ?.freight || ""
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleFreightChange(
-                                                                index,
-                                                                Number(
-                                                                    e.target
-                                                                        .value
-                                                                )
-                                                            )
-                                                        }
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        sx={{ width: "150px" }}
-                                                        fullWidth
-                                                        name=""
-                                                        disbled={true}
-                                                        value={
-                                                            selectedRows[index]
-                                                                ?.costPrice ||
-                                                            ""
-                                                        }
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        sx={{ width: "150px" }}
-                                                        fullWidth
-                                                        name=""
-                                                        value={
-                                                            row.sellingPrice ||
-                                                            "0"
-                                                        }
-                                                        onChange={(e) => {
-                                                            const updatedRows =
-                                                                [
-                                                                    ...selectedRows,
-                                                                ];
-                                                            updatedRows[
-                                                                index
-                                                            ].sellingPrice =
-                                                                e.target.value;
-                                                            setSelectedRows(
-                                                                updatedRows
-                                                            );
-                                                        }}
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        fullWidth
-                                                        sx={{ width: "150px" }}
-                                                        name=""
-                                                        value={
-                                                            row.discount || "0"
-                                                        }
-                                                        onChange={(e) => {
-                                                            const updatedRows =
-                                                                [
-                                                                    ...selectedRows,
-                                                                ];
-                                                            updatedRows[
-                                                                index
-                                                            ].discount =
-                                                                e.target.value;
-                                                            setSelectedRows(
-                                                                updatedRows
-                                                            );
-                                                        }}
-                                                    />
-                                                </TableCell>
-                                                <TableCell sx={{ p: 1 }}>
-                                                    <Select
-                                                        labelId="demo-simple-select-label"
-                                                        id="demo-simple-select"
-                                                        label="Status"
-                                                        value={row.status}
-                                                        name="Status"
-                                                        sx={{ width: "150px" }}
-                                                        size="small"
-                                                        onChange={(e) =>
-                                                            handleStatusChange(
-                                                                index,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                    >
-                                                        <MenuItem value="Approval">
-                                                            {" "}
-                                                            Approval{" "}
-                                                        </MenuItem>
-                                                        <MenuItem value="Damage">
-                                                            {" "}
-                                                            Damage{" "}
-                                                        </MenuItem>
-                                                    </Select>
-                                                </TableCell> */}
-
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             size="small"
                             type="text"
                             fullWidth
-                            sx={{ width: "150px" }}
                             name=""
                             onChange={(e) =>
                               handleRemarkChange(index, e.target.value)
                             }
                           />
                         </TableCell>
-                        {/* <TableCell
-                                                    align="right"
-                                                    sx={{ p: 1 }}
-                                                >
-                                                    {(
-                                                        Number(
-                                                            row.totalPrice
-                                                        ) || 0
-                                                    ).toFixed(2)}
-                                                </TableCell> */}
                       </TableRow>
                     ))}
-
-                    {/* <TableRow>
-                                            <TableCell
-                                                align="right"
-                                                colSpan="13"
-                                            >
-                                                <Typography fontWeight="bold">
-                                                    Total
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell
-                                                align="right"
-                                                sx={{ p: 1 }}
-                                            >
-                                                {grossTotal}
-                                            </TableCell>
-                                        </TableRow> */}
                   </TableBody>
                 </Table>
               </TableContainer>

@@ -128,7 +128,7 @@ export default function SentQuotations() {
                                     <TableCell>Inquiry Code</TableCell>
                                     <TableCell>Sent Whatsapp Number</TableCell>
                                     <TableCell>Style Name</TableCell>
-                                    <TableCell>View Quotations</TableCell>
+                                    {tab === 0 && <TableCell>View Quotations</TableCell> }                                    
                                     {tab === 2 && <TableCell>Rejected Reason</TableCell>}
                                     <TableCell align="right">Action</TableCell>
                                 </TableRow>
@@ -147,9 +147,9 @@ export default function SentQuotations() {
                                             <TableCell>{item.inquiryCode}</TableCell>
                                             <TableCell>{item.sentWhatsappNumber}</TableCell>
                                             <TableCell>{item.styleName}</TableCell>
-                                            <TableCell>
+                                            {tab === 0 && <TableCell>
                                                 <ViewSentQuotations item={item} update={update} fetchItems={fetchQuotationList}/>                                                
-                                            </TableCell>
+                                            </TableCell>}
                                             {tab === 2 ? <TableCell>{item.inquiryRejectReason}</TableCell> : ""}
                                             <TableCell align="right">
                                                 {tab === 0 ?

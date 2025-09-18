@@ -26,6 +26,7 @@ import ViewSentQuotations from "./view";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import RejectConfirmationById from "./reject";
 import ConfirmInovoiceById from "./confirm";
+import SentBack from "./sent-back";
 
 export default function ProformaList() {
     const router = useRouter();
@@ -82,19 +83,36 @@ export default function ProformaList() {
         try {
             const token = localStorage.getItem("token");
             const skip = (page - 1) * size;
-            const bool = tab === 1 ? true : false;
-            const query = `${BASE_URL}/Inquiry/GetAllProformaInvoice?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&isRejected=${bool}`;
-            const response = await fetch(query, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            });
-            if (!response.ok) throw new Error("Failed to fetch items");
-            const data = await response.json();
-            setQuotationList(data.result.items);
-            setTotalCount(data.result.totalCount || 0);
+            const status = (tab === 0 ? 10 : tab === 1 ? 3 : tab === 2 ? 6 : tab === 3 ? 2 : null);
+
+            if (status != 2) {
+                const query = `${BASE_URL}/Inquiry/GetAllProformaInvoice?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&status=${status}`;
+                const response = await fetch(query, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+                if (!response.ok) throw new Error("Failed to fetch items");
+                const data = await response.json();
+                setQuotationList(data.result.items);
+                setTotalCount(data.result.totalCount || 0);
+            } else {
+                const query = `${BASE_URL}/Inquiry/GetAllSentQuotationsGroupedByStatus?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&status=${status}`;
+                const response = await fetch(query, {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                });
+                if (!response.ok) throw new Error("Failed to fetch items");
+                const data = await response.json();
+                setQuotationList(data.result.items);
+                setTotalCount(data.result.totalCount || 0);
+            }
+
         } catch (error) {
             console.error("Error:", error);
         }
@@ -123,7 +141,9 @@ export default function ProformaList() {
                 <Grid item xs={12} lg={8} mb={1} order={{ xs: 2, lg: 1 }}>
                     <Tabs value={tabValue} onChange={handleTabChange}>
                         <Tab label="Pending" />
+                        <Tab label="Confirmed" />
                         <Tab label="Rejected" />
+                        <Tab label="Sent Quotations (Confirmed)" />
                     </Tabs>
                 </Grid>
                 <Grid item xs={12} lg={4} mb={1} display="flex" alignItems="center" justifyContent="end" order={{ xs: 1, lg: 2 }}>
@@ -148,85 +168,116 @@ export default function ProformaList() {
                 </Grid>
                 <Grid item xs={12}>
                     <TableContainer component={Paper}>
-                        <Table aria-label="simple table" className="dark-table">
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Invoice Date</TableCell>
-                                    <TableCell>Customer Name</TableCell>
-                                    <TableCell>Inquiry Code</TableCell>
-                                    <TableCell>Style Name</TableCell>
-                                    <TableCell>Total Amount</TableCell>
-                                    <TableCell>Advance Amount</TableCell>
-                                    <TableCell>Status</TableCell>
-                                    {tabValue === 1 ? <TableCell align="right">Rejected Reason</TableCell> : <TableCell align="right">Action</TableCell>}
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {quotationList.length === 0 ? (
+                        {tabValue != 3 ?
+                            <Table aria-label="simple table" className="dark-table">
+                                <TableHead>
                                     <TableRow>
-                                        <TableCell colSpan={8}>
-                                            <Typography color="error">No Invoice Available</Typography>
-                                        </TableCell>
+                                        <TableCell>Invoice Date</TableCell>
+                                        <TableCell>Customer Name</TableCell>
+                                        <TableCell>Inquiry Code</TableCell>
+                                        <TableCell>Style Name</TableCell>
+                                        <TableCell>Total Amount</TableCell>
+                                        <TableCell>Advance Amount</TableCell>
+                                        <TableCell>Status</TableCell>
+                                        {tabValue === 2 ? <TableCell align="right">Rejected Reason</TableCell> : <TableCell align="right">Action</TableCell>}
                                     </TableRow>
-                                ) : (
-                                    quotationList.map((item, index) => {
-                                        const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${item.inquiryCode}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
-                                        const invoiceReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
-                                        return (
-                                            <TableRow key={index}>
-                                                <TableCell>{formatDate(item.invoiceDate)}</TableCell>
-                                                <TableCell>{item.customerName}</TableCell>
-                                                <TableCell>{item.inquiryCode}</TableCell>
-                                                <TableCell>{item.styleName}</TableCell>
-                                                <TableCell>{formatCurrency(item.totalPayment)}</TableCell>
-                                                <TableCell>{formatCurrency(item.advancePayment)}</TableCell>
-                                                <TableCell>
-                                                    {tabValue === 0 && item.isConfirmed ? (
-                                                        <Chip label="Confirmed" size="small" color="success" />
-                                                    ) : tabValue === 1 && item.isRejected ? (
-                                                        <Chip label="Rejected" size="small" color="error" />
-                                                    ) : (
-                                                        <Chip label="Pending" size="small" color="warning" />
-                                                    )}
-
-                                                </TableCell>
-                                                {tabValue === 1 ?
-                                                    <TableCell align="right">{item.rejectedReason}</TableCell>
-                                                    :
-                                                    <TableCell align="right">
-                                                        <Box display="flex" gap={1} justifyContent="end">
-                                                            {update && (
-                                                                <Tooltip title="Edit" placement="top">
-                                                                    <IconButton onClick={() => navigateToEdit(item.inquiryId)} aria-label="edit" size="small">
-                                                                        <BorderColorIcon color="primary" fontSize="inherit" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            )}
-                                                            <ShareReports url={whatsapp} mobile={item.sentWhatsappNumber} />
-                                                            {print && (
-                                                                <Tooltip title="Print" placement="top">
-                                                                    <a href={`${Report}` + invoiceReportLink} target="_blank">
-                                                                        <IconButton aria-label="print" size="small">
-                                                                            <LocalPrintshopIcon color="primary" fontSize="medium" />
-                                                                        </IconButton>
-                                                                    </a>
-                                                                </Tooltip>
-                                                            )}
-                                                            {update && (
-                                                                <RejectConfirmationById id={item.id} controller="Inquiry/RejectProformaInvoice" fetchItems={fetchQuotationList} />
-                                                            )}
-                                                            {update && (
-                                                                <ConfirmInovoiceById id={item.id} fetchItems={fetchQuotationList} />
-                                                            )}
-                                                        </Box>
+                                </TableHead>
+                                <TableBody>
+                                    {quotationList.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8}>
+                                                <Typography color="error">No Invoice Available</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        quotationList.map((item, index) => {
+                                            const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${item.inquiryCode}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                                            const invoiceReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                                            return (
+                                                <TableRow key={index}>
+                                                    <TableCell>{formatDate(item.invoiceDate)}</TableCell>
+                                                    <TableCell>{item.customerName}</TableCell>
+                                                    <TableCell>{item.inquiryCode}</TableCell>
+                                                    <TableCell>{item.styleName}</TableCell>
+                                                    <TableCell>{formatCurrency(item.totalPayment)}</TableCell>
+                                                    <TableCell>{formatCurrency(item.advancePayment)}</TableCell>
+                                                    <TableCell>
+                                                        {tabValue === 0 ? (
+                                                            <Chip label="Pending" size="small" color="warning" />
+                                                        ) : tabValue === 1 ? (
+                                                            <Chip label="Confirmed" size="small" color="success" />
+                                                        ) : (
+                                                            <Chip label="Rejected" size="small" color="error" />
+                                                        )}
                                                     </TableCell>
-                                                }
-                                            </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
+                                                    {tabValue === 2 ?
+                                                        <TableCell align="right">{item.rejectedReason}</TableCell>
+                                                        :
+                                                        <TableCell align="right">
+                                                            <Box display="flex" gap={2} justifyContent="end">
+                                                                {update && tabValue === 0 ?
+                                                                <SentBack id={item.inquiryId} fetchItems={fetchQuotationList}/>
+                                                                : ""}
+                                                                {update && tabValue === 0 ?
+                                                                    <Tooltip title="Edit" placement="top">
+                                                                        <IconButton onClick={() => navigateToEdit(item.inquiryId)} aria-label="edit" size="small">
+                                                                            <BorderColorIcon color="primary" fontSize="medium" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                    : ""}
+                                                                {tabValue === 1 ?
+                                                                <ShareReports url={whatsapp} mobile={item.sentWhatsappNumber} /> : "" }
+                                                                {print && tabValue === 1 ? 
+                                                                    <Tooltip title="Print" placement="top">
+                                                                        <a href={`${Report}` + invoiceReportLink} target="_blank">
+                                                                            <IconButton aria-label="print" size="small">
+                                                                                <LocalPrintshopIcon color="primary" fontSize="medium" />
+                                                                            </IconButton>
+                                                                        </a>
+                                                                    </Tooltip>
+                                                                : ""}
+                                                                {update && tabValue === 0 ?
+                                                                    <>
+                                                                        <RejectConfirmationById id={item.id} controller="Inquiry/RejectProformaInvoice" fetchItems={fetchQuotationList} />
+
+                                                                        <ConfirmInovoiceById id={item.id} fetchItems={fetchQuotationList} />
+                                                                    </>
+                                                                    : ""}
+                                                            </Box>
+                                                        </TableCell>
+                                                    }
+                                                </TableRow>
+                                            );
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table> :
+                            <Table aria-label="simple table" className="dark-table">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Inquiry Code</TableCell>
+                                        <TableCell>Customer Name</TableCell>
+                                        <TableCell>Style Name</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {quotationList.length === 0 ?
+                                        <TableRow>
+                                            <TableCell colSpan={3}>
+                                                <Typography color="error">No Data Available</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                        : (
+                                            quotationList.map((quot, index) => (
+                                                <TableRow key={index}>
+                                                    <TableCell>{quot.inquiryCode}</TableCell>
+                                                    <TableCell>{quot.customerName}</TableCell>
+                                                    <TableCell>{quot.styleName}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                </TableBody>
+                            </Table>}
                         <Grid container justifyContent="space-between" mt={2} mb={2}>
                             <Pagination count={Math.ceil(totalCount / pageSize)} page={page} onChange={handlePageChange} color="primary" shape="rounded" />
                             <FormControl size="small" sx={{ mr: 2, width: "100px" }}>

@@ -3,9 +3,8 @@ import Card from '@mui/material/Card';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { formatCurrency } from '@/components/utils/formatHelper';
-  
-  const StockValueCard = ({stock}) => {
-    console.log(stock);
+
+const StockValueCard = ({ stock }) => {
   return (
     <Card
       sx={{

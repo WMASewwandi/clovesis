@@ -567,44 +567,62 @@ export default function SelectInquiry() {
                               </TableCell>
                             </TableRow>
                           ) : (
-                            optionList.map((option, index) => (
-                              <TableRow key={index} sx={hover}>
-                                <TableCell component="th" scope="row" onClick={() => handleNavigation(option)}>
-                                  <Box>
-                                    {index + 1}
-                                  </Box>
-                                </TableCell>
-                                <TableCell onClick={() => handleNavigation(option)}>
-                                  <Box>
-                                    {option.inqCode}
-                                  </Box>
-                                </TableCell>
-                                <TableCell align="right" onClick={() => handleNavigation(option)}>
-                                  <Box>
-                                    {option.optionName}
-                                  </Box>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <input
-                                    type="file"
-                                    id="frontImage"
-                                    accept="image/*"
-                                    style={{ display: "none" }}
-                                    onChange={(event) =>
-                                      handleFileChange(event, option)
-                                    }
-                                  />
-                                  <label htmlFor="frontImage">
-                                    <IconButton color="primary" component="span">
-                                      <CloudUploadOutlinedIcon />
-                                    </IconButton>
-                                  </label>
-                                </TableCell>
-                                <TableCell align="right">
-                                  <EditOption category={selectedInquiry} fetchItems={fetchOptionList} item={option} />
-                                </TableCell>
-                              </TableRow>
-                            ))
+                            optionList.map((option, index) => {
+                              const isDisabled = option.inquiryStatus === 1;
+
+                              return (
+                                <TableRow
+                                  key={index}
+                                  sx={hover}
+                                  style={!isDisabled ? { pointerEvents: "none", opacity: 0.5 } : {}}
+                                >
+                                  <TableCell
+                                    component="th"
+                                    scope="row"
+                                    onClick={isDisabled ? () => handleNavigation(option) : undefined}
+                                  >
+                                    <Box>
+                                      {index + 1}
+                                    </Box>
+                                  </TableCell>
+                                  <TableCell
+                                    onClick={isDisabled ? () => handleNavigation(option) : undefined}
+                                  >
+                                    <Box>{option.inqCode}</Box>
+                                  </TableCell>
+                                  <TableCell
+                                    align="right"
+                                    onClick={isDisabled ? () => handleNavigation(option) : undefined}
+                                  >
+                                    <Box>{option.optionName}</Box>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <input
+                                      type="file"
+                                      id={`frontImage-${index}`}
+                                      accept="image/*"
+                                      style={{ display: "none" }}
+                                      onChange={(event) => handleFileChange(event, option)}
+                                      disabled={!isDisabled}
+                                    />
+                                    <label htmlFor={`frontImage-${index}`}>
+                                      <IconButton color="primary" component="span" disabled={isDisabled}>
+                                        <CloudUploadOutlinedIcon />
+                                      </IconButton>
+                                    </label>
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    <EditOption
+                                      category={selectedInquiry}
+                                      fetchItems={fetchOptionList}
+                                      item={option}
+                                      disabled={isDisabled}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
+
                           )}
                         </TableBody>
                       </Table>

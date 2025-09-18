@@ -56,10 +56,6 @@ export default function SelectFabric() {
               categoryFabric.inquiryCategoryId === parseInt(inqType)
           )
       );
-
-      console.log(data.result);
-      console.log(filteredFabricList);
-
       setFabricList(filteredFabricList);
       fetchValueList(filteredFabricList);
     } catch (error) {

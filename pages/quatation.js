@@ -95,7 +95,6 @@ const EditableTable = () => {
   };
 
   const handleSubmit = () => {
-    console.log(rows, customerName);
     alert("Quotation submitted!");
   };
 

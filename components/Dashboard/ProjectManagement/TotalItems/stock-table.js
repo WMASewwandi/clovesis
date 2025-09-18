@@ -43,8 +43,8 @@ const StockTable = () => {
           </TableHead>
 
           <TableBody>
-            {stock.map((row) => (
-              <TableRow key={row.task}>
+            {stock.map((row,i) => (
+              <TableRow key={i}>
                 <TableCell sx={{ fontWeight: "500", fontSize: "13px", borderBottom: "1px solid #F7FAFF", color: "#260944", padding: "9px 10px" }}>
                   {row.productName}
                 </TableCell>

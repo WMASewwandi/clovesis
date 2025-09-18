@@ -179,7 +179,7 @@ export default function ViewQuotation({
   const fetchCustomerDetails = async () => {
     try {
       const response = await fetch(
-        `${BASE_URL}/Customer/GetCustomerDetailByID?customerId=${quotDetails.customerDetils.id}`,
+        `${BASE_URL}/Customer/GetCustomerDetailByID?customerId=${quotDetails.customerDetails.id}`,
         {
           method: "GET",
           headers: {
@@ -268,7 +268,7 @@ export default function ViewQuotation({
   };
 
   const handleShareNow = async () => {
-    const cus = quotDetails.customerDetils;
+    const cus = quotDetails.customerDetails;
 
     const data = {
       InquiryId: quotDetails.inquiryID,
@@ -278,7 +278,7 @@ export default function ViewQuotation({
       SellingPrice: quotDetails.apprvedSellingPrice,
       UnitCost: quotDetails.apprvedUnitCost,
       TotalCost: quotDetails.apprvedTotalCost,
-      Quantity: quotDetails.apprvedTotalUnits,
+      Quantity: quotDetails.apprvedTotalUnits || quotDetails.totalUnits,
       Revenue: quotDetails.apprvedRevanue,
       TotalProfit: quotDetails.apprvedTotalProfit,
       QuotationId: quotDetails.id,
@@ -417,38 +417,38 @@ export default function ViewQuotation({
           <Text style={styles.date}>{selectedDate}</Text>
           <Text style={styles.inquiryCode}>{quotDetails.inqCode}</Text>
           <Text style={styles.add}>
-            {quotDetails.customerDetils ? (
+            {quotDetails.customerDetails ? (
               <>
-                {quotDetails.customerDetils.title}{" "}
-                {quotDetails.customerDetils.firstName}{" "}
-                {quotDetails.customerDetils.lastName},
+                {quotDetails.customerDetails.title}{" "}
+                {quotDetails.customerDetails.firstName}{" "}
+                {quotDetails.customerDetails.lastName},
               </>
             ) : (
               "Invalid Customer"
             )}
           </Text>
           <Text style={styles.addDesi}>
-            {quotDetails.customerDetils ? (
-              <>{quotDetails.customerDetils.designation},</>
+            {quotDetails.customerDetails ? (
+              <>{quotDetails.customerDetails.designation},</>
             ) : (
               ""
             )}
           </Text>
           <Text style={styles.add}>
-            {quotDetails.customerDetils ? (
-              <>{quotDetails.customerDetils.company},</>
+            {quotDetails.customerDetails ? (
+              <>{quotDetails.customerDetails.company},</>
             ) : (
               ""
             )}
           </Text>
           <Text style={styles.add}>
-            {quotDetails.customerDetils ? (
+            {quotDetails.customerDetails ? (
               <>
-                {quotDetails.customerDetils.addressLine1}
-                {quotDetails.customerDetils.addressLine2 &&
-                  `, ${quotDetails.customerDetils.addressLine2}`}
-                {quotDetails.customerDetils.addressLine3 &&
-                  `, ${quotDetails.customerDetils.addressLine3}`}
+                {quotDetails.customerDetails.addressLine1}
+                {quotDetails.customerDetails.addressLine2 &&
+                  `, ${quotDetails.customerDetails.addressLine2}`}
+                {quotDetails.customerDetails.addressLine3 &&
+                  `, ${quotDetails.customerDetails.addressLine3}`}
               </>
             ) : (
               ""
@@ -465,7 +465,7 @@ export default function ViewQuotation({
             <View style={{ flexGrow: 1 }}>
               <Text style={styles.tablecell}>QTY</Text>
               <Text style={styles.tablecell2}>
-                {quotDetails.apprvedTotalUnits}
+                {quotDetails.apprvedTotalUnits || quotDetails.totalUnits}
               </Text>
             </View>
             <View style={{ flexGrow: 1 }}>

@@ -24,6 +24,7 @@ import ReservationSalesReport from "@/components/UIElements/Modal/Reports/Summer
 import FiscalPeriodReport from "@/components/UIElements/Modal/Reports/Summery/FiscalPeriodReport";
 import CashFlowSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashFlowSummaryReport";
 import CustomerPaymentSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CustomerPaymentSummaryReport";
+import DoctorWiseSalesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/DoctorWiseSalesSummaryReport";
 
 import BASE_URL from "Base/api";
 
@@ -40,6 +41,7 @@ const componentMap = {
   FiscalPeriodReport,
   CashFlowSummaryReport,
   CustomerPaymentSummaryReport,
+  DoctorWiseSalesSummaryReport
 };
 
 const SummeryReports = () => {

@@ -144,6 +144,7 @@ const ReceiptCreate = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data.result);
         setCustomerInvoices(data.result);
       }
     } catch (error) {
@@ -249,7 +250,6 @@ const ReceiptCreate = () => {
     };
 
     try {
-      setIsDisable(true);
       setIssubmitting(true);
       const response = await fetch(`${BASE_URL}/Receipt/CreateReceipt`, {
         method: "POST",
@@ -263,7 +263,8 @@ const ReceiptCreate = () => {
       if (response.ok) {
         const jsonResponse = await response.json();
 
-        if (jsonResponse.message != "") {          
+        if (jsonResponse.message != "") {
+          setIsDisable(true);
           toast.success(jsonResponse.message);
           setTimeout(() => {
             window.location.href = "/sales/receipt";
@@ -279,7 +280,6 @@ const ReceiptCreate = () => {
       console.error("Error:", error);
     } finally {
       setIssubmitting(false);
-      
     }
   };
 
@@ -554,9 +554,10 @@ const ReceiptCreate = () => {
                           <TableCell>{invoice.totalInvoiceAmount}</TableCell>
                           <TableCell>
                             {invoice.totalInvoiceAmount -
-                              invoice.outstandingAmount}
+                              (invoice.outstandingAmount+invoice.returnedAmount)}
+                             
                           </TableCell>
-                          <TableCell>0</TableCell>
+                          <TableCell>{invoice.returnedAmount}</TableCell>
                           <TableCell>{invoice.outstandingAmount}</TableCell>
                           <TableCell>
                             <TextField

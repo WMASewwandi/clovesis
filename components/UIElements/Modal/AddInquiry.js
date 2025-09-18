@@ -64,7 +64,7 @@ export default function AddInquiry({ fetchItems, type }) {
       const data = await response.json();
       setCustomersLists(data.result);
     } catch (error) {
-      console.error("Error fetching customers:", error);
+      //console.error("Error fetching customers:", error);
     }
   };
 

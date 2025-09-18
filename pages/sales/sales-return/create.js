@@ -28,6 +28,10 @@ import { debounce } from "lodash";
 import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 import useShiftCheck from "@/components/utils/useShiftCheck";
 import SearchItemByName from "@/components/utils/SearchItemByName";
+import Tooltip from '@mui/material/Tooltip';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 
 const Salesreturn = () => {
   const today = new Date();
@@ -193,6 +197,24 @@ const Salesreturn = () => {
       // toast.error("Error fetching invoice details.");
     }
   };
+const handleDeleteRow = (index) => {
+  const updatedRows = [...selectedRows];
+  const updatedChecked = Array.isArray(checkedRows)
+    ? [...checkedRows]
+    : []; // Fallback to empty array to avoid crash
+
+  updatedRows.splice(index, 1);
+  updatedChecked.splice(index, 1);
+
+  setSelectedRows(updatedRows);
+  setCheckedRows(updatedChecked);
+
+  const newGrossTotal = updatedRows.reduce(
+    (total, row) => total + (row.returnAmount || 0),
+    0
+  );
+  setGrossTotal(newGrossTotal);
+};
 
   const handleSubmit = async () => {
     if (shiftResult) {
@@ -205,13 +227,14 @@ const Salesreturn = () => {
       return;
     }
 
+
+     if ( !salesPerson) {
+      toast.error("Please select a salesPerson.");
+      return;
+    }
     // // Validate return quantity only when the return type is Invoice
     
-    // if (returnType === 'invoice' && returnQuantity >= row.balanceQty) {
-    //   toast.error("Return quantity cannot be greater than the remaining invoice quantity.");
-    //   return;
-    // }
-
+   
     // Validate return quantity only when the return type is Invoice
     if (returnType === "invoice") {
       const hasTooMuchReturn = selectedRows.some(
@@ -520,10 +543,7 @@ const Salesreturn = () => {
       <div className={styles.pageTitle}>
         <h1>Sales Return</h1>
         <ul>
-          <li>
-            <Link href="/sales/sales-return">Sales Return</Link>
-          </li>
-          <li>Sales Return Create</li>
+        
         </ul>
       </div>
 
@@ -976,6 +996,10 @@ const Salesreturn = () => {
                         sx={{ color: "#fff" }}
                         align="right"
                       ></TableCell>
+                       <TableCell
+                        sx={{ color: "#fff" }}
+                        align="right"
+                      ></TableCell>
                       <TableCell sx={{ color: "#fff" }}>#</TableCell>
                       <TableCell sx={{ color: "#fff" }}>
                         Product&nbsp;Code
@@ -993,7 +1017,7 @@ const Salesreturn = () => {
                       </TableCell>
                       
                       <TableCell sx={{ color: "#fff" }}>
-                        Saling Price
+                        Selling Price
                       </TableCell>
                       {returnType === "invoice" && (
                         <TableCell sx={{ color: "#fff" }}>
@@ -1025,14 +1049,24 @@ const Salesreturn = () => {
                       )} */}
                     </TableRow>
                   </TableHead>
-                  <TableBody>
-                    {selectedRows.map((row, index) => (
-                      <TableRow
-                        key={row.id}
-                        sx={{
-                          "&:last-child td, &:last-child th": { border: 0 },
-                        }}
-                      >
+                    <TableBody>
+        {selectedRows.map((row, index) => (
+          <TableRow key={row.id}>
+            {/* 🔴 Delete button per row */}
+            <TableCell sx={{ p: 1 }}>
+              {(returnType|| checkedRows[index]) && (
+               //  eslint-disable-next-line react/jsx-no-undef
+                <Tooltip title="Delete" placement="top">
+                  <IconButton
+                    onClick={() => handleDeleteRow(index)}
+                    aria-label="delete"
+                    size="small"
+                  >
+                    <DeleteIcon color="error" fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              )}
+            </TableCell>
                         <TableCell sx={{ p: 1 }}>
                           <Checkbox
                             checked={checkedRows[index] || false}
@@ -1111,80 +1145,37 @@ const Salesreturn = () => {
                         </TableCell>
                        
 
-                        {/* <TableCell sx={{ p: 1 }}>
-                          <TextField
-                            size="small"
-                            type="number"
-                            fullWidth
-                            sx={{ width: "150px" }}
-                            value={row.unitPrice}
-                            disabled={returnType === "invoice"} // editable only for non-invoice
-                            onChange={(e) => {
-                              if (returnType === "non-invoice") {
-                                const updatedRows = [...selectedRows];
-                                updatedRows[index].costprice =
-                                  parseFloat(e.target.value) || 0;
-                                updatedRows[index].totalPrice =
-                                  updatedRows[index].qty *
-                                  updatedRows[index].unitPrice;
-                                updatedRows[index].returnAmount =
-                                  (updatedRows[index].returnQuantity || 0) *
-                                  updatedRows[index].unitPrice;
-                                setSelectedRows(updatedRows);
+                       {returnType === "non-invoice" && (
+  <TableCell sx={{ p: 1 }}>
+    <TextField
+      sx={{ width: "150px" }}
+      size="small"
+      type="number"
+      fullWidth
+      value={row.salingPrice}
+      onChange={(e) => {
+        const newPrice = parseFloat(e.target.value) || 0;
 
-                                const newGrossTotal = updatedRows.reduce(
-                                  (total, row) =>
-                                    total + (row.returnAmount || 0),
-                                  0
-                                );
-                                setGrossTotal(newGrossTotal);
-                              }
-                            }}
-                          />
-                        </TableCell> */}
-                        {/* {returnType === "non-invoice" && (
-                          <TableCell sx={{ p: 1 }}>
-                            <TextField
-                              size="small"
-                              type="number"
-                              fullWidth
-                              sx={{ width: "150px" }}
-                              value={row.soldUnitPrice || ""}
-                              onChange={(e) => {
-                                const updatedRows = [...selectedRows];
-                                updatedRows[index].soldUnitPrice =
-                                  parseFloat(e.target.value) || 0;
+        const updatedRows = [...selectedRows];
+        updatedRows[index].salingPrice = newPrice;
 
-                                // 🔹 Calculate total cost
-                                updatedRows[index].totalCost =
-                                  (updatedRows[index].returnQuantity || 0) *
-                                  (updatedRows[index].soldUnitPrice || 0);
+        // Recalculate returnAmount if returnQuantity exists
+        const returnQty = updatedRows[index].returnQuantity || 0;
+        updatedRows[index].returnAmount = returnQty * newPrice;
 
-                                setSelectedRows(updatedRows);
+        setSelectedRows(updatedRows);
 
-                                // 🔹 Update gross total (sum of all total costs)
-                                const newGrossTotal = updatedRows.reduce(
-                                  (total, r) => total + (r.totalCost || 0),
-                                  0
-                                );
-                                setGrossTotal(newGrossTotal);
-                              }}
-                            />
-                          </TableCell>
-                        )} */}
-  {returnType === "non-invoice" && (
-                          <TableCell sx={{ p: 1 }}>
-                            <TextField
-                              sx={{ width: "150px" }}
-                              size="small"
-                              type="text"
-                              fullWidth
-                              name=""
-                              value={row.salingPrice}
-                              disabled
-                            />
-                          </TableCell>
-                        )}
+        // Update gross total
+        const newGrossTotal = updatedRows.reduce(
+          (total, row) => total + (row.returnAmount || 0),
+          0
+        );
+        setGrossTotal(newGrossTotal);
+      }}
+    />
+  </TableCell>
+)}
+
 {/* // <TableCell sx={{ p: 1 }}>{row.salingPrice}</TableCell> */}
  <TableCell sx={{ p: 1 }}>{row.costPrice}</TableCell>
                         

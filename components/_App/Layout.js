@@ -7,15 +7,21 @@ import Footer from "@/components/_App/Footer";
 import ScrollToTop from "./ScrollToTop";
 import ControlPanelModal from "./ControlPanelModal";
 import HidableButtons from "../Dashboard/eCommerce/HidableButtons";
+import AccessDenied from "../UIElements/Permission/AccessDenied";
 
 const Layout = ({ children }) => {
   const router = useRouter();
+  const [isGranted, setIsGranted] = useState(true);
 
   const [active, setActive] = useState(false);
 
   const toogleActive = () => {
     setActive(!active);
   };
+
+  const handleCheckGranted = (bool) => {
+    setIsGranted(bool);
+  }
 
   return (
     <>
@@ -35,15 +41,15 @@ const Layout = ({ children }) => {
           router.pathname === "/authentication/confirm-mail" ||
           router.pathname === "/authentication/logout"
         ) && (
-          <>
-            <TopNavbar toogleActive={toogleActive} />
+            <>
+              <TopNavbar toogleActive={toogleActive}  />
 
-            <LeftSidebar toogleActive={toogleActive} />
-          </>
-        )}
+              <LeftSidebar toogleActive={toogleActive} onGrantedCheck={handleCheckGranted}/>
+            </>
+          )}
 
         <div className="main-content">
-          {children}
+          {!isGranted ? <AccessDenied /> : children}         
 
           {!(
             router.pathname === "/authentication/sign-in" ||
@@ -55,10 +61,10 @@ const Layout = ({ children }) => {
           ) && <Footer />}
         </div>
       </div>
-            
+
       {/* ScrollToTop */}
       <ScrollToTop />
-      
+
       {!(
         router.pathname === "/authentication/sign-in" ||
         router.pathname === "/authentication/sign-up" ||
@@ -69,7 +75,7 @@ const Layout = ({ children }) => {
       ) &&
         <ControlPanelModal />
       }
-      <HidableButtons/>
+      <HidableButtons />
     </>
   );
 };

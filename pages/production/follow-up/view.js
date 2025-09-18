@@ -12,7 +12,7 @@ const style = {
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: { lg: 450, xs: 350 },
+  width: { lg: 650, xs: 350 },
   bgcolor: "background.paper",
   boxShadow: 24,
   p: 2,
@@ -30,7 +30,7 @@ export default function ViewComments({ item }) {
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/Inquiry/GetAllFollowUpCommentsByInquiryId?inquiryId=${item.inquiryId}&sentQuotId=${item.id}`, {
+      const response = await fetch(`${BASE_URL}/Inquiry/GetAllFollowUpComments?inquiryId=${item.inquiryId}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -44,12 +44,6 @@ export default function ViewComments({ item }) {
 
       const data = await response.json();
       setComments(data.result);
-
-      if (data.result.some(q => q.projectStatusType >= 2)) {
-        setConfirmed(true);
-      } else {
-        setConfirmed(false);
-      }
     } catch (error) {
       console.error("Error fetching Supplier List:", error);
     }
@@ -91,6 +85,8 @@ export default function ViewComments({ item }) {
                       <TableRow>
                         <TableCell>Date</TableCell>
                         <TableCell>Description</TableCell>
+                        <TableCell>Option</TableCell>
+                        <TableCell>Done By</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -105,6 +101,8 @@ export default function ViewComments({ item }) {
                           <TableRow key={index}>
                             <TableCell>{formatDate(item.createdOn)}</TableCell>
                             <TableCell>{item.description}</TableCell>
+                            <TableCell>{item.optionName}</TableCell>
+                            <TableCell>{item.doneBy}</TableCell>
                           </TableRow>
                         ))
                       )}

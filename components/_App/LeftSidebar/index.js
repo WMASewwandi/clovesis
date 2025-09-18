@@ -30,15 +30,20 @@ const SidebarWrap = styled("div")(({ theme }) => ({
   width: "100%",
 }));
 
-const Sidebar = ({ toogleActive }) => {
+const Sidebar = ({ toogleActive, onGrantedCheck }) => {
   const { data: IsGarmentSystem } = IsAppSettingEnabled("IsGarmentSystem");
   const [sidebarItems, setSidebarItems] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const role = localStorage.getItem("role");
-  const [companyLogo,setCompanyLogo] = useState("");
+  const [companyLogo, setCompanyLogo] = useState("");
+  const [permission, setPermission] = useState(true);
   const availableItems = sidebarItems.filter((item) => item.IsAvailable);
 
   const warehouse = localStorage.getItem("warehouse");
+
+  const handleSetPermission = (bool) => {
+    setPermission(bool);
+  }
 
   const fetchCompanyImage = async () => {
     const response = await fetch(
@@ -125,11 +130,17 @@ const Sidebar = ({ toogleActive }) => {
       console.error("Error fetching users:", error);
     }
   };
-
   useEffect(() => {
     fetchModulePermissions();
     fetchCompanyImage();
   }, []);
+
+  useEffect(() => {
+    if (onGrantedCheck) {
+      onGrantedCheck(permission);
+    }
+  }, [permission]);
+
 
   return (
     <>
@@ -149,12 +160,12 @@ const Sidebar = ({ toogleActive }) => {
                 {ProjectNo === 1 ? (
                   <>
                     <img
-                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png" }
+                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png"}
                       alt="Logo"
                       className="black-logo"
                     />
                     <img
-                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png" }
+                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png"}
                       alt="Logo"
                       className="white-logo"
                     />
@@ -187,7 +198,7 @@ const Sidebar = ({ toogleActive }) => {
               </IconButton>
             </Box>
             {availableItems.map((item, index) => (
-              <SubMenu item={item} allItems={allItems} key={index} />
+              <SubMenu item={item} allItems={allItems} key={index} onCheckPermission={handleSetPermission} />
             ))}
           </SidebarWrap>
         </SidebarNav>

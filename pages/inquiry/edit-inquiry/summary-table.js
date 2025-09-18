@@ -11,7 +11,6 @@ import {
   TableRow,
 } from "@mui/material";
 import BASE_URL from "Base/api";
-import { toast } from "react-toastify";
 import { formatCurrency } from "@/components/utils/formatHelper";
 
 export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) {
@@ -193,7 +192,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
         return res.json();
       })
       .then((data) => {
-        toast.success(data.message);        
+        //toast.success(data.message);        
       })
       .catch((error) => {
         console.error("Update failed:", error);
@@ -208,6 +207,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     newItems[index].totalCost =
       (newItems[index].unitCost || 0) * (newItems[index].quantity || 0);
     setItems(newItems);
+    
   };
 
   const handlePatternTotalCostChange = (value) => {
@@ -272,7 +272,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     setSellingPrice(sellPrice);
     setProfitPercentage(profitPercentage);
     handleSetData(profit, profitPercentage, sellPrice, totalProfit, revenue);
-    updateIsSaved(true);
+    //updateIsSaved(true);
   };
 
 

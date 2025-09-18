@@ -43,8 +43,6 @@ export default function CreateDayTypeModal({ fetchItems }) {
   };
 
   const handleSubmit = async (values) => {
-    console.log(values);
-
     fetch(`${BASE_URL}/DayType/CreateDayType`, {
       method: "POST",
       body: JSON.stringify(values),
