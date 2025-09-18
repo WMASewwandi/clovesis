@@ -24,7 +24,7 @@ import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import CreateEmploymentTypeModal from "./create";
 import EditEmploymentType from "./edit";
-import AccessDenied from "@/components/AccessDenied"; 
+import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 
 const Index = () => {
   const cId = sessionStorage.getItem("category");
