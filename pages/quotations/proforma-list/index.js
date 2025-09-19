@@ -192,7 +192,7 @@ export default function ProformaList() {
                                     ) : (
                                         quotationList.map((item, index) => {
                                             const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${item.inquiryCode}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
-                                            const invoiceReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                                            const invoiceReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.inquiryCode}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
                                             return (
                                                 <TableRow key={index}>
                                                     <TableCell>{formatDate(item.invoiceDate)}</TableCell>

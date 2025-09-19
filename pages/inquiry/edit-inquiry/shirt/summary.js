@@ -89,7 +89,7 @@ export default function Summary() {
       UnitProfit: parseFloat(formData.profit) || 0,
       TotalProfit: parseFloat(formData.totalProfit) || 0,
       SellingPrice: parseFloat(formData.sellingPrice) || 0,
-      Revenue: parseFloat(formData.revenue) || 0,
+      Revanue: parseFloat(formData.revenue) || 0,
       ApprovedStatus: 0,
       ApprvedUnitCost: parseFloat(formData.unitCost) || 0,
       ApprvedTotalCost: parseFloat(formData.totalCost) || 0,
