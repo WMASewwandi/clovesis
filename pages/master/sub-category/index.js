@@ -24,47 +24,37 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import { FormControl, Pagination } from "@mui/material";
 import { InputLabel, MenuItem, Select } from "@mui/material";
+import GetAllItemDetails from "@/components/utils/GetAllItemDetails";
 const SubCategory = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [subCategoryList, setSubCategoryList] = useState([]);
   const controller = "SubCategory/DeleteSubCategory";
+  const [catInfo, setCatInfo] = useState({});
+  const { categories } = GetAllItemDetails();
+
+  useEffect(() => {
+    if (categories) {
+      const catMap = categories.reduce((acc, cat) => {
+        acc[cat.id] = cat;
+        return acc;
+      }, {});
+      setCatInfo(catMap);
+    }
+  }, [categories]);
+
 
   const {
-      data: SubCategory,
-      totalCount,
-      page,
-      pageSize,
-      search,
-      setPage,
-      setPageSize,
-      setSearch,
-      fetchData: fetchSubCategoryList,
-    } = usePaginatedFetch("SubCategory/GetAllSubCategoryPage");
+    data: subCategoryList,
+    totalCount,
+    page,
+    pageSize,
+    search,
+    setPage,
+    setPageSize,
+    setSearch,
+    fetchData: fetchSubCategoryList,
+  } = usePaginatedFetch("SubCategory/GetAllSubCategoryPage");
 
-  // const fetchSubCategoryList = async () => {
-  //   try {
-  //     const response = await fetch(
-  //       `${BASE_URL}/SubCategory/GetAllSubCategory`,
-  //       {
-  //         method: "GET",
-  //         headers: {
-  //           Authorization: `Bearer ${localStorage.getItem("token")}`,
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to fetch Size List");
-  //     }
-
-  //     const data = await response.json();
-  //     setSubCategoryList(data.result);
-  //   } catch (error) {
-  //     console.error("Error fetching Size List:", error);
-  //   }
-  // };
 
   const handleSearchChange = (event) => {
     const val = event.target.value;
@@ -93,6 +83,8 @@ const SubCategory = () => {
     return <AccessDenied />;
   }
 
+  console.log(subCategoryList);
+
   return (
     <>
       <ToastContainer />
@@ -116,7 +108,7 @@ const SubCategory = () => {
             container
             alignItems="center"
             justifyContent="space-between"
-            sx={{ mb: 2 }}
+            sx={{ mb: 1 }}
           >
             <Grid item xs={12} md={6} lg={5} order={{ xs: 2, lg: 1 }}>
               <Search className="search-form" style={{ width: "100%" }}>
@@ -128,7 +120,9 @@ const SubCategory = () => {
                 />
               </Search>
             </Grid>
-            <AddSubCategory fetchItems={fetchSubCategoryList} />
+            <Grid item xs={12} md={6} lg={7} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
+              <AddSubCategory fetchItems={fetchSubCategoryList} />
+            </Grid>
           </Grid>
         </Grid>
         <Grid item xs={12}>
@@ -144,7 +138,7 @@ const SubCategory = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {SubCategory.length === 0 ? (
+                {subCategoryList.length === 0 ? (
                   <TableRow
                     sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                   >
@@ -155,24 +149,20 @@ const SubCategory = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  SubCategory.map((SubCategory, index) => (
+                  subCategoryList.map((subCategory, index) => (
                     <TableRow
                       key={index}
                       sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                     >
-                      <TableCell> {SubCategory.name}</TableCell>
+                      <TableCell> {subCategory.name}</TableCell>
                       <TableCell component="th" scope="row">
-                        {SubCategory.categoryDetails
-                          ? SubCategory.categoryDetails.name
-                          : ""}
+                        {catInfo[subCategory.categoryId]?.name || "-"}
                       </TableCell>
                       <TableCell>
-                        {SubCategory.categoryDetails
-                          ? formatDate(SubCategory.categoryDetails.createdOn)
-                          : ""}
+                        {formatDate(subCategory.createdOn)}
                       </TableCell>
                       <TableCell>
-                        {SubCategory.isActive == true ? (
+                        {subCategory.isActive == true ? (
                           <span className="successBadge">Active</span>
                         ) : (
                           <span className="dangerBadge">Inactive</span>
@@ -182,14 +172,14 @@ const SubCategory = () => {
                         {update ? (
                           <EditSubCategory
                             fetchItems={fetchSubCategoryList}
-                            subcategory={SubCategory}
+                            subcategory={subCategory}
                           />
                         ) : (
                           ""
                         )}
                         {remove ? (
                           <DeleteConfirmationById
-                            id={SubCategory.id}
+                            id={subCategory.id}
                             controller={controller}
                             fetchItems={fetchSubCategoryList}
                           />
@@ -202,31 +192,30 @@ const SubCategory = () => {
                 )}
               </TableBody>
             </Table>
-            {/* Pagination + Page size */}
-                        <Grid container justifyContent="space-between" mt={2} mb={2}>
-                          <Pagination
-                            count={Math.max(
-                              1,
-                              Math.ceil((totalCount || 0) / (pageSize || 10))
-                            )}
-                            page={page || 1}
-                            onChange={handlePageChange}
-                            color="primary"
-                            shape="rounded"
-                          />
-                          <FormControl size="small" sx={{ mr: 2, width: "120px" }}>
-                            <InputLabel>Page Size</InputLabel>
-                            <Select
-                              value={pageSize || 10}
-                              label="Page Size"
-                              onChange={handlePageSizeChange}
-                            >
-                              <MenuItem value={5}>5</MenuItem>
-                              <MenuItem value={10}>10</MenuItem>
-                              <MenuItem value={25}>25</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </Grid>
+            <Grid container justifyContent="space-between" mt={2} mb={2}>
+              <Pagination
+                count={Math.max(
+                  1,
+                  Math.ceil((totalCount || 0) / (pageSize || 10))
+                )}
+                page={page || 1}
+                onChange={handlePageChange}
+                color="primary"
+                shape="rounded"
+              />
+              <FormControl size="small" sx={{ mr: 2, width: "120px" }}>
+                <InputLabel>Page Size</InputLabel>
+                <Select
+                  value={pageSize || 10}
+                  label="Page Size"
+                  onChange={handlePageSizeChange}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={25}>25</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </TableContainer>
         </Grid>
       </Grid>

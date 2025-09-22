@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import {
+  Box,
   Paper,
   Table,
   TableBody,
@@ -13,9 +14,6 @@ import {
 import Link from "next/link";
 import styles from "@/styles/PageTitle.module.css";
 import { ToastContainer } from "react-toastify";
-import AddCategory from "@/components/UIElements/Modal/AddCategory";
-import BASE_URL from "Base/api";
-import EditCategory from "@/components/UIElements/Modal/EditCategory";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import { formatDate } from "@/components/utils/formatHelper";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
@@ -24,15 +22,16 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import { FormControl, Pagination } from "@mui/material";
 import { InputLabel, MenuItem, Select } from "@mui/material";
+import AddCategory from "./AddCategory";
+import EditCategory from "./EditCategory";
 
 const Category = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [categoryList, setCategoryList] = useState([]);
   const controller = "Category/DeleteCategory";
 
   const {
-    data: Category,
+    data: categotyList,
     totalCount,
     page,
     pageSize,
@@ -42,27 +41,6 @@ const Category = () => {
     setSearch,
     fetchData: fetchCategoryList,
   } = usePaginatedFetch("Category/GetAllCategoryPage");
-
-  // const fetchCategoryList = async () => {
-  //   try {
-  //     const response = await fetch(`${BASE_URL}/Category/GetAllCategory`, {
-  //       method: "GET",
-  //       headers: {
-  //         Authorization: `Bearer ${localStorage.getItem("token")}`,
-  //         "Content-Type": "application/json",
-  //       },
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to fetch Size List");
-  //     }
-
-  //     const data = await response.json();
-  //     setCategoryList(data.result);
-  //   } catch (error) {
-  //     console.error("Error fetching Size List:", error);
-  //   }
-  // };
 
   const handleSearchChange = (event) => {
     const val = event.target.value;
@@ -81,6 +59,10 @@ const Category = () => {
     setPageSize(size);
     setPage(1);
     fetchCategoryList(1, search, size);
+  };
+
+  const navigateToViewImage = (url) => {
+    window.open(url, "_blank");
   };
 
   useEffect(() => {
@@ -114,7 +96,7 @@ const Category = () => {
             container
             alignItems="center"
             justifyContent="space-between"
-            sx={{ mb: 2 }}
+            sx={{ mb: 1 }}
           >
             <Grid item xs={12} md={6} lg={5} order={{ xs: 2, lg: 1 }}>
               <Search className="search-form" style={{ width: "100%" }}>
@@ -126,7 +108,9 @@ const Category = () => {
                 />
               </Search>
             </Grid>
-            {create ? <AddCategory fetchItems={fetchCategoryList} /> : ""}
+            <Grid display="flex" justifyContent="end" item xs={12} md={6} lg={7} order={{ xs: 1, lg: 2 }}>
+              {create ? <AddCategory fetchItems={fetchCategoryList} /> : ""}
+            </Grid>
           </Grid>
         </Grid>
         <Grid item xs={12}>
@@ -134,7 +118,7 @@ const Category = () => {
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>#</TableCell>
+                  <TableCell>Image</TableCell>
                   <TableCell>Category</TableCell>
                   <TableCell>Created On</TableCell>
                   <TableCell>Status</TableCell>
@@ -142,31 +126,40 @@ const Category = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {Category.length === 0 ? (
+                {categotyList.length === 0 ? (
                   <TableRow
                     sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                   >
-                    <TableCell colSpan={4} component="th" scope="row">
+                    <TableCell colSpan={5} component="th" scope="row">
                       <Typography color="error">
                         No Categories Available
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  Category.map((Category, index) => (
+                  categotyList.map((cat, index) => (
                     <TableRow
                       key={index}
                       sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                     >
-                      <TableCell component="th" scope="row">
-                        {index + 1}
-                      </TableCell>
-                      <TableCell component="th" scope="row">
-                        {Category.name}
-                      </TableCell>
-                      <TableCell>{formatDate(Category.createdOn)}</TableCell>
                       <TableCell>
-                        {Category.isActive == true ? (
+                        {cat.categoryImage != null ?
+                          <Box sx={{ width: 40, height: 40, p: 1, border: '1px solid #e5e5e5', borderRadius: '5px' }}>
+                            <Box onClick={() => navigateToViewImage(cat.categoryImage)} sx={{ width: "100%", height: "100%", backgroundSize: 'cover', backgroundImage: `url(${cat.categoryImage})` }}>
+                            </Box>
+                          </Box>
+                          :
+                          <Box sx={{ width: 40, height: 40, p: 1, border: '1px solid #e5e5e5', borderRadius: '5px' }}>
+                            <Box sx={{ width: "100%", height: "100%", backgroundSize: 'cover', backgroundImage: `url(/images/no-image.jpg)` }}>
+                            </Box>
+                          </Box>}
+                      </TableCell>
+                      <TableCell component="th" scope="row">
+                        {cat.name}
+                      </TableCell>
+                      <TableCell>{formatDate(cat.createdOn)}</TableCell>
+                      <TableCell>
+                        {cat.isActive == true ? (
                           <span className="successBadge">Active</span>
                         ) : (
                           <span className="dangerBadge">Inactive</span>
@@ -176,14 +169,14 @@ const Category = () => {
                         {update ? (
                           <EditCategory
                             fetchItems={fetchCategoryList}
-                            category={Category}
+                            category={cat}
                           />
                         ) : (
                           ""
                         )}
                         {remove ? (
                           <DeleteConfirmationById
-                            id={Category.id}
+                            id={cat.id}
                             controller={controller}
                             fetchItems={fetchCategoryList}
                           />
@@ -196,7 +189,6 @@ const Category = () => {
                 )}
               </TableBody>
             </Table>
-            {/* Pagination + Page size */}
             <Grid container justifyContent="space-between" mt={2} mb={2}>
               <Pagination
                 count={Math.max(

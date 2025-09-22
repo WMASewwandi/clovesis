@@ -47,7 +47,7 @@ const validationSchema = Yup.object().shape({
 
 export default function AddCompany({ fetchItems }) {
   const [errors, setErrors] = useState([]);
-    const [image,setImage] = useState("");
+  const [image, setImage] = useState("");
   const [open, setOpen] = useState(false);
   const [logo, setLogo] = useState(null);
   const handleOpen = async () => {
@@ -241,36 +241,34 @@ export default function AddCompany({ fetchItems }) {
                         size="small"
                       />
                     </Grid>
-                    </Grid>
-                    <Grid item xs={12} my={1}>
-                       <Typography>Logo Upload</Typography>
-                      <Button
-                        component="label"
-                        role={undefined}
-                        variant="contained"
-                        fullWidth
-                        tabIndex={-1}
-                        startIcon={<CloudUploadIcon />}
-                      >
-                        Upload files
-                        <VisuallyHiddenInput
-                          type="file"
-                          onChange= {(event) => {
-                            var file = event.target.files[0]
-                            setLogo(file);
-                            setImage(URL.createObjectURL(file));
-                          }}
-                          multiple
-                        />
-                      </Button>
-                    </Grid>
+                  </Grid>
+                  <Grid item xs={12} my={1}>
+                    <Typography>Logo Upload</Typography>
+                    <Button
+                      component="label"
+                      role={undefined}
+                      variant="contained"
+                      fullWidth
+                      tabIndex={-1}
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Upload files
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(event) => {
+                          var file = event.target.files[0]
+                          setLogo(file);
+                          setImage(URL.createObjectURL(file));
+                        }}
+                        multiple
+                      />
+                    </Button>
+                  </Grid>
 
-                    <Grid item xs={12} my={1}>
-                      {image != "" ?
-                      <Box sx={{width: "100%",height: 200,backgroundSize: 'cover', backgroundImage: `url(${image})`}}></Box>
-                       : ""}
-                      
-                    
+                  <Grid item xs={12} my={1}>
+                    {image != "" ?
+                      <Box sx={{ width: "100%", height: 200, backgroundSize: 'cover', backgroundImage: `url(${image})` }}></Box>
+                      : ""}
                   </Grid>
                 </Box>
                 <Box display="flex" justifyContent="space-between">
