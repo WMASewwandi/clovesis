@@ -28,6 +28,8 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
   const [patternTotalCost, setPatternTotalCost] = useState(0);
   const [patternUCost, setPatternUCost] = useState(0);
   const [summaryData, setSummaryData] = useState(null);
+  const [commissionItem, setCommissionItem] = useState(null);
+  const [commissionTotalCost, setCommissionTotalCost] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,14 +48,15 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
   }, [inquiry]);
 
   useEffect(() => {
-    if (items.length > 0 || patternTotalCost > 0) {
+    if (items.length > 0 || patternTotalCost > 0 || commissionTotalCost > 0) {
       const allItems = [
         ...items.map(i => ({ TotalCost: i.totalCost })),
         { TotalCost: patternTotalCost },
+        { TotalCost: commissionTotalCost },
       ];
       computeTotalCost(allItems);
     }
-  }, [items, patternTotalCost]);
+  }, [items, patternTotalCost, commissionTotalCost]);
 
   const fetchQuotationDataList = async (inquiryId, optionId, windowType) => {
     try {
@@ -85,30 +88,40 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     }
   };
 
-  const fetchItems = async (inquiryId, optionId, windowType) => {
-    try {
-      const response = await fetch(
-        `${BASE_URL}/Inquiry/GetAllInquirySummeryTableItems?InquiryID=${inquiryId}&OptionId=${optionId}&WindowType=${windowType}`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch Size List");
+const fetchItems = async (inquiryId, optionId, windowType) => {
+  try {
+    const response = await fetch(
+      `${BASE_URL}/Inquiry/GetAllInquirySummeryTableItems?InquiryID=${inquiryId}&OptionId=${optionId}&WindowType=${windowType}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
       }
-      const data = await response.json();
-      setItems(data.result || []);
-      if (data.result && data.result.length > 0) {
-        setNoOfUnits(data.result[0].quantity || 0);
-      }
-    } catch (error) {
-      console.error("Error fetching Size List:", error);
+    );
+    if (!response.ok) {
+      throw new Error("Failed to fetch Summary Table Items");
     }
-  };
+    const data = await response.json();
+    const allItems = data.result || [];
+    
+    const commission = allItems.find(item => item.itemName === "Commission");
+    if (commission) {
+      setCommissionItem(commission);
+      setCommissionTotalCost(commission.totalCost || 0);
+    }
+
+    const regularItems = allItems.filter(item => item.itemName !== "Commission");
+    setItems(regularItems);
+
+    if (regularItems.length > 0) {
+      setNoOfUnits(regularItems[0].quantity || 0);
+    }
+  } catch (error) {
+    console.error("Error fetching Summary Table Items:", error);
+  }
+};
 
   const fetchPattern = async (inquiryId, optionId, windowType) => {
     try {
@@ -144,60 +157,61 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     }
   };
 
-  const handleUpdateSummaryLine = () => {
-    const patternRow = {
-      InquiryID: patternItem.inquiryID,
-      InqCode: patternItem.inqCode,
-      WindowType: patternItem.windowType,
-      OptionId: patternItem.optionId,
-      InqOptionName: patternItem.inqOptionName,
-      ItemName: patternItem.itemName,
+  // ✅ **Updated function to correctly save ApprovedTotalCost**
+  const handleUpdateSummaryLine = async () => {
+    const patternRow = patternItem ? {
+      ...patternItem,
       UnitCost: patternUCost,
-      Quantity: patternQuantity,
       TotalCost: patternTotalCost,
-      ApprovedUnitCost: patternUCost,
-      ApprovedQuantity: patternQuantity,
-      ApprovedTotalCost: patternTotalCost,
-    };
+      ApprovedUnitCost: patternUCost, // Copy to approved
+      ApprovedTotalCost: patternTotalCost, // Copy to approved
+    } : null;
+  
+    const commissionRow = commissionItem ? {
+      ...commissionItem,
+      UnitCost: 0,
+      TotalCost: commissionTotalCost,
+      ApprovedUnitCost: 0, // Commission has no unit cost
+      ApprovedTotalCost: commissionTotalCost, // ✅ **Crucial change: Save to approved cost**
+    } : null;
+  
     const bodyData = [
       ...items.map((item) => ({
-        InquiryID: item.inquiryID,
-        InqCode: item.inqCode,
-        WindowType: item.windowType,
-        OptionId: item.optionId,
-        InqOptionName: item.inqOptionName,
-        ItemName: item.itemName,
-        UnitCost: item.unitCost,
-        Quantity: item.quantity,
-        TotalCost: item.totalCost,
-        ApprovedUnitCost: item.unitCost,
-        ApprovedQuantity: item.quantity,
-        ApprovedTotalCost: item.totalCost,
+        ...item,
+        ApprovedUnitCost: item.unitCost, // Copy to approved
+        ApprovedTotalCost: item.totalCost, // Copy to approved
       })),
-      patternRow,
     ];
+  
+    if (patternRow) bodyData.push(patternRow);
+    if (commissionRow) bodyData.push(commissionRow);
+  
+    const allCostsForCalc = [
+      ...items.map(i => ({ TotalCost: i.totalCost })),
+      { TotalCost: patternTotalCost },
+      { TotalCost: commissionTotalCost },
+    ];
+    computeTotalCost(allCostsForCalc);
 
-    computeTotalCost(bodyData);
+    console.log(commissionRow);
+    console.log(bodyData);
+  
     updateIsSaved(true);
-    fetch(`${BASE_URL}/Inquiry/UpdateSummeryLine`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(bodyData),
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error("Network response was not ok");
-        return res.json();
-      })
-      .then((data) => {
-        //toast.success(data.message);        
-      })
-      .catch((error) => {
-        console.error("Update failed:", error);
+  
+    try {
+      const response = await fetch(`${BASE_URL}/Inquiry/UpdateSummeryLine`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(bodyData),
       });
-
+      if (!response.ok) throw new Error("Network response was not ok");
+      await response.json();
+    } catch (error) {
+      console.error("Update failed:", error);
+    }
   };
 
   const handleUnitCostChange = (index, value) => {
@@ -207,7 +221,6 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     newItems[index].totalCost =
       (newItems[index].unitCost || 0) * (newItems[index].quantity || 0);
     setItems(newItems);
-    
   };
 
   const handlePatternTotalCostChange = (value) => {
@@ -220,6 +233,11 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     } else {
       setPatternUCost(0);
     }
+  };
+
+  const handleCommissionTotalCostChange = (value) => {
+    updateIsSaved(false);
+    setCommissionTotalCost(parseFloat(value) || 0);
   };
 
   const handleProfitChange = (value) => {
@@ -272,10 +290,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
     setSellingPrice(sellPrice);
     setProfitPercentage(profitPercentage);
     handleSetData(profit, profitPercentage, sellPrice, totalProfit, revenue);
-    //updateIsSaved(true);
   };
-
-
 
   return (
     <>
@@ -310,7 +325,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
                 </TableCell>
                 <TableCell>{item.quantity ? item.quantity : 0}</TableCell>
                 <TableCell align="right">
-                  {item.totalCost ? item.totalCost : 0}
+                  {item.totalCost ? item.totalCost.toFixed(2) : "0.00"}
                 </TableCell>
               </TableRow>
             ))}
@@ -330,6 +345,25 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
                     border: "1px solid #e5e5e5",
                   }}
                   onChange={(e) => handlePatternTotalCostChange(e.target.value)}
+                />
+              </TableCell>
+            </TableRow>
+            <TableRow
+              sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+            >
+              <TableCell component="th" scope="row">
+                Commission
+              </TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell align="right">
+                <input
+                  value={commissionTotalCost}
+                  style={{
+                    width: "60px",
+                    border: "1px solid #e5e5e5",
+                  }}
+                  onChange={(e) => handleCommissionTotalCostChange(e.target.value)}
                 />
               </TableCell>
             </TableRow>
@@ -364,7 +398,7 @@ export default function SumTable({ onIsSavedChange, inquiry, onSummaryChange }) 
                 />
               </TableCell>
               <TableCell sx={{ color: "#90a4ae" }}>Profit (%)</TableCell>
-              <TableCell align="right">{profitPercentage.toFixed(2)}</TableCell>
+              <TableCell align="right">{profitPercentage ? Number(profitPercentage).toFixed(2) : '0.00'}</TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ color: "#90a4ae" }}>Selling Price</TableCell>

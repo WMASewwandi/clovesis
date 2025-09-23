@@ -20,6 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import Box from "@mui/material/Box";
+import CloseIcon from '@mui/icons-material/Close';
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
 import TextField from "@mui/material/TextField";
@@ -72,7 +73,7 @@ export default function EditMenuItem({ item, fetchItems }) {
   const handleClose = () => {
     setOpen(false);
     setImage(null);
-    setFile(null);    
+    setFile(null);
   };
 
   useEffect(() => {
@@ -166,6 +167,7 @@ export default function EditMenuItem({ item, fetchItems }) {
     const data = {
       ...values,
       ProductImage: file ? file : null,
+      PrevImage: image ? image : null,
       MenuPricing: priceList.map((row) => ({
         PortionId: row.portionId,
         SellingPrice: row.sellingPrice,
@@ -302,11 +304,18 @@ export default function EditMenuItem({ item, fetchItems }) {
                             </Grid>
                           </Grid>
                         </Grid>
-                        <Grid item xs={12} order={{ xs: 1, lg: 2 }} lg={4} sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          height: { xs: 200, lg: 'auto' }
-                        }}>
+                        <Grid
+                          item
+                          xs={12}
+                          order={{ xs: 1, lg: 2 }}
+                          lg={4}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: { xs: 200, lg: 'auto' },
+                            position: 'relative'
+                          }}
+                        >
                           <Box
                             sx={{
                               flex: 1,
@@ -318,21 +327,41 @@ export default function EditMenuItem({ item, fetchItems }) {
                               alignItems: 'center',
                               cursor: 'pointer',
                               backgroundColor: '#fafafa',
-                              overflow: 'hidden'
+                              overflow: 'hidden',
+                              position: 'relative'
                             }}
                             onClick={() => document.getElementById('image-upload-input').click()}
                           >
                             {image ? (
-                              <img
-                                src={image}
-                                alt="uploaded"
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '100%',
-                                  objectFit: 'contain',
-                                  borderRadius: '4px'
-                                }}
-                              />
+                              <>
+                                <img
+                                  src={image}
+                                  alt="uploaded"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '100%',
+                                    objectFit: 'contain',
+                                    borderRadius: '4px'
+                                  }}
+                                />
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    setImage(null);
+                                    setFile(null);
+                                  }}
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 4,
+                                    right: 4,
+                                    backgroundColor: 'rgba(255,255,255,0.7)',
+                                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' }
+                                  }}
+                                >
+                                  <CloseIcon fontSize="small" />
+                                </IconButton>
+                              </>
                             ) : (
                               <Typography variant="body2" color="text.secondary">
                                 Click to upload image
@@ -347,6 +376,7 @@ export default function EditMenuItem({ item, fetchItems }) {
                             onChange={handleImageChange}
                           />
                         </Grid>
+
                       </Grid>
                     </Grid>
                     <Grid item xs={12} lg={4} mt={1}>

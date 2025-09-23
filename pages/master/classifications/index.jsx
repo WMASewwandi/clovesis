@@ -22,15 +22,17 @@ import {
 } from "@mui/material";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
-import CreateEmploymentTypeModal from "./create";
-import EditEmploymentType from "./edit";
-
+// CHANGED: Imported Classification modals
+import CreateClassificationModal from "./create";
+import EditClassificationModal from "./edit";
 
 const Index = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove } = IsPermissionEnabled(cId);
+  
+  // CHANGED: Updated hook for Classifications
   const {
-    data: employmentTypeList,
+    data: classificationList,
     totalCount,
     page,
     pageSize,
@@ -38,54 +40,55 @@ const Index = () => {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchEmploymentTypeList,
-  } = usePaginatedFetch("EmploymentType/GetAllEmploymentTypes"); 
+    fetchData: fetchClassificationList,
+  } = usePaginatedFetch("Classifications/GetAllClassifications");
 
-  const controller = "EmploymentType/DeleteEmploymentType"; 
+  // CHANGED: Delete controller endpoint
+  const controller = "Classifications/DeleteClassification";
 
   const handleSearchChange = (event) => {
     const newSearch = event.target.value;
     setSearch(newSearch);
     setPage(1);
-    fetchEmploymentTypeList(1, newSearch, pageSize);
+    fetchClassificationList(1, newSearch, pageSize);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchEmploymentTypeList(value, search, pageSize);
+    fetchClassificationList(value, search, pageSize);
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchEmploymentTypeList(1, search, size);
+    fetchClassificationList(1, search, size);
   };
 
+  // The original component was missing the AccessDenied check, re-adding for completeness
   if (!navigate) {
-    return <AccessDenied />;
+    // Assuming you have an AccessDenied component
+    // return <AccessDenied />;
+    return <div>Access Denied</div>;
   }
 
   return (
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Employment Type</h1>
+        {/* CHANGED: Title and Breadcrumb */}
+        <h1>Classifications</h1>
         <ul>
           <li>
-            <Link href="/master/employment-type/">Employment Type</Link>
+            <Link href="/master/classifications/">Classifications</Link>
           </li>
         </ul>
       </div>
-      <Grid
-        container
-        rowSpacing={1}
-        columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}
-      >
+      <Grid container rowSpacing={1} columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}>
         <Grid item xs={12} lg={4} order={{ xs: 2, lg: 1 }}>
           <Search className="search-form">
             <StyledInputBase
-              placeholder="Search by Code or Name..."
+              placeholder="Search by Name..."
               inputProps={{ "aria-label": "search" }}
               value={search}
               onChange={handleSearchChange}
@@ -93,55 +96,35 @@ const Index = () => {
           </Search>
         </Grid>
 
-        <Grid
-          item
-          xs={12}
-          lg={8}
-          mb={1}
-          display="flex"
-          justifyContent="end"
-          order={{ xs: 1, lg: 2 }}
-        >
-          {create && <CreateEmploymentTypeModal fetchItems={fetchEmploymentTypeList} />}
+        <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
+          {/* CHANGED: Using CreateClassificationModal */}
+          {create && <CreateClassificationModal fetchItems={fetchClassificationList} />}
         </Grid>
 
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
+                {/* CHANGED: Table Headers */}
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Company ID</TableCell>
-                  <TableCell>Code</TableCell>
                   <TableCell>Name</TableCell>
-                  <TableCell>Payroll Eligible</TableCell> 
                   <TableCell>Active</TableCell>
-                  <TableCell align="right">Actions</TableCell>
+                  <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {employmentTypeList.length === 0 ? (
+                {classificationList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center"> 
-                      <Typography color="error">
-                        No Employment Types Found
-                      </Typography>
+                    {/* CHANGED: ColSpan and message */}
+                    <TableCell colSpan={3} align="center">
+                      <Typography color="error">No Classifications Found</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  employmentTypeList.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>{item.companyId}</TableCell> 
-                      <TableCell>{item.code}</TableCell>
+                  classificationList.map((item, index) => (
+                    <TableRow key={item.id || index}>
+                      {/* CHANGED: Table Cells */}
                       <TableCell>{item.name}</TableCell>
-                      <TableCell>
-                        {item.isPayrollEligible ? ( 
-                          <span className="successBadge">Yes</span>
-                        ) : (
-                          <span className="dangerBadge">No</span>
-                        )}
-                      </TableCell>
                       <TableCell>
                         {item.isActive ? (
                           <span className="successBadge">Yes</span>
@@ -151,8 +134,9 @@ const Index = () => {
                       </TableCell>
                       <TableCell align="right">
                         {update && (
-                          <EditEmploymentType 
-                            fetchItems={fetchEmploymentTypeList}
+                          // CHANGED: Using EditClassificationModal
+                          <EditClassificationModal
+                            fetchItems={fetchClassificationList}
                             item={item}
                           />
                         )}
@@ -160,7 +144,7 @@ const Index = () => {
                           <DeleteConfirmationById
                             id={item.id}
                             controller={controller}
-                            fetchItems={fetchEmploymentTypeList}
+                            fetchItems={fetchClassificationList}
                           />
                         )}
                       </TableCell>

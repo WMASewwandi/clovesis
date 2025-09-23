@@ -30,6 +30,8 @@ export const getModule = (type) => {
       return "Reservation Calendar";
     case 15:
       return "Production";
+    case 16:
+      return "Restaurant POS";
     default:
       return "N/A";
   }

@@ -18,6 +18,7 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import BeenhereOutlinedIcon from "@mui/icons-material/BeenhereOutlined";
 import EventSeatOutlinedIcon from "@mui/icons-material/EventSeatOutlined";
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
+import FastfoodIcon from '@mui/icons-material/Fastfood';
 
 export const getSidebarData = (IsGarmentSystem) => {
     const sidebarData = [
@@ -80,12 +81,17 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Time Slots", path: "/master/time-slots/", categoryId: 66, isAvailable: true },
                 { title: "Day Type", path: "/master/day-type/", categoryId: 76, isAvailable: true },
                 { title: "OT Type", path: "/master/ot-type/", categoryId: 79, isAvailable: true },
-                { title: "Employment Type", path: "/master/ot-type/", categoryId: 80, isAvailable: true },
-                { title: "Portion", path: "/master/portion/", categoryId: 81, isAvailable: true },
-                { title: "Kitchen", path: "/master/kitchen/", categoryId: 82, isAvailable: true },
-                { title: "Menu List", path: "/master/menu-list/", categoryId: 83, isAvailable: true },
-                { title: "Dinning Table", path: "/master/table/", categoryId: 84, isAvailable: true },
-                { title: "Steward", path: "/master/steward/", categoryId: 85, isAvailable: true },
+                { title: "Employment Type", path: "/master/employment-type/", categoryId: 80, isAvailable: true },
+                { title: "Shift", path: "/master/shift/", categoryId: 81, isAvailable: true },
+                { title: "Company", path: "/master/company/", categoryId: 82, isAvailable: true },
+                { title: "Classifications", path: "/master/classifications/", categoryId: 83, isAvailable: true },
+                { title: "Job Title", path: "/master/job-title/", categoryId: 84, isAvailable: true },
+                { title: "Person Title", path: "/master/person-title/", categoryId: 85, isAvailable: true },
+                { title: "Portion", path: "/master/portion/", categoryId: 86, isAvailable: true },
+                { title: "Kitchen", path: "/master/kitchen/", categoryId: 87, isAvailable: true },
+                { title: "Menu List", path: "/master/menu-list/", categoryId: 88, isAvailable: true },
+                { title: "Dinning Table", path: "/master/table/", categoryId: 89, isAvailable: true },
+                { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },
             ],
         },
         {
@@ -159,6 +165,18 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Day End", path: "/sales/day-end/", categoryId: 26, isAvailable: true },
                 { title: "Daily Deposit", path: "/sales/deposit/", categoryId: 27, isAvailable: true },
                 { title: "Sales Return", path: "/sales/sales-return/", categoryId: 62, isAvailable: true },
+            ],
+        },
+        {
+            title: "Restaurant POS",
+            path: "/restaurant/restaurant/",
+            icon: <FastfoodIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 16,
+            IsAvailable: true,
+            subNav: [
+                { title: "Dashboard", path: "/restaurant/dashboard/", categoryId: 91, isAvailable: true },
             ],
         },
         {

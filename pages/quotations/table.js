@@ -19,6 +19,8 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
   const [patternQuantity, setPatternQuantity] = useState(0);
   const [patternTotalCost, setPatternTotalCost] = useState(0);
   const [patternUCost, setPatternUCost] = useState(0);
+  const [commissionItem, setCommissionItem] = useState({});
+  const [commissionTotalCost, setCommissionTotalCost] = useState(0);
 
   const [totalCost, setTotalCost] = useState(0);
   const [noOfUnits, setNoOfUnits] = useState(0);
@@ -40,21 +42,22 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
         await fetchItems(inquiry.inquiryId, inquiry.optionId, inquiry.windowType);
         await fetchPattern(inquiry.inquiryId, inquiry.optionId, inquiry.windowType);
       }
-
     };
     fetchData();
   }, [inquiry]);
 
   useEffect(() => {
-    if (items.length > 0 || patternTotalCost > 0) {
+    if (items.length > 0 || patternTotalCost > 0 || commissionTotalCost > 0) {
       const allItems = [
-        ...items.map(i => ({ TotalCost: i.approvedTotalCost })),
+        ...items.map((i) => ({ TotalCost: i.approvedTotalCost })),
         { TotalCost: patternTotalCost },
+        { TotalCost: commissionTotalCost },
       ];
       computeTotalCost(allItems);
     }
-  }, [items, patternTotalCost]);
+  }, [items, patternTotalCost, commissionTotalCost]);
 
+  // ✅ **Updated fetchItems with fallback logic**
   const fetchItems = async (inquiryId, optionId, windowType) => {
     try {
       const response = await fetch(
@@ -68,13 +71,34 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
       if (!response.ok) throw new Error("Failed to fetch items");
 
       const data = await response.json();
-      setItems(data.result);
-      setNoOfUnits(data.result[0]?.quantity ?? 0);
+      const allItems = (data.result || []).map(item => {
+        // If approved cost is 0, use the initial cost from the previous table.
+        if (!item.approvedTotalCost || item.approvedTotalCost === 0) {
+            item.approvedTotalCost = item.totalCost;
+            item.approvedUnitCost = item.unitCost;
+        }
+        return item;
+      });
+
+      const commission = allItems.find(
+        (item) => item.itemName === "Commission"
+      );
+      if (commission) {
+        setCommissionItem(commission);
+        setCommissionTotalCost(commission.approvedTotalCost || 0);
+      }
+
+      const regularItems = allItems.filter(
+        (item) => item.itemName !== "Commission"
+      );
+      setItems(regularItems);
+      setNoOfUnits(regularItems[0]?.quantity ?? 0);
     } catch (error) {
       console.error(error);
     }
   };
 
+  // ✅ **Updated fetchPattern with fallback logic**
   const fetchPattern = async (inquiryId, optionId, windowType) => {
     try {
       const response = await fetch(
@@ -89,6 +113,13 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
 
       const data = await response.json();
       const pattern = data.result[0];
+      if (!pattern) return;
+
+      // If approved cost is 0, use the initial cost from the previous table.
+      if (!pattern.approvedTotalCost || pattern.approvedTotalCost === 0) {
+        pattern.approvedTotalCost = pattern.totalCost;
+        pattern.approvedUnitCost = pattern.unitCost;
+      }
 
       const qty = pattern.approvedQuantity ?? 0;
       const totalCost = pattern.approvedTotalCost ?? 0;
@@ -157,6 +188,11 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
     });
   };
 
+  const handleCommissionTotalCostChange = (value) => {
+    updateIsSaved(false);
+    setCommissionTotalCost(parseFloat(value) || 0);
+  };
+
   const handleProfitChange = (value) => {
     updateIsSaved(false);
     const profitValue = parseFloat(value) || 0;
@@ -175,11 +211,17 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
         approvedTotalCost: patternTotalCost,
         approvedUnitCost: patternUCost,
       },
+      {
+        ...commissionItem,
+        approvedTotalCost: commissionTotalCost,
+        approvedUnitCost: 0,
+      },
     ];
     if (calculatedValues.length > 0) {
       const allItems = [
-        ...items.map(i => ({ TotalCost: i.approvedTotalCost })),
+        ...items.map((i) => ({ TotalCost: i.approvedTotalCost })),
         { TotalCost: patternTotalCost },
+        { TotalCost: commissionTotalCost },
       ];
       computeTotalCost(allItems);
     }
@@ -212,7 +254,7 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
       profitPercentage: dataProPercentage,
       unitCost: dataUnitCost,
       totalCost: dataTotalCost,
-      totalUnits: patternQuantity,
+      totalUnits: noOfUnits,
       profit: dataProfit,
     };
     if (onSummaryChange) {
@@ -232,8 +274,8 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
     const profitPercentage =
       itemUnitCost > 0
         ? ((parseFloat(sellPrice) - parseFloat(itemUnitCost)) /
-          parseFloat(itemUnitCost)) *
-        100
+            parseFloat(itemUnitCost)) *
+          100
         : 0;
 
     setFinalUnitCost(itemUnitCost.toFixed(2));
@@ -242,7 +284,15 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
     setRevenue(revenue);
     setSellingPrice(sellPrice);
     setProfitPercentage(profitPercentage);
-    handleSetData(rawProfit, profitPercentage, sellPrice, totalProfit, revenue,itemsTotalCost,itemUnitCost);
+    handleSetData(
+      rawProfit,
+      profitPercentage,
+      sellPrice,
+      totalProfit,
+      revenue,
+      itemsTotalCost,
+      itemUnitCost
+    );
     updateIsSaved(true);
   };
 
@@ -291,6 +341,20 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
                 />
               </TableCell>
             </TableRow>
+            <TableRow>
+              <TableCell>Commission</TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell align="right">
+                <input
+                  value={commissionTotalCost}
+                  style={{ width: "60px", border: "1px solid #e5e5e5" }}
+                  onChange={(e) =>
+                    handleCommissionTotalCostChange(e.target.value)
+                  }
+                />
+              </TableCell>
+            </TableRow>
           </TableBody>
         </Table>
       </TableContainer>
@@ -323,7 +387,7 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
               </TableCell>
               <TableCell sx={{ color: "#90a4ae" }}>Profit (%)</TableCell>
               <TableCell align="right">
-                {formatCurrency(profitPercentage)}
+                {profitPercentage ? Number(profitPercentage).toFixed(2) : "0.00"}
               </TableCell>
             </TableRow>
             <TableRow>

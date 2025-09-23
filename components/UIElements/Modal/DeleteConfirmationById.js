@@ -17,39 +17,44 @@ const style = {
   bgcolor: "background.paper",
   boxShadow: 24,
   p: 3,
+  borderRadius: 1,
 };
 
 export default function DeleteConfirmationById({ id, controller, fetchItems }) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
   const handleSubmit = () => {
     const token = localStorage.getItem("token");
-    fetch(
-      `${BASE_URL}/${controller}?id=${id}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.result.statusCode == 200) {
-          toast.success(data.result.message);
-          fetchItems();
-          setOpen(false);
-        } else {
-          toast.error(data.result.message);
+    fetch(`${BASE_URL}/${controller}?id=${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((response) => {
+        // response.ok is true for any success status (like 200 or 204)
+        if (!response.ok) {
+          // If the server sent an error, try to parse it for a message
+          return response.json().then(errData => {
+            throw new Error(errData.message || "Failed to delete the item.");
+          });
         }
+        // If successful, we don't need to read the body, just proceed.
+      })
+      .then(() => {
+        toast.success("Deleted successfully!");
+        fetchItems(); // Refresh the list
+        handleClose(); // Close the modal
       })
       .catch((error) => {
-        toast.error(error.message || "");
+        // This will catch any network errors or errors thrown above
+        toast.error(error.message || "An error occurred.");
       });
   };
+
   return (
     <>
       <Tooltip title="Delete" placement="top">
@@ -63,54 +68,15 @@ export default function DeleteConfirmationById({ id, controller, fetchItems }) {
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
-        <Box sx={style} className="bg-black">
-          <Box mt={2}>
-            <Grid container>
-              <Grid item xs={12}>
-                <Typography
-                  as="h5"
-                  sx={{
-                    fontWeight: "500",
-                    fontSize: "14px",
-                    mb: "12px",
-                  }}
-                >
-                  Are you sure you want to delete this ?
-                </Typography>
-              </Grid>
-            </Grid>
-          </Box>
-          <Box display="flex" justifyContent="space-between">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleClose}
-              sx={{
-                mt: 2,
-                textTransform: "capitalize",
-                borderRadius: "8px",
-                fontWeight: "500",
-                fontSize: "13px",
-                padding: "12px 20px",
-              }}
-            >
+        <Box sx={style}>
+          <Typography as="h5" sx={{ fontWeight: "500", fontSize: "16px", mb: "12px" }}>
+            Are you sure you want to delete this?
+          </Typography>
+          <Box display="flex" justifyContent="flex-end" gap={2} mt={3}>
+            <Button variant="outlined" color="primary" onClick={handleClose}>
               No
             </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="error"
-              onClick={handleSubmit}
-              sx={{
-                mt: 2,
-                textTransform: "capitalize",
-                borderRadius: "8px",
-                fontWeight: "500",
-                fontSize: "13px",
-                padding: "12px 20px",
-                color: "#fff !important",
-              }}
-            >
+            <Button type="submit" variant="contained" color="error" onClick={handleSubmit}>
               Delete
             </Button>
           </Box>

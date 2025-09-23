@@ -29,6 +29,7 @@ import "react-toastify/dist/ReactToastify.css";
 import BASE_URL from "Base/api";
 import useApi from "@/components/utils/useApi";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CloseIcon from '@mui/icons-material/Close';
 
 const style = {
   position: "absolute",
@@ -301,11 +302,18 @@ export default function AddMenuItem({ fetchItems }) {
                             </Grid>
                           </Grid>
                         </Grid>
-                        <Grid item xs={12} order={{ xs: 1, lg: 2 }} lg={4} sx={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          height: { xs: 200, lg: 'auto' }
-                        }}>
+                        <Grid
+                          item
+                          xs={12}
+                          order={{ xs: 1, lg: 2 }}
+                          lg={4}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            height: { xs: 200, lg: 'auto' },
+                            position: 'relative'
+                          }}
+                        >
                           <Box
                             sx={{
                               flex: 1,
@@ -317,21 +325,40 @@ export default function AddMenuItem({ fetchItems }) {
                               alignItems: 'center',
                               cursor: 'pointer',
                               backgroundColor: '#fafafa',
-                              overflow: 'hidden'
+                              overflow: 'hidden',
+                              position: 'relative'
                             }}
                             onClick={() => document.getElementById('image-upload-input').click()}
                           >
                             {image ? (
-                              <img
-                                src={image}
-                                alt="uploaded"
-                                style={{
-                                  maxWidth: '100%',
-                                  maxHeight: '100%',
-                                  objectFit: 'contain',
-                                  borderRadius: '4px'
-                                }}
-                              />
+                              <>
+                                <img
+                                  src={image}
+                                  alt="uploaded"
+                                  style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '100%',
+                                    objectFit: 'contain',
+                                    borderRadius: '4px'
+                                  }}
+                                />
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); 
+                                    setImage(null);
+                                  }}
+                                  sx={{
+                                    position: 'absolute',
+                                    top: 4,
+                                    right: 4,
+                                    backgroundColor: 'rgba(255,255,255,0.7)',
+                                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.9)' }
+                                  }}
+                                >
+                                  <CloseIcon fontSize="small" />
+                                </IconButton>
+                              </>
                             ) : (
                               <Typography variant="body2" color="text.secondary">
                                 Click to upload image

@@ -22,15 +22,14 @@ import {
 } from "@mui/material";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
-import CreateEmploymentTypeModal from "./create";
-import EditEmploymentType from "./edit";
-
+import CreateShiftCompanyModal from "./create";
+import EditShiftCompanyModal from "./edit";
 
 const Index = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove } = IsPermissionEnabled(cId);
   const {
-    data: employmentTypeList,
+    data: companyList,
     totalCount,
     page,
     pageSize,
@@ -38,54 +37,50 @@ const Index = () => {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchEmploymentTypeList,
-  } = usePaginatedFetch("EmploymentType/GetAllEmploymentTypes"); 
+    fetchData: fetchCompanyList,
+  } = usePaginatedFetch("ShiftCompany/GetAllShiftCompanies");
 
-  const controller = "EmploymentType/DeleteEmploymentType"; 
+  const controller = "ShiftCompany/DeleteShiftCompany";
 
   const handleSearchChange = (event) => {
     const newSearch = event.target.value;
     setSearch(newSearch);
     setPage(1);
-    fetchEmploymentTypeList(1, newSearch, pageSize);
+    fetchCompanyList(1, newSearch, pageSize);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchEmploymentTypeList(value, search, pageSize);
+    fetchCompanyList(value, search, pageSize);
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchEmploymentTypeList(1, search, size);
+    fetchCompanyList(1, search, size);
   };
 
-  if (!navigate) {
-    return <AccessDenied />;
+  if (!navigate) { 
+    return <div>Access Denied</div>;
   }
 
   return (
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Employment Type</h1>
+        <h1>Companies</h1>
         <ul>
           <li>
-            <Link href="/master/employment-type/">Employment Type</Link>
+            <Link href="/master/shift-company/">Companies</Link>
           </li>
         </ul>
       </div>
-      <Grid
-        container
-        rowSpacing={1}
-        columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}
-      >
+      <Grid container rowSpacing={1} columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}>
         <Grid item xs={12} lg={4} order={{ xs: 2, lg: 1 }}>
           <Search className="search-form">
             <StyledInputBase
-              placeholder="Search by Code or Name..."
+              placeholder="Search by Company Name..."
               inputProps={{ "aria-label": "search" }}
               value={search}
               onChange={handleSearchChange}
@@ -93,16 +88,8 @@ const Index = () => {
           </Search>
         </Grid>
 
-        <Grid
-          item
-          xs={12}
-          lg={8}
-          mb={1}
-          display="flex"
-          justifyContent="end"
-          order={{ xs: 1, lg: 2 }}
-        >
-          {create && <CreateEmploymentTypeModal fetchItems={fetchEmploymentTypeList} />}
+        <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
+          {create && <CreateShiftCompanyModal fetchItems={fetchCompanyList} />}
         </Grid>
 
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
@@ -110,49 +97,35 @@ const Index = () => {
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Company ID</TableCell>
-                  <TableCell>Code</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Payroll Eligible</TableCell> 
-                  <TableCell>Active</TableCell>
+                  <TableCell>Company Name</TableCell>
+                  <TableCell>Display Name</TableCell>
+                  <TableCell>Contact Person</TableCell>
+                  <TableCell>Mobile No.</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>No. of Employees</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {employmentTypeList.length === 0 ? (
+                {companyList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center"> 
-                      <Typography color="error">
-                        No Employment Types Found
-                      </Typography>
+                    <TableCell colSpan={7} align="center">
+                      <Typography color="error">No Companies Found</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  employmentTypeList.map((item) => (
+                  companyList.map((item) => (
                     <TableRow key={item.id}>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>{item.companyId}</TableCell> 
-                      <TableCell>{item.code}</TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>
-                        {item.isPayrollEligible ? ( 
-                          <span className="successBadge">Yes</span>
-                        ) : (
-                          <span className="dangerBadge">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.isActive ? (
-                          <span className="successBadge">Yes</span>
-                        ) : (
-                          <span className="dangerBadge">No</span>
-                        )}
-                      </TableCell>
+                      <TableCell>{item.companyName}</TableCell>
+                      <TableCell>{item.displayName}</TableCell>
+                      <TableCell>{item.contactPersonName}</TableCell>
+                      <TableCell>{item.mobileNo1}</TableCell>
+                      <TableCell>{item.emailAddress1}</TableCell>
+                      <TableCell>{item.numberOfEmployees}</TableCell>
                       <TableCell align="right">
                         {update && (
-                          <EditEmploymentType 
-                            fetchItems={fetchEmploymentTypeList}
+                          <EditShiftCompanyModal
+                            fetchItems={fetchCompanyList}
                             item={item}
                           />
                         )}
@@ -160,7 +133,7 @@ const Index = () => {
                           <DeleteConfirmationById
                             id={item.id}
                             controller={controller}
-                            fetchItems={fetchEmploymentTypeList}
+                            fetchItems={fetchCompanyList}
                           />
                         )}
                       </TableCell>
