@@ -77,6 +77,9 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
             item.approvedTotalCost = item.totalCost;
             item.approvedUnitCost = item.unitCost;
         }
+        if (!item.approvedQuantity) {
+            item.approvedQuantity = item.quantity;
+        }
         return item;
       });
 

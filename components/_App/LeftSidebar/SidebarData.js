@@ -92,6 +92,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Menu List", path: "/master/menu-list/", categoryId: 88, isAvailable: true },
                 { title: "Dinning Table", path: "/master/table/", categoryId: 89, isAvailable: true },
                 { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },
+                { title: "Combo Meal", path: "/master/combo/", categoryId: 92, isAvailable: true },
             ],
         },
         {
