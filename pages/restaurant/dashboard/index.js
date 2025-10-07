@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Grid from "@mui/material/Grid";
 import { ToastContainer } from "react-toastify";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
@@ -25,7 +25,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import SoupKitchenIcon from "@mui/icons-material/SoupKitchen";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MenuIcon from "@mui/icons-material/Menu";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong"; 
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SearchBar from "./search";
 import Bill from "./bill";
 import Home from "./Home";
@@ -37,15 +37,38 @@ import Offers from "./Offers";
 import Reports from "./Reports";
 import Other from "./Other";
 import Settings from "./Settings";
+import { formatDate } from "@/components/utils/formatHelper";
+import getUserByEmail from "@/components/utils/getUserByEmail";
+import Swal from "sweetalert2";
+import { useRouter } from "next/navigation";
+import getShiftDetails from "@/components/utils/getShiftDetails";
+import usePOSShiftCheck from "@/components/utils/usePOSShiftCheck";
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { result: shiftResult, message: shiftMessage } = usePOSShiftCheck();
+  const userEmail = localStorage.getItem("user");
   const cId = sessionStorage.getItem("category");
   const { navigate } = IsPermissionEnabled(cId);
+  const today = new Date();
+  const [table, setTable] = useState(null);
+  const [steward, setSteward] = useState(null);
+  const [pickupType, setPickUpType] = useState(null);
+  const [userDetails, setUserDetails] = useState(null);
+  const [shiftDetails, setShiftDetails] = useState(null);
 
   const [activeTab, setActiveTab] = useState("home");
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [billOpen, setBillOpen] = useState(false); 
+  const [billOpen, setBillOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
+  const [orderId, setOrderId] = useState(null);
+  const [isOffer, setIsOffer] = useState(false);
+  const [offerTotal, setOfferTotal] = useState(null);
+
+  const { data: user } = getUserByEmail(userEmail);
+  const { data: shift } = getShiftDetails();
 
   const menuItems = [
     { key: "home", label: "Home", icon: <HomeIcon sx={{ fontSize: "2rem", my: 1 }} /> },
@@ -60,6 +83,14 @@ export default function Dashboard() {
     { key: "settings", label: "Settings", icon: <SettingsIcon sx={{ fontSize: "2rem", my: 1 }} /> },
   ];
 
+  const handleSetSearchTerm = (value) => {
+    setSearchTerm(value);
+  }
+
+  const handleSetPickup = (type) => {
+    setPickUpType(type);
+  }
+
   const handleExitClick = () => {
     setExitDialogOpen(true);
   };
@@ -73,6 +104,74 @@ export default function Dashboard() {
     setExitDialogOpen(false);
     setActiveTab("home");
   };
+
+  const handleUpdateItems = (items) => {
+    setCartItems(items);
+  }
+
+  const handleUpdateFromBill = (items) => {
+    setCartItems(items);
+  }
+
+  const handleClickOrder = (item) => {
+    if (item.isOffer && item.orderId == null) {
+      setOfferTotal(item.sellingPrice);
+    } else {
+      setOfferTotal(item.subTotal);
+    }
+    setIsOffer(item.isOffer);
+
+    setOrderId(item.orderId);
+    setSteward(item.stewardDetails);
+    setTable(item.tableDetails);
+    setCartItems(item.orderItems);
+    setPickUpType(item.pickUpType);
+  }
+
+  const handleSetTable = (item) => {
+    setTable(item);
+  }
+  const handleSetSteward = (item) => {
+    setSteward(item);
+  }
+
+  const homeRef = useRef();
+
+  const handleCleanBill = () => {
+    setCartItems([]);
+    setOrderId(null);
+    // setPickUpType(null);
+    setSteward(null);
+    setTable(null);
+    if (homeRef.current) {
+      homeRef.current.clean();
+    }
+  };
+
+
+  useEffect(() => {
+    if (user) {
+      setUserDetails(user);
+    }
+    if (shift) {
+      setShiftDetails(shift);
+    }
+    if (shiftResult) {
+      Swal.fire({
+        title: "Warning",
+        text: shiftMessage,
+        icon: "warning",
+        confirmButtonText: "OK",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          router.push("/");
+        }
+      });
+    }
+  }, [user, shiftResult, shift]);
+
 
   if (!navigate) {
     return <AccessDenied />;
@@ -113,9 +212,12 @@ export default function Dashboard() {
           </Grid>
           <Grid item xs={12} mb={2}>
             <Typography variant="h6" textAlign="center">
-              Avishka Sewwandi
+              {userDetails ?
+                `${userDetails.firstName + " " + userDetails.lastName}` : ""}
             </Typography>
-            <Typography textAlign="center">Cashier</Typography>
+            <Typography textAlign="center">
+              {userDetails ? userDetails.userRoleName : ""}
+            </Typography>
           </Grid>
           {menuItems.map((menu, i) => (
             <Grid key={i} item xs={12} lg={6}>
@@ -168,7 +270,18 @@ export default function Dashboard() {
         width: { xs: 300, lg: "100%" },
       }}
     >
-      <Bill />
+      <Bill
+        billItems={cartItems}
+        onUpdateFromBill={handleUpdateFromBill}
+        steward={steward}
+        table={table}
+        pickupType={pickupType}
+        onCleanBill={handleCleanBill}
+        shift={shiftDetails}
+        orderId={orderId}
+        isOffer={isOffer}
+        offerTotal={offerTotal}
+      />
     </Box>
   );
 
@@ -226,7 +339,7 @@ export default function Dashboard() {
                   </IconButton>
                 </Grid>
                 <Grid item xs={8} lg={9}>
-                  <SearchBar />
+                  <SearchBar onSearch={handleSetSearchTerm} />
                 </Grid>
                 <Grid
                   item
@@ -240,10 +353,10 @@ export default function Dashboard() {
                 </Grid>
                 <Grid item xs={12} lg={3} display={{ xs: "none", lg: "block" }}>
                   <Typography sx={{ fontWeight: "600" }} textAlign="end">
-                    1st, Oct 2025
+                    {formatDate(today)}
                   </Typography>
                   <Typography textAlign="end">
-                    Order No : 00000000001
+                    Terminal No : #{shiftDetails ? shiftDetails.terminalNo : ""}
                   </Typography>
                 </Grid>
               </Grid>
@@ -260,12 +373,21 @@ export default function Dashboard() {
                       boxSizing: "border-box",
                     }}
                   >
-                    {activeTab === "home" && <Home />}
-                    {activeTab === "orders" && <Orders />}
+                    {activeTab === "home" &&
+                      <Home
+                        ref={homeRef}
+                        searchText={searchTerm}
+                        onUpdateItems={handleUpdateItems}
+                        billUpdatedItems={cartItems}
+                        onChangeSteward={handleSetSteward}
+                        onChangeTable={handleSetTable}
+                        onSetPickupType={handleSetPickup} />}
+
+                    {activeTab === "orders" && <Orders searchText={searchTerm} onOrderClick={handleClickOrder} />}
                     {activeTab === "dining" && <DineIn />}
-                    {activeTab === "kitchen" && <Kitchen />}
+                    {activeTab === "kitchen" && <Kitchen searchText={searchTerm} />}
                     {activeTab === "history" && <History />}
-                    {activeTab === "offers" && <Offers />}
+                    {activeTab === "offers" && <Offers onOrderClick={handleClickOrder} />}
                     {activeTab === "reports" && <Reports />}
                     {activeTab === "other" && <Other />}
                     {activeTab === "settings" && <Settings />}
@@ -288,7 +410,6 @@ export default function Dashboard() {
           </Grid>
         </Grid>
       </Grid>
-
 
       <Dialog open={exitDialogOpen} onClose={handleCancelExit}>
         <DialogTitle

@@ -95,6 +95,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Dinning Table", path: "/master/table/", categoryId: 89, isAvailable: true },
                 { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },                
                 { title: "Employee", path: "/master/Employee/", categoryId: 93, isAvailable: true },
+                { title: "Combo Meal", path: "/master/combo/", categoryId: 94, isAvailable: true },
             ],
         },
         {
@@ -168,6 +169,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Day End", path: "/sales/day-end/", categoryId: 26, isAvailable: true },
                 { title: "Daily Deposit", path: "/sales/deposit/", categoryId: 27, isAvailable: true },
                 { title: "Sales Return", path: "/sales/sales-return/", categoryId: 62, isAvailable: true },
+                { title: "POS Shift", path: "/sales/pos-shift/", categoryId: 95, isAvailable: true },
+                { title: "POS Day End", path: "/sales/pos-dayend/", categoryId: 96, isAvailable: true },
             ],
         },
         {

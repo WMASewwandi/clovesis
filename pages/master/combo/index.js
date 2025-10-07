@@ -16,12 +16,10 @@ import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirma
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import AddMenuItem from "./create";
-import EditMenuItem from "./edit";
-import ViewPrice from "./view";
-import { formatDate } from "@/components/utils/formatHelper";
+import { formatCurrency } from "@/components/utils/formatHelper";
 import CreateComboMeal from "./create";
 import EditComboMeal from "./edit";
+import ViewMeals from "./view";
 
 export default function ComboMeal() {
   const cId = sessionStorage.getItem("category")
@@ -38,6 +36,8 @@ export default function ComboMeal() {
     setSearch,
     fetchData: fetchComboList,
   } = usePaginatedFetch("ComboMeal/GetAllComboMeals");
+
+  console.log(comboList);
 
   const controller = "ComboMeal/DeleteComboMeal";
 
@@ -99,14 +99,12 @@ export default function ComboMeal() {
                 <TableRow>
                   <TableCell>Image</TableCell>
                   <TableCell>Code</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Description</TableCell>
+                  <TableCell>Name</TableCell>                  
                   <TableCell>Actual Price</TableCell>
-                  <TableCell>Selling Price</TableCell>
-                  <TableCell>From</TableCell>
-                  <TableCell>To</TableCell>                  
-                  <TableCell>Items</TableCell>
+                  <TableCell>Selling Price</TableCell>  
+                  <TableCell>Category Count</TableCell>  
                   <TableCell>Active</TableCell>
+                  <TableCell>Description</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -121,9 +119,9 @@ export default function ComboMeal() {
                   comboList.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        {item.productImage != null ?
+                        {item.comboImage != null ?
                           <Box sx={{ width: 50, height: 50, p: 1, border: '1px solid #e5e5e5', borderRadius: '5px' }}>
-                            <Box onClick={() => navigateToViewImage(item.productImage)} sx={{ width: "100%", height: "100%", backgroundSize: 'cover', backgroundImage: `url(${item.productImage})` }}>
+                            <Box onClick={() => navigateToViewImage(item.comboImage)} sx={{ width: "100%", height: "100%", backgroundSize: 'cover', backgroundImage: `url(${item.comboImage})` }}>
                             </Box>
                           </Box>
                           :
@@ -133,13 +131,10 @@ export default function ComboMeal() {
                           </Box>}
                       </TableCell>
                       <TableCell>{item.code}</TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell>{item.actualPrice}</TableCell>
-                      <TableCell>{item.sellingPrice}</TableCell>
-                      <TableCell>{formatDate(item.form)}</TableCell>
-                      <TableCell>{formatDate(item.to)}</TableCell>
-                      <TableCell>-</TableCell>
+                      <TableCell>{item.name}</TableCell>                      
+                      <TableCell>{formatCurrency(item.actualPrice)}</TableCell>
+                      <TableCell>{formatCurrency(item.sellingPrice)}</TableCell>
+                      <TableCell>{item.categoryCount}</TableCell>
                       <TableCell>
                         {item.isActive ? (
                           <span className="successBadge">Yes</span>
@@ -147,9 +142,10 @@ export default function ComboMeal() {
                           <span className="dangerBadge">No</span>
                         )}
                       </TableCell>
+                      <TableCell>{item.description}</TableCell>
                       <TableCell align="right">
                         <Box display="flex" gap={1}>
-                          <ViewPrice pricing={item.pricing} />
+                          <ViewMeals meals={item.mealItems} />
                           {update ? <EditComboMeal fetchItems={fetchComboList} item={item} /> : ""}
                           {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchComboList} /> : ""}
                         </Box>

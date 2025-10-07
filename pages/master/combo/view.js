@@ -16,9 +16,8 @@ import {
   Tooltip,
 } from "@mui/material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { formatCurrency } from "@/components/utils/formatHelper";
 
-export default function ViewPrice({ pricing }) {
+export default function ViewMeals({ meals }) {
   const [open, setOpen] = React.useState(false);
 
   const handleClickOpen = () => () => {
@@ -44,7 +43,7 @@ export default function ViewPrice({ pricing }) {
         aria-describedby="scroll-dialog-description"
       >
         <div className="bg-black">
-          <DialogTitle id="scroll-dialog-title">Price Details</DialogTitle>
+          <DialogTitle id="scroll-dialog-title">Item Details</DialogTitle>
           <DialogContent>
             <Grid container>
               <Grid item xs={12}>
@@ -53,28 +52,38 @@ export default function ViewPrice({ pricing }) {
                     <TableHead style={{ backgroundColor: "#7884ef" }}>
                       <TableRow>
                         <TableCell sx={{ color: "#fff", width: "30%" }}>
+                          Category
+                        </TableCell>
+                        <TableCell sx={{ color: "#fff", width: "30%" }}>
+                          Item
+                        </TableCell>
+                        <TableCell sx={{ color: "#fff", width: "30%" }}>
                           Portion
                         </TableCell>
                         <TableCell sx={{ color: "#fff" }}>
-                          Selling Price
+                          Quantity
                         </TableCell>
                         <TableCell sx={{ color: "#fff" }}>
-                         Cost Price
-                        </TableCell>
-                         <TableCell sx={{ color: "#fff" }}>
-                         Tax
+                          
                         </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {pricing &&pricing.map((contact,i) => (
-                          <TableRow key={i}>
-                            <TableCell>{contact.portionName}</TableCell>
-                            <TableCell>{formatCurrency(contact.sellingPrice)}</TableCell>
-                            <TableCell>{formatCurrency(contact.costPrice)}</TableCell>
-                            <TableCell>{formatCurrency(contact.tax)}</TableCell>
-                          </TableRow>
-                        ))}
+                      {meals && meals.map((meal, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{meal.categoryId}</TableCell>
+                          <TableCell>{meal.itemName}</TableCell>
+                          <TableCell>{meal.portionName}</TableCell>
+                          <TableCell>{meal.qty}</TableCell>
+                          <TableCell>
+                            {meal.isDefault ? (
+                              <span className="successBadge">Default</span>
+                            ) : (
+                              ""
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </TableContainer>
