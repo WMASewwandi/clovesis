@@ -13,75 +13,69 @@ import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select } fro
 import { ToastContainer } from "react-toastify";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
-import ViewCustomerDialog from "./view";
+
 import EditCustomerDialog from "./edit";
-import AddCustomerDialog from "../customers/create";
+import AddCustomerDialog from "../Employee/create";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import useApi from "@/components/utils/useApi";
 
-export default function Customers() {
-  const cId = sessionStorage.getItem("category")
-  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [chartOfAccounts, setChartOfAccounts] = useState([]);
-  const [chartOfAccInfo, setChartOfAccInfo] = useState({});
-  const { data: accountList } = useApi("/ChartOfAccount/GetAll");
+export default function Employees() {
+  const cId = sessionStorage.getItem("category");
+  const { navigate, create, update, remove } = IsPermissionEnabled(cId);
+
   const {
-    data: customerList,
-    totalCount,
+     data: employeeList,
+  totalCount,
     page,
     pageSize,
     search,
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchCustomerList,
-  } = usePaginatedFetch("Customer/GetAll");
+    fetchData: fetchEmployeeList,
+  } =  usePaginatedFetch("Employee/GetAllEmployeesByPagedResult");
+  const rows = employeeList?.result || [];
 
-  const controller = "Customer/DeleteCustomer";
+
+  const controller = "Employee/DeleteEmployees";
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
-    fetchCustomerList(1, event.target.value, pageSize);
+    fetchEmployeeList(1, event.target.value, pageSize);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchCustomerList(value, search, pageSize);
+    fetchEmployeeList(value, search, pageSize);
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchCustomerList(1, search, size);
+    fetchEmployeeList(1, search, size);
   };
-
-  useEffect(() => {
-      if (accountList) {
-        const accMap = accountList.reduce((acc, account) => {
-          acc[account.id] = account;
-          return acc;
-        }, {});
-        setChartOfAccInfo(accMap);
-        setChartOfAccounts(accountList);
-      }
-    }, [accountList]);
 
   if (!navigate) {
     return <AccessDenied />;
   }
 
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "-";
+    const d = new Date(dateStr);
+    return d.toLocaleString();
+  };
+
   return (
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Customers</h1>
+        <h1>Employees</h1>
         <ul>
           <li>
-            <Link href="/master/customers/">Customers</Link>
+            {/* <Link href="/master/Employee/">Employees</Link> */}
           </li>
         </ul>
       </div>
@@ -97,49 +91,47 @@ export default function Customers() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddCustomerDialog fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts}/> : ""}
+          {create ? <AddCustomerDialog fetchItems={fetchEmployeeList} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
-            <Table aria-label="simple table" className="dark-table">
+            <Table aria-label="employee table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
+                  <TableCell>Titl</TableCell>
+                  <TableCell> Name</TableCell>
                   <TableCell>NIC</TableCell>
-                  <TableCell>Address</TableCell>
-                  <TableCell>Contact No</TableCell>
-                  <TableCell>Receivable Acc</TableCell>
-                  <TableCell>Details</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Gender</TableCell>
+                  <TableCell>Department</TableCell>
+                  <TableCell>Contract Type</TableCell>
+                  <TableCell>Join Date</TableCell>
+                  <TableCell>Supervisor</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {customerList.length === 0 ? (
+                {employeeList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
-                      <Typography color="error">No Customers Available</Typography>
+                    <TableCell colSpan={10}>
+                      <Typography color="error">No Employees Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  customerList.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        {[item?.title, item?.firstName, item?.lastName].filter(Boolean).join(" ")}
-                      </TableCell>
-                      <TableCell>{item.customerContactDetails?.[0]?.emailAddress || ""}</TableCell>
-                      <TableCell>{item.nic || ""}</TableCell>
-                      <TableCell>
-                        {[item?.addressLine1, item?.addressLine2, item?.addressLine3].filter(Boolean).join(", ")}
-                      </TableCell>
-                      <TableCell>{item.customerContactDetails?.[0]?.contactNo || ""}</TableCell>
-                      <TableCell>{chartOfAccInfo[item.receivableAccount]?.code || "-"} - {chartOfAccInfo[item.receivableAccount]?.description || "-"}</TableCell>
-                      <TableCell>
-                        <ViewCustomerDialog customerId={item.id} />
-                      </TableCell>
+                   employeeList.map((emp, index) => (
+      <TableRow key={index}>
+        <TableCell>{emp.titleName || "-"}</TableCell>
+                      <TableCell>{emp.firstName +" "+ emp. lastName|| "-"}</TableCell>
+                      <TableCell>{emp.nic || "-"}</TableCell>
+                      <TableCell>{emp.email || "-"}</TableCell>
+                      <TableCell>{emp.gender === 1 ? "Male" : emp.gender === 2 ? "Female" : "-"}</TableCell>
+                      <TableCell>{emp.departmentName || "-"}</TableCell>
+                      <TableCell>{emp.contractTypeName || "-"}</TableCell>
+                      <TableCell>{formatDateTime(emp.joinDate)}</TableCell>
+                      <TableCell>{emp.supervisorName || "-"}</TableCell>
                       <TableCell align="right">
-                        {update ? <EditCustomerDialog fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts}/> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchCustomerList} /> : ""}
+                        {update ? <EditCustomerDialog fetchItems={fetchEmployeeList} item={emp} /> : ""}
+                        {remove ? <DeleteConfirmationById id={emp.id} controller={controller} fetchItems={fetchEmployeeList} /> : ""}
                       </TableCell>
                     </TableRow>
                   ))
@@ -168,6 +160,4 @@ export default function Customers() {
       </Grid>
     </>
   );
-
-
 }

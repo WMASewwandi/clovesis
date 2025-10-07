@@ -1,6 +1,5 @@
 import { Grid, Typography, Box } from "@mui/material";
-import BASE_URL from "Base/api";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 const tables = [
     { id: 1, capacity: 2, occupied: false, billNo: null },
@@ -12,32 +11,6 @@ const tables = [
 
 export default function DineIn() {
     const [tableData] = useState(tables);
-    const [tableList, setTableList] = useState([]);
-
-    const fetchTables = async () => {
-        try {
-            const response = await fetch(`${BASE_URL}/RestaurantPOS/GetAllTables`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch");
-            }
-
-            const data = await response.json();
-            setTableList(data.result);
-        } catch (error) {
-            console.error("Error fetching:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchTables();
-    }, []);
 
     const renderChairs = (capacity, occupied) => {
         const chairs = [];
@@ -78,14 +51,14 @@ export default function DineIn() {
             </Grid>
             <Grid item xs={12} sx={{ mt: 2 }}>
                 <Grid container spacing={2}>
-                    {tableList.map((table) => (
+                    {tableData.map((table) => (
                         <Grid item lg={2} key={table.id}>
                             <Box
                                 sx={{
                                     width: 120,
                                     height: 120,
                                     border: "3px solid",
-                                    borderColor: table.isAvailable ? "#fe6564" : "#9e9e9e",
+                                    borderColor: table.occupied ? "#fe6564" : "#9e9e9e",
                                     bgcolor: "#fff",
                                     display: "flex",
                                     alignItems: "center",
@@ -93,15 +66,16 @@ export default function DineIn() {
                                     position: "relative",
                                     cursor: "pointer",
                                     borderRadius: 2,
+                                    boxShadow: 2
                                 }}
                             >
                                 <Box
                                     sx={{
-                                        width: 70,
-                                        height: 70,
-                                        bgcolor: table.isAvailable ? "#ffcdd2" : "#f5f5f5",
+                                        width: 60,
+                                        height: 60,
+                                        bgcolor: table.occupied ? "#ffcdd2" : "#f5f5f5",
                                         border: "2px solid",
-                                        borderColor: table.isAvailable ? "#fe6564" : "#9e9e9e",
+                                        borderColor: table.occupied ? "#fe6564" : "#9e9e9e",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
@@ -109,15 +83,11 @@ export default function DineIn() {
                                         textAlign: "center"
                                     }}
                                 >
-                                    <Typography
-                                        variant="caption"
-                                        sx={{ transform: "rotate(45deg)" }}
-                                    >
-                                        {table.isAvailable ? table.name : table.billNo}
+                                    <Typography variant="caption">
+                                        {table.occupied ? table.billNo : `T${table.id}`}
                                     </Typography>
                                 </Box>
-
-                                {renderChairs(table.capacity, table.isAvailable)}
+                                {renderChairs(table.capacity, table.occupied)}
                             </Box>
                         </Grid>
                     ))}

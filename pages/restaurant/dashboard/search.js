@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React from "react";
 import { Box, Button, TextField } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 
-export default function SearchBar({ onSearch }) {
-    const [searchTerm, setSearchTerm] = useState(null);
+export default function SearchBar() {
     return (
         <>
             <Box display="flex" alignItems="center" gap={1}>
@@ -12,16 +11,6 @@ export default function SearchBar({ onSearch }) {
                     size="small"
                     placeholder="Search Items..."
                     variant="outlined"
-                    value={searchTerm ?? ""}
-                    onChange={(e) => {
-                        setSearchTerm(e.target.value);
-                        if (onSearch) {
-                            onSearch(e.target.value);
-                            if(e.target.value === ""){
-                                onSearch(null);
-                            }
-                        }
-                    }}
                     sx={{
                         '& .MuiOutlinedInput-root': {
                             backgroundColor: 'transparent',

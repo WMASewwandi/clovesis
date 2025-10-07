@@ -4,21 +4,19 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 
 const formatCurrency = (value) => {
-  return `Rs ${new Intl.NumberFormat('en-IN', {
+  const numericValue = Number(value) || 0;
+  return `Rs ${new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value)}`;
+  }).format(numericValue)}`;
 };
 
 const formatPercentage = (value) => {
-  return `${value.toFixed(2)}%`;
+  const numericValue = Number(value) || 0;
+  return `${numericValue.toFixed(2)}%`;
 };
 
-const TotalSalesCard = ({amount}) => {
-  const totalSales = 2250000.00;
-  const profit = 675000.00; // Assuming a profit value
-  const profitMargin = (profit / totalSales) * 100; // Calculate profit margin as percentage
-  
+const TotalSalesCard = ({ amount, profit, profitMargin }) => {
   return (
     <Card
       sx={{
@@ -29,13 +27,7 @@ const TotalSalesCard = ({amount}) => {
         background: '#fff',
       }}
     >
-      <Box
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}
-      >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box
             sx={{
@@ -52,16 +44,12 @@ const TotalSalesCard = ({amount}) => {
           >
             <i className="ri-money-dollar-circle-line"></i>
           </Box>
-
           <Box>
             <Typography sx={{ fontSize: '13px' }}>
               Total Sales
             </Typography>
-            <Typography
-              variant="h1"
-              sx={{ fontSize: 25, fontWeight: 700, marginTop: '4px' }}
-            >
-              {formatCurrency(totalSales)}
+            <Typography variant="h1" sx={{ fontSize: 25, fontWeight: 700, marginTop: '4px' }}>
+              {formatCurrency(amount)}
             </Typography>
             <Typography sx={{ fontSize: '13px', marginTop: '8px' }}>
               Profit: {formatCurrency(profit)}

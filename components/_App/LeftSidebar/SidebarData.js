@@ -19,6 +19,8 @@ import BeenhereOutlinedIcon from "@mui/icons-material/BeenhereOutlined";
 import EventSeatOutlinedIcon from "@mui/icons-material/EventSeatOutlined";
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
+import CallIcon from '@mui/icons-material/Call';
+
 
 export const getSidebarData = (IsGarmentSystem) => {
     const sidebarData = [
@@ -81,8 +83,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Time Slots", path: "/master/time-slots/", categoryId: 66, isAvailable: true },
                 { title: "Day Type", path: "/master/day-type/", categoryId: 76, isAvailable: true },
                 { title: "OT Type", path: "/master/ot-type/", categoryId: 79, isAvailable: true },
-                { title: "Employment Type", path: "/master/employment-type/", categoryId: 80, isAvailable: true },
                 { title: "Shift", path: "/master/shift/", categoryId: 81, isAvailable: true },
+                { title: "Employment Type", path: "/master/employment-type/", categoryId: 80, isAvailable: true },
                 { title: "Company", path: "/master/company/", categoryId: 82, isAvailable: true },
                 { title: "Classifications", path: "/master/classifications/", categoryId: 83, isAvailable: true },
                 { title: "Job Title", path: "/master/job-title/", categoryId: 84, isAvailable: true },
@@ -91,8 +93,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Kitchen", path: "/master/kitchen/", categoryId: 87, isAvailable: true },
                 { title: "Menu List", path: "/master/menu-list/", categoryId: 88, isAvailable: true },
                 { title: "Dinning Table", path: "/master/table/", categoryId: 89, isAvailable: true },
-                { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },
-                { title: "Combo Meal", path: "/master/combo/", categoryId: 92, isAvailable: true },
+                { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },                
+                { title: "Employee", path: "/master/Employee/", categoryId: 93, isAvailable: true },
             ],
         },
         {
@@ -191,7 +193,19 @@ export const getSidebarData = (IsGarmentSystem) => {
             subNav: [
                 { title: "Bill Of Material", path: "/production/bom/", categoryId: 14, isAvailable: true },
             ],
-        }
+        },
+        {
+            title: "Contact",
+            path: "/contact/contact/",
+            icon: <CallIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 17,
+            IsAvailable: true,
+            subNav: [
+                { title: "Contact", path: "/contact/contact", categoryId: 92, isAvailable: true }
+            ],
+        },
     ];
     if (ProjectNo === 2) {
         sidebarData.push({

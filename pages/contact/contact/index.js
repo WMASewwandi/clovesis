@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {  } from "react";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
@@ -13,22 +13,19 @@ import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select } fro
 import { ToastContainer } from "react-toastify";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
-import ViewCustomerDialog from "./view";
-import EditCustomerDialog from "./edit";
-import AddCustomerDialog from "../customers/create";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import useApi from "@/components/utils/useApi";
+import AddCashFlowType from "./create";
+import EditCashFlowType from "./edit";
+import { getCashType } from "@/components/types/types";
+import AddContact from "./create";
 
-export default function Customers() {
+export default function Contacts() {
   const cId = sessionStorage.getItem("category")
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [chartOfAccounts, setChartOfAccounts] = useState([]);
-  const [chartOfAccInfo, setChartOfAccInfo] = useState({});
-  const { data: accountList } = useApi("/ChartOfAccount/GetAll");
   const {
-    data: customerList,
+    data: contacts,
     totalCount,
     page,
     pageSize,
@@ -36,39 +33,28 @@ export default function Customers() {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchCustomerList,
-  } = usePaginatedFetch("Customer/GetAll");
+    fetchData: fetchContacts,
+  } = usePaginatedFetch("Contact/GetAllContacts");
 
-  const controller = "Customer/DeleteCustomer";
+  const controller = "Contact/DeleteContact";
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
-    fetchCustomerList(1, event.target.value, pageSize);
+    fetchContacts(1, event.target.value, pageSize);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchCustomerList(value, search, pageSize);
+    fetchContacts(value, search, pageSize);
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchCustomerList(1, search, size);
+    fetchContacts(1, search, size);
   };
-
-  useEffect(() => {
-      if (accountList) {
-        const accMap = accountList.reduce((acc, account) => {
-          acc[account.id] = account;
-          return acc;
-        }, {});
-        setChartOfAccInfo(accMap);
-        setChartOfAccounts(accountList);
-      }
-    }, [accountList]);
 
   if (!navigate) {
     return <AccessDenied />;
@@ -78,10 +64,10 @@ export default function Customers() {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Customers</h1>
+        <h1>Contact</h1>
         <ul>
           <li>
-            <Link href="/master/customers/">Customers</Link>
+            <Link href="/contact/contact/">Contact</Link>
           </li>
         </ul>
       </div>
@@ -97,7 +83,7 @@ export default function Customers() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddCustomerDialog fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts}/> : ""}
+          {create ? <AddContact fetchItems={fetchContacts} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -106,40 +92,32 @@ export default function Customers() {
                 <TableRow>
                   <TableCell>Name</TableCell>
                   <TableCell>Email</TableCell>
-                  <TableCell>NIC</TableCell>
-                  <TableCell>Address</TableCell>
-                  <TableCell>Contact No</TableCell>
-                  <TableCell>Receivable Acc</TableCell>
-                  <TableCell>Details</TableCell>
+                  <TableCell>Phone Number</TableCell>
+                  <TableCell>Company</TableCell>
+                  <TableCell>Package</TableCell>
+                  <TableCell>Description</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {customerList.length === 0 ? (
+                {contacts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
-                      <Typography color="error">No Customers Available</Typography>
+                    <TableCell colSpan={7}>
+                      <Typography color="error">No Data Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  customerList.map((item, index) => (
+                  contacts.map((item, index) => (
                     <TableRow key={index}>
-                      <TableCell>
-                        {[item?.title, item?.firstName, item?.lastName].filter(Boolean).join(" ")}
-                      </TableCell>
-                      <TableCell>{item.customerContactDetails?.[0]?.emailAddress || ""}</TableCell>
-                      <TableCell>{item.nic || ""}</TableCell>
-                      <TableCell>
-                        {[item?.addressLine1, item?.addressLine2, item?.addressLine3].filter(Boolean).join(", ")}
-                      </TableCell>
-                      <TableCell>{item.customerContactDetails?.[0]?.contactNo || ""}</TableCell>
-                      <TableCell>{chartOfAccInfo[item.receivableAccount]?.code || "-"} - {chartOfAccInfo[item.receivableAccount]?.description || "-"}</TableCell>
-                      <TableCell>
-                        <ViewCustomerDialog customerId={item.id} />
-                      </TableCell>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.email}</TableCell>
+                      <TableCell>{item.phoneNumber}</TableCell>
+                      <TableCell>{item.company}</TableCell>
+                      <TableCell>{item.package}</TableCell>
+                      <TableCell>{item.description}</TableCell>
                       <TableCell align="right">
-                        {update ? <EditCustomerDialog fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts}/> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchCustomerList} /> : ""}
+                        {update ? <EditCashFlowType item={item} fetchItems={fetchContacts}/> : ""}
+                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchContacts} /> : ""}
                       </TableCell>
                     </TableRow>
                   ))
@@ -168,6 +146,4 @@ export default function Customers() {
       </Grid>
     </>
   );
-
-
 }

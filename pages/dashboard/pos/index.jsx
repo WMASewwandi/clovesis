@@ -213,7 +213,11 @@ const [toDate, setToDate] = useState(lastDayOfMonth.toISOString().split('T')[0])
             {/* First Row */}
             <Grid container item spacing={2}>
               <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
-                <TotalSalesCard amount={features.totalSales} />
+                <TotalSalesCard
+                       amount={features.totalSales}
+                       profit={features.profit}
+                       profitMargin={features.profitMargin}
+                />
               </Grid>
               <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
                 <TotalOutstandingCard
@@ -222,7 +226,7 @@ const [toDate, setToDate] = useState(lastDayOfMonth.toISOString().split('T')[0])
               </Grid>
             </Grid>
 
-            {/* Second Row */}
+           
             <Grid container item spacing={2}>
               <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
                 <TotalPurchaseCard purchase={features.totalPurchase} />

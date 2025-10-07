@@ -1,36 +1,30 @@
 import { Switch, Typography, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid } from "@mui/material";
 import React, { useState } from "react";
 
-export default function SwitchDesign({ onChangeSwitch }) {
+export default function SwitchDesign() {
     const [isPickup, setIsPickup] = useState(false);
-    const [dialogOpen, setDialogOpen] = useState(false);
+    const [exitDialogOpen, setExitDialogOpen] = useState(false);
     const [selectedType, setSelectedType] = useState(null);
 
     const handleChange = () => {
         setIsPickup(!isPickup);
         if (!isPickup) {
-            setDialogOpen(true);
+            setExitDialogOpen(true);
         }
     };
 
-    const handleCancel = () => {
-        setDialogOpen(false);
+    const handleCancelExit = () => {
+        setExitDialogOpen(false);
         setIsPickup(false);
         setSelectedType(null);
     };
 
-    const handleConfirm = () => {
-        setDialogOpen(false);
-        if (onChangeSwitch && selectedType) {
-            onChangeSwitch(selectedType);
-        }
+    const handleConfirmExit = () => {
+        setExitDialogOpen(false);
         setSelectedType(null);
     };
 
-    const pickupTypes = [
-        { id: 1, type: "Customer" },
-        { id: 2, type: "Uber" },
-        { id: 3, type: "Pick Me" }];
+    const pickupTypes = ["Customer","Uber", "Pick Me"];
 
     return (
         <>
@@ -61,7 +55,7 @@ export default function SwitchDesign({ onChangeSwitch }) {
                 </Typography>
             </Box>
 
-            <Dialog open={dialogOpen} onClose={handleCancel}>
+            <Dialog open={exitDialogOpen} onClose={handleCancelExit}>
                 <DialogTitle sx={{ background: "#fe6564", color: "#fff", width: "350px" }}>
                     Choose Pick up Type
                 </DialogTitle>
@@ -71,7 +65,7 @@ export default function SwitchDesign({ onChangeSwitch }) {
                             {pickupTypes.map((type, i) => (
                                 <Grid key={i} item xs={12} lg={4}>
                                     <Button
-                                        onClick={() => setSelectedType(type.id)}
+                                        onClick={() => setSelectedType(type)}
                                         sx={{
                                             width: "100%",
                                             display: "flex",
@@ -80,12 +74,12 @@ export default function SwitchDesign({ onChangeSwitch }) {
                                             alignItems: "center",
                                             justifyContent: "center",
                                             borderRadius: "5px",
-                                            border: selectedType === type.id ? "3px solid #fe6564" : "3px solid #e9eced",
-                                            backgroundColor: selectedType === type.id ? "#fff" : "#e9eced",
-                                            color: selectedType === type.id ? "#fe6564" : "#bdbebe",
+                                            border: selectedType === type ? "3px solid #fe6564" : "3px solid #e9eced",
+                                            backgroundColor: selectedType === type ? "#fff" : "#e9eced",
+                                            color: selectedType === type ? "#fe6564" : "#bdbebe",
                                             "&:hover": {
                                                 backgroundColor:
-                                                    selectedType === type.id ? "#fe6564" : "#d1d5d8",
+                                                    selectedType === type ? "#fe6564" : "#d1d5d8",
                                                 color: "#fff",
                                                 "& svg": {
                                                     color: "#fff",
@@ -93,7 +87,7 @@ export default function SwitchDesign({ onChangeSwitch }) {
                                             },
                                         }}
                                     >
-                                        {type.type}
+                                        {type}
                                     </Button>
                                 </Grid>
                             ))}
@@ -101,12 +95,12 @@ export default function SwitchDesign({ onChangeSwitch }) {
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Box px={2} pb={1} display="flex" sx={{ width: '100%' }} justifyContent="space-between">
-                        <Button onClick={handleCancel} variant="outlined" color="error">
+                    <Box px={2} pb={1} display="flex" sx={{width:'100%'}} justifyContent="space-between">
+                        <Button onClick={handleCancelExit} variant="outlined" color="error">
                             Cancel
                         </Button>
                         <Button
-                            onClick={handleConfirm}
+                            onClick={handleConfirmExit}
                             variant="contained"
                             disabled={!selectedType}
                             sx={{

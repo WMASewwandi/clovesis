@@ -132,10 +132,8 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
   };
   useEffect(() => {
     fetchModulePermissions();
-    if (warehouse) {
-      fetchCompanyImage();
-    }
-  }, [warehouse]);
+    fetchCompanyImage();
+  }, []);
 
   useEffect(() => {
     if (onGrantedCheck) {

@@ -32,6 +32,8 @@ export const getModule = (type) => {
       return "Production";
     case 16:
       return "Restaurant POS";
+      case 17:
+      return "Contact";
     default:
       return "N/A";
   }

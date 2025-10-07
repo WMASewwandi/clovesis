@@ -1,111 +1,21 @@
 import { Grid, Typography, Box, Button } from "@mui/material";
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { useState } from "react";
 import FilteredItems from "./filteredItems";
+import PersonIcon from "@mui/icons-material/Person";
+import TableRestaurantIcon from '@mui/icons-material/TableRestaurant';
 import SwitchDesign from "../switch";
-import Steward from "../steward";
-import Tables from "../table";
-import BASE_URL from "Base/api";
 
 
-const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChangeSteward, onChangeTable, onSetPickupType }, ref) => {
-    const filteredItemsRef = useRef();
+const categories = [
+    { id: 0, name: "All Items", img: "/images/restaurant/sample.jpg" },
+    { id: 1, name: "Pizza", img: "/images/restaurant/sample.jpg" },
+    { id: 2, name: "Burger", img: "/images/restaurant/sample.jpg" },
+    { id: 3, name: "Drinks", img: "/images/restaurant/sample.jpg" },
+    { id: 4, name: "Desserts", img: "/images/restaurant/sample.jpg" },
+];
 
-    useImperativeHandle(ref, () => ({
-        clean() {
-            if (filteredItemsRef.current) {
-                filteredItemsRef.current.clean();
-            }
-        }
-    }));
-
+export default function Home() {
     const [activeCategory, setActiveCategory] = useState(0);
-    const [items, setItems] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [cartItems, setCartItems] = useState([]);
-
-    const handleAddItems = (items) => {
-        setCartItems(items);
-    }
-
-    const fetchCategories = async () => {
-        try {
-            const response = await fetch(`${BASE_URL}/RestaurantPOS/GetAllActiveCategories`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch");
-            }
-
-            const data = await response.json();
-            const result = data.result;
-            const newItem = {
-                id: 0,
-                name: "All Items",
-                categoryImage: "/images/restaurant/all.jpg",
-            };
-            setCategories([newItem, ...result]);
-        } catch (error) {
-            console.error("Error fetching List:", error);
-        }
-    };
-
-    const fetchProducts = async (catId, keyword) => {
-        try {
-            const response = await fetch(`${BASE_URL}/RestaurantPOS/GetAllMenuItems?categoryId=${catId}&keyword=${keyword}`, {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    "Content-Type": "application/json",
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error("Failed to fetch");
-            }
-
-            const data = await response.json();
-            setItems(data.result);
-        } catch (error) {
-            console.error("Error fetching List:", error);
-        }
-    };
-
-    useEffect(() => {
-        fetchProducts(activeCategory, searchText);
-        fetchCategories();
-        if (onUpdateItems) {
-            onUpdateItems(cartItems);
-        }
-    }, [searchText, cartItems]);
-
-    useEffect(() => {
-        if(billUpdatedItems){
-            setCartItems(billUpdatedItems);
-        }
-    }, []);
-
-    const handleFilter = (id) => {
-        fetchProducts(id, searchText);
-    };
-
-    const handleChangeSwitch = (type) => {
-        if (onSetPickupType) {
-            onSetPickupType(type);
-        }
-    }
-
-    const handleSelectSteward = (steward) => {
-        onChangeSteward(steward);
-    };
-
-    const handleSelectTable = (table) => {
-        onChangeTable(table);
-    };
 
     return (
         <Grid container spacing={1}>
@@ -120,7 +30,7 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     Choose Category
                 </Typography>
-                <SwitchDesign onChangeSwitch={handleChangeSwitch} />
+                <SwitchDesign />
             </Grid>
 
             <Grid item xs={12} lg={10} sx={{ mt: 1 }}>
@@ -138,10 +48,7 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                     {categories.map((cat) => (
                         <Box
                             key={cat.id}
-                            onClick={() => {
-                                setActiveCategory(cat.id);
-                                handleFilter(cat.id);
-                            }}
+                            onClick={() => setActiveCategory(cat.id)}
                             sx={{
                                 display: "flex",
                                 alignItems: "center",
@@ -169,7 +76,7 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                                 }}
                             >
                                 <img
-                                    src={cat.categoryImage ? cat.categoryImage : '/images/restaurant/no-image.jpg'}
+                                    src={cat.img}
                                     alt={cat.name}
                                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 />
@@ -188,8 +95,48 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                 </Box>
             </Grid>
             <Grid item xs={12} lg={2} sx={{ mt: 1, display: "flex", gap: 1 }}>
-                <Steward onSelectSteward={handleSelectSteward} />
-                <Tables onSelectTable={handleSelectTable} />
+                <Button
+                    variant="outlined"
+                    sx={{
+                        borderColor: "#fe6564",
+                        color: "#fe6564",
+                        "&:hover": {
+                            borderColor: "#fe6564",
+                            backgroundColor: "rgba(254, 101, 100, 0.1)"
+                        },
+                        textTransform: "none",
+                        fontSize: "0.75rem",
+                        minWidth: 64,
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        py: 1
+                    }}
+                >
+                    <PersonIcon sx={{ fontSize: 20 }} />
+                    Steward
+                </Button>
+                <Button
+                    variant="outlined"
+                    sx={{
+                        borderColor: "#fe6564",
+                        color: "#fe6564",
+                        "&:hover": {
+                            borderColor: "#fe6564",
+                            backgroundColor: "rgba(254, 101, 100, 0.1)"
+                        },
+                        textTransform: "none",
+                        fontSize: "0.75rem",
+                        minWidth: 64,
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        py: 1
+                    }}
+                >
+                    <TableRestaurantIcon sx={{ fontSize: 20 }} />
+                    Table
+                </Button>
             </Grid>
             <Grid item xs={12}>
                 <Box
@@ -204,15 +151,10 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                         paddingBottom: "100px"
                     }}
                 >
-                    <FilteredItems
-                        ref={filteredItemsRef}
-                        itemList={items}
-                        onAddItems={handleAddItems}
-                        billUpdatedItems={billUpdatedItems} />
+                    <FilteredItems />
                 </Box>
 
             </Grid>
         </Grid>
     );
-});
-export default Home;
+}

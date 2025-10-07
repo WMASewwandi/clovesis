@@ -267,8 +267,8 @@ export default function SalesSummaryReport({ docName, reportName }) {
                 <Button onClick={handleClose} variant="contained" color="error">
                   Close
                 </Button>
-                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${SalesSummaryReport}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&customer=${customerId}&item=${itemId}`} target="_blank">
-                  <Button variant="contained" disabled={!isFormValid} aria-label="print" size="small">
+                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${SalesSummaryReport}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&customer=${customerId}&item=${itemId}&supplier=${supplierId}&category=${categoryId}&subCategory=${subCategoryId}`} target="_blank">
+                   <Button variant="contained" disabled={!isFormValid} aria-label="print" size="small">
                     Submit
                   </Button>
                 </a>
