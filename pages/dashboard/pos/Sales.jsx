@@ -3,9 +3,11 @@ import { Box, Typography, Paper, Grid, useTheme, FormControl, InputLabel, Select
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { ComposedChart,Bar,XAxis,YAxis,CartesianGrid,Tooltip,Legend,ResponsiveContainer,Line } from "recharts";
+import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Line } from "recharts";
 import { formatDate } from "@/components/utils/formatHelper";
 import BASE_URL from "Base/api";
+import StockValueCard from "./StockValueCard";
+import TotalPurchaseCard from "./TotalPurchaseCard";
 
 
 const generateDailyData = (start, end) => {
@@ -51,7 +53,7 @@ const generateMonthlyData = (month, years) => {
 const generateYearlyData = () => {
   const data = [];
   const endYear = new Date().getFullYear();
-  const startYear = endYear - 9; 
+  const startYear = endYear - 9;
 
   for (let currentYear = startYear; currentYear <= endYear; currentYear++) {
     const sales = 1000000 + Math.random() * 1000000;
@@ -68,7 +70,7 @@ const generateYearlyData = () => {
 };
 
 
-const Sales = () => {
+const Sales = ({totalStock,totalPurchase}) => {
   const theme = useTheme();
   const [timeFrame, setTimeFrame] = useState("monthly");
   const [chartData, setChartData] = useState([]);
@@ -85,23 +87,23 @@ const Sales = () => {
 
   const [list, setList] = useState([]);
 
-const handleGetData = (value)=>{
-if (value===1) { 
-  var fromDate = formatDate(startDate);
-  var toDate = formatDate(endDate);
-  fetchSalesAndProfit(`GetPOSSalesAndProfitDailySummaryAsync?startDate=${fromDate}&endDate=${toDate}`);
-  
-} else if (value===2){
-  var month = selectedMonth + 1;
-  fetchSalesAndProfit(`GetPOSSalesAndProfitMonthlySummaryAsync?month=${month}&yearRange=${yearCount}`);
-}
-else {
-  fetchSalesAndProfit(`GetPOSSalesAndProfitYearlySummaryAsync`);
-}
-};
+  const handleGetData = (value) => {
+    if (value === 1) {
+      var fromDate = formatDate(startDate);
+      var toDate = formatDate(endDate);
+      fetchSalesAndProfit(`GetPOSSalesAndProfitDailySummaryAsync?startDate=${fromDate}&endDate=${toDate}`);
+
+    } else if (value === 2) {
+      var month = selectedMonth + 1;
+      fetchSalesAndProfit(`GetPOSSalesAndProfitMonthlySummaryAsync?month=${month}&yearRange=${yearCount}`);
+    }
+    else {
+      fetchSalesAndProfit(`GetPOSSalesAndProfitYearlySummaryAsync`);
+    }
+  };
 
 
-const fetchSalesAndProfit = async (URL) => {
+  const fetchSalesAndProfit = async (URL) => {
     try {
       const response = await fetch(
         `${BASE_URL}/Dashboard/${URL}`,
@@ -149,31 +151,34 @@ const fetchSalesAndProfit = async (URL) => {
   const getChartTitle = () => {
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     switch (timeFrame) {
-        case 'daily':
-            if (!startDate || !endDate) return "Sales & Profit";
-            const options = { year: 'numeric', month: 'short', day: 'numeric' };
-            const startStr = startDate.toLocaleDateString('en-US', options);
-            const endStr = endDate.toLocaleDateString('en-US', options);
-            return `Daily: ${startStr} - ${endStr}`;
-        case 'monthly':
-            const monthName = monthNames[selectedMonth];
-            const plural = yearCount > 1 ? 's' : '';
-            return `Sales for ${monthName} Over the Last ${yearCount} Year${plural}`;
-        case 'yearly':
-            return "Yearly Sales & Profit Comparison";
-        default:
-            return "Sales & Profit";
+      case 'daily':
+        if (!startDate || !endDate) return "Sales & Profit";
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        const startStr = startDate.toLocaleDateString('en-US', options);
+        const endStr = endDate.toLocaleDateString('en-US', options);
+        return `Daily: ${startStr} - ${endStr}`;
+      case 'monthly':
+        const monthName = monthNames[selectedMonth];
+        const plural = yearCount > 1 ? 's' : '';
+        return `Sales for ${monthName} Over the Last ${yearCount} Year${plural}`;
+      case 'yearly':
+        return "Yearly Sales & Profit Comparison";
+      default:
+        return "Sales & Profit";
     }
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ pt: 0 }}>
         <Grid container spacing={3}>
+          <Grid item lg={6} md={6} xs={12} sm={12}>
+            <StockValueCard stock={totalStock} />
+          </Grid>
+          <Grid item lg={6} md={6} xs={12} sm={12}>
+             <TotalPurchaseCard purchase={totalPurchase} />
+          </Grid>
           <Grid item xs={12}>
-            <Typography as="h3" sx={{ fontSize: 18, fontWeight: 500 }}>
-              Sales & Profit
-            </Typography>
             <Paper sx={{ p: 2 }}>
               <Box
                 sx={{
@@ -185,7 +190,7 @@ const fetchSalesAndProfit = async (URL) => {
                   mb: 2,
                 }}
               >
-                <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 0, my: 2 }}>
                   {getChartTitle()}
                 </Typography>
 
@@ -247,7 +252,7 @@ const fetchSalesAndProfit = async (URL) => {
                           label="Years"
                           onChange={(e) => setYearCount(e.target.value)}
                         >
-                          {[1, 2, 3, 4, 5,6,7,8,9,10].map(year => (
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(year => (
                             <MenuItem key={year} value={year}>{year}</MenuItem>
                           ))}
                         </Select>
@@ -261,12 +266,12 @@ const fetchSalesAndProfit = async (URL) => {
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={list}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name"/>
+                    <XAxis dataKey="name" />
                     <YAxis
                       yAxisId="left"
                       orientation="left"
                       stroke={theme.palette.primary.main}
-                      tickFormatter={(value) => `$${value.toLocaleString()}`}
+                      tickFormatter={(value) => `Rs.${value.toLocaleString()}`}
                     />
                     <YAxis
                       yAxisId="right"
@@ -279,7 +284,7 @@ const fetchSalesAndProfit = async (URL) => {
                       formatter={(value, name) => {
                         if (name === "Profit Margin (%)")
                           return [`${value}%`, name];
-                        return [`$${value.toLocaleString()}`, name];
+                        return [`Rs.${value.toLocaleString()}`, name];
                       }}
                     />
                     <Legend />

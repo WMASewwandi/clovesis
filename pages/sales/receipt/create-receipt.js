@@ -31,6 +31,7 @@ import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 import { v4 as uuidv4 } from 'uuid';
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 import useShiftCheck from "@/components/utils/useShiftCheck";
+import { getPaymentMethods } from "@/components/types/types";
 
 const ReceiptCreate = () => {
   const today = new Date();
@@ -52,14 +53,19 @@ const ReceiptCreate = () => {
   const [customerInvoices, setCustomerInvoices] = useState([]);
   const router = useRouter();
   const [grossTotal, setGrossTotal] = useState(0);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [banks, setBanks] = useState([]);
+  const [bankId, setBankId] = useState(null);
+  const [chequeDate, setChequeDate] = useState(null);
+  const [chequeNo, setChequeNo] = useState(null);
   const [paymentType, setPaymentType] = useState(null);
   const [selectedInvoices, setSelectedInvoices] = useState([]);
   const [selectedInvoicesList, setSelectedInvoicesList] = useState([]);
   const [invoices, setInvoices] = useState([]); // Populate this with API data
   const [cashAmount, setCashAmount] = useState(0);
+  const [cardAmount, setCardAmount] = useState(0);
   const [issubmitting, setIssubmitting] = useState(false);
   const guidRef = useRef(uuidv4());
+  const { data: bankList } = useApi("/Bank/GetAllBanks");
   const { data: IsReceiptAllOutstandingView } = IsAppSettingEnabled("IsReceiptAllOutstandingView");
   //API Calls
   const { data: customerList } = useApi("/Customer/GetAllCustomer");
@@ -89,7 +95,10 @@ const ReceiptCreate = () => {
       0
     );
     setGrossTotal(gross.toFixed(2));
-  }, [selectedRows]);
+    if (bankList) {
+      setBanks(bankList);
+    }
+  }, [selectedRows, bankList]);
 
   const navigateToBack = () => {
     router.push({
@@ -158,10 +167,6 @@ const ReceiptCreate = () => {
     const invoice = customerInvoices[index];
 
     // Calculate the dueAmount dynamically (netTotal - paymentAmount)
-    const dueAmount =
-      invoice.totalInvoiceAmount != null && invoice.creditAmount != null
-        ? invoice.totalInvoiceAmount - invoice.creditAmount
-        : 0; // Default to 0 if dueAmount can't be calculated
 
     // Update customerInvoices
     setCustomerInvoices((prev) =>
@@ -212,7 +217,7 @@ const ReceiptCreate = () => {
       return;
     }
     if (cashAmount <= 0) {
-      toast.error("Cash Amount Cannot be 0");
+      toast.error("Amount Cannot be 0");
       return;
     }
     if (!paymentType) {
@@ -220,6 +225,29 @@ const ReceiptCreate = () => {
       return;
     }
 
+    if (paymentType === 5) {
+      if (!chequeNo) {
+        toast.error("Please Enter Cheque No");
+        return;
+      }
+      if (!chequeDate) {
+        toast.error("Please Enter Cheque Date");
+        return;
+      }
+    }
+
+    if (paymentType === 2 || paymentType === 3 || paymentType === 4) {
+      if (!bankId) {
+        toast.error("Please Select Bank");
+        return;
+      }
+
+      if (paymentType === 3 && (cardAmount === "" || cardAmount === 0)) {
+        toast.error("Please Enter Card Amount");
+        return;
+      }
+    }
+    
     const data = {
       ReceiptNumber: "R12345",
       ReceiptDate: receiptDate,
@@ -238,6 +266,10 @@ const ReceiptCreate = () => {
       SalesPersonName: salePerson.name,
       PaymentType: paymentType,
       FormSubmitId: guidRef.current,
+      ChequeDate: chequeDate,
+      ChequeNo: chequeNo,
+      BankId: bankId,
+      CardAmount : cardAmount || 0,
       ReceiptLineDetails: (IsReceiptAllOutstandingView ? customerInvoices : selectedInvoicesList).map((row) => ({
         InvoiceId: row.invoiceId,
         InvoiceNo: row.invoiceNumber,
@@ -422,7 +454,7 @@ const ReceiptCreate = () => {
                 />
               </Box>
               <Box mt={1} display="flex" justifyContent="space-between">
-                <Typography component="label">Cash Amount</Typography>
+                <Typography component="label">Amount</Typography>
                 <TextField
                   sx={{ width: "60%" }}
                   size="small"
@@ -467,7 +499,14 @@ const ReceiptCreate = () => {
               </Box>
               <Box mt={1} display="flex" justifyContent="space-between">
                 <Typography component="label">Payment Method</Typography>
-                <Select value={paymentType} onChange={(e) => setPaymentType(e.target.value)} sx={{ width: "60%" }} size="small">
+                <Select
+                  value={paymentType}
+                  onChange={(e) => {
+                    setPaymentType(e.target.value);
+                    setBankId(null);
+                    setChequeDate(null);
+                    setChequeNo("");
+                  }} sx={{ width: "60%" }} size="small">
                   <MenuItem value={1}>Cash</MenuItem>
                   <MenuItem value={2}>Card</MenuItem>
                   <MenuItem value={3}>Cash & Card</MenuItem>
@@ -475,7 +514,6 @@ const ReceiptCreate = () => {
                   <MenuItem value={5}>Cheque</MenuItem>
                 </Select>
               </Box>
-
               <Box mt={1} display="flex" justifyContent="space-between">
                 <Typography component="label">Total Outstanding</Typography>
                 <TextField
@@ -497,6 +535,78 @@ const ReceiptCreate = () => {
                 />
               </Box>
             </Grid>
+            {(paymentType && paymentType != 1) ?
+              <>
+                <Grid item xs={12}>
+                  <Typography variant="h6" component="label">
+                    {getPaymentMethods(paymentType)} Details
+                  </Typography>
+                </Grid>
+                {paymentType != 5 ?
+                  <Grid item xs={12} lg={6}>
+                    <Box mt={1} display="flex" justifyContent="space-between">
+                      <Typography component="label">Select Bank</Typography>
+                      <Select size="small" sx={{ width: "60%" }} fullWidth value={bankId} onChange={(e) => setBankId(e.target.value)}>
+                        {banks.length === 0 ? <MenuItem value="">No Data Available</MenuItem> :
+                          (banks.map((bank, i) => (
+                            <MenuItem key={i} value={bank.id}>{bank.name} - {bank.accountNo}</MenuItem>
+                          )))}
+                      </Select>
+                    </Box>
+                  </Grid>
+                  : ""}
+                {paymentType === 3 ? <>
+                  <Grid item xs={12} lg={6}>
+                    <Box mt={1} display="flex" justifyContent="space-between">
+                      <Typography component="label">Card Amount</Typography>
+                      <TextField
+                        sx={{ width: "60%" }}
+                        size="small"
+                        fullWidth
+                        type="number"
+                        value={cardAmount}
+                        onChange={(e) => {
+                          var am = e.target.value;
+                          if (am < cashAmount) {
+                            setCardAmount(e.target.value);
+                          }
+                        }}
+                      />
+                    </Box>
+                  </Grid>
+                </> : ""}
+                {paymentType === 5 ?
+                  <>
+                    <Grid item xs={12} lg={6}>
+                      <Box mt={1} display="flex" justifyContent="space-between">
+                        <Typography component="label">Cheque No</Typography>
+                        <TextField
+                          sx={{ width: "60%" }}
+                          size="small"
+                          fullWidth
+                          value={chequeNo}
+                          onChange={(e) => setChequeNo(e.target.value)}
+                        />
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} lg={6}>
+                      <Box mt={1} display="flex" justifyContent="space-between">
+                        <Typography component="label">Cheque Date</Typography>
+                        <TextField
+                          sx={{ width: "60%" }}
+                          size="small"
+                          fullWidth
+                          type="date"
+                          value={chequeDate}
+                          onChange={(e) => setChequeDate(e.target.value)}
+                        />
+                      </Box>
+                    </Grid>
+                  </>
+                  : ""}
+              </>
+              : ""}
+
 
             <Grid item xs={12} my={2}>
               <TableContainer component={Paper}>
@@ -522,7 +632,7 @@ const ReceiptCreate = () => {
                         Sales Returned Amount
                       </TableCell>
                       <TableCell sx={{ color: "#fff" }}>Due Amount</TableCell>
-                      <TableCell sx={{ color: "#fff" }}>
+                      <TableCell align="right" sx={{ color: "#fff" }}>
                         Payment Amount
                       </TableCell>
                     </TableRow>
@@ -554,14 +664,14 @@ const ReceiptCreate = () => {
                           <TableCell>{invoice.totalInvoiceAmount}</TableCell>
                           <TableCell>
                             {invoice.totalInvoiceAmount -
-                              (invoice.outstandingAmount+invoice.returnedAmount)}
-                             
+                              (invoice.outstandingAmount + invoice.returnedAmount)}
+
                           </TableCell>
                           <TableCell>{invoice.returnedAmount}</TableCell>
                           <TableCell>{invoice.outstandingAmount}</TableCell>
-                          <TableCell>
+                          <TableCell align="right">
                             <TextField
-                              sx={{ width: "105px" }}
+                              sx={{ width: "150px" }}
                               size="small"
                               type="number"
                               inputProps={{

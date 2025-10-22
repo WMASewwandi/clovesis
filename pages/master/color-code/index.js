@@ -107,24 +107,30 @@ export default function ColorCode() {
         columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}
       >
         <Grid item xs={12}>
-          <Grid
-            container
-            alignItems="center"
-            justifyContent="space-between"
-            sx={{ mb: 2 }}
-          >
-            <Grid item xs={12} md={6} lg={5} order={{ xs: 2, lg: 1 }}>
-              <Search className="search-form" style={{ width: "100%" }}>
-                <StyledInputBase
-                  placeholder="Search here.."
-                  inputProps={{ "aria-label": "search" }}
-                  value={search}
-                  onChange={handleSearchChange}
-                />
-              </Search>
-            </Grid>
-            {create ? <AddColor fetchItems={fetchColorCodeList} /> : ""}
-          </Grid>
+         <Grid
+  container
+  alignItems="center"
+  justifyContent="space-between"
+  sx={{ mb: 2 }}
+>
+  {/* Search bar on the left */}
+  <Grid item xs={12} md={6} lg={5}>
+    <Search className="search-form" style={{ width: "100%" }}>
+      <StyledInputBase
+        placeholder="Search here.."
+        inputProps={{ "aria-label": "search" }}
+        value={search}
+        onChange={handleSearchChange}
+      />
+    </Search>
+  </Grid>
+
+  {/* Add button on the right */}
+  <Grid item>
+    {create ? <AddColor fetchItems={fetchColorCodeList} /> : ""}
+  </Grid>
+</Grid>
+
         </Grid>
         <Grid item xs={12}>
           <TableContainer component={Paper}>

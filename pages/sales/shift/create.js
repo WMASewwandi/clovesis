@@ -20,7 +20,6 @@ import { Field, Form, Formik } from "formik";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import useApi from "@/components/utils/useApi";
 import * as Yup from "yup";
 import IsDayEndDone from "@/components/utils/IsDayEndDone";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
@@ -74,6 +73,7 @@ export default function AddShift({ fetchItems }) {
   };
 
   useEffect(() => {
+
     if (open) {
       setTimeout(() => {
         if (inputRef.current) {
@@ -204,7 +204,7 @@ export default function AddShift({ fetchItems }) {
       <Modal open={open}>
         <Box sx={style}>
           <Formik
-            initialValues={{ Name: "", TerminalId: "", IsActive: true }}
+            initialValues={{ Name: "", TerminalId: "" ,IsActive: true }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
@@ -218,9 +218,9 @@ export default function AddShift({ fetchItems }) {
                       </Typography>
                     </Grid>
                   </Grid>
-                  <Box sx={{maxHeight: '60vh',overflowY: 'scroll'}}>
-                    <Grid container>
-                      <Grid item xs={12} lg={3} mt={2}>
+                  <Box sx={{ maxHeight: '60vh', overflowY: 'scroll' }}>
+                    <Grid container spacing={1}>
+                      <Grid item mt={2} xs={12} lg={6}>
                         <Typography
                           sx={{
                             fontWeight: "500",
@@ -230,8 +230,6 @@ export default function AddShift({ fetchItems }) {
                         >
                           Terminal
                         </Typography>
-                      </Grid>
-                      <Grid item xs={12} lg={5} mt={2}>
                         <FormControl fullWidth>
                           <Field
                             as={TextField}

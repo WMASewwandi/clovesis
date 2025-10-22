@@ -53,15 +53,8 @@ const CNN = () => {
   useEffect(() => {
     if (ccnList) {
       setInvoice(ccnList);
-      // console.log("ccn list api", ccnList);
-
     }
   }, [ccnList]);
-
-  useEffect(() => {
-    // console.log("ccn list", invoice);
-
-  }, [invoice]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -78,8 +71,8 @@ const CNN = () => {
 
   const filteredData = invoice.filter(
     (item) =>
-      item.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.documentNo.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.customerName && item.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (item.documentNo && item.documentNo.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const paginatedData = filteredData.slice(
@@ -95,10 +88,10 @@ const CNN = () => {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Customer Credit Notes</h1>
+        <h1>Customer Notes</h1>
         <ul>
           <li>
-            <Link href="/sales/credit-note">Customer Credit Notes</Link>
+            <Link href="/sales/credit-note">Customer Notes</Link>
           </li>
         </ul>
       </div>
@@ -138,10 +131,11 @@ const CNN = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>#</TableCell>
-                  <TableCell>Credit Note Number</TableCell>
+                  <TableCell>Document Number</TableCell>
+                  <TableCell>Credit/Debit</TableCell>
                   <TableCell>Customer Name</TableCell>
-                  <TableCell>Credit Amount</TableCell>
-                  <TableCell>Credit Note Date</TableCell>
+                  <TableCell>Amount</TableCell>
+                  <TableCell>Date</TableCell>
                   <TableCell>Sales Person Name</TableCell>
                   <TableCell>Remark</TableCell>
                   <TableCell align="right">Action</TableCell>
@@ -150,9 +144,9 @@ const CNN = () => {
               <TableBody>
                 {paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center">
+                    <TableCell colSpan={9} align="center">
                       <Typography color="error">
-                        No Customer Credit Notes Available
+                        No Customer Notes Available
                       </Typography>
                     </TableCell>
                   </TableRow>
@@ -161,8 +155,10 @@ const CNN = () => {
                     <TableRow key={item.id}>
                       <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                       <TableCell>{item.documentNo}</TableCell>
+                      <TableCell>{item.noteType}</TableCell>
                       <TableCell>{item.customerName}</TableCell>
-                      <TableCell>{formatCurrency(item.creditAmount)}</TableCell>
+                      {/* THIS IS THE KEY FIX: Changed item.creditAmount to item.amount */}
+                      <TableCell>{formatCurrency(item.amount)}</TableCell>
                       <TableCell>{formatDate(item.date)}</TableCell>
                       <TableCell>{item.salesPersonName}</TableCell>
                       <TableCell>{item.remark || "-"}</TableCell>
@@ -189,6 +185,5 @@ const CNN = () => {
     </>
   );
 };
-
 
 export default CNN;

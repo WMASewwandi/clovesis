@@ -1,4 +1,4 @@
-import React, {  } from "react";
+import React from "react";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
@@ -22,7 +22,7 @@ import { getCashType } from "@/components/types/types";
 import AddContact from "./create";
 
 export default function Contacts() {
-  const cId = sessionStorage.getItem("category")
+  const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
   const {
     data: contacts,
@@ -94,33 +94,40 @@ export default function Contacts() {
                   <TableCell>Email</TableCell>
                   <TableCell>Phone Number</TableCell>
                   <TableCell>Company</TableCell>
-                  <TableCell>Package</TableCell>
+                  <TableCell>Package / Service</TableCell>
                   <TableCell>Description</TableCell>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Time</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {contacts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={9}>
                       <Typography color="error">No Data Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contacts.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.email}</TableCell>
-                      <TableCell>{item.phoneNumber}</TableCell>
-                      <TableCell>{item.company}</TableCell>
-                      <TableCell>{item.package}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell align="right">
-                        {update ? <EditCashFlowType item={item} fetchItems={fetchContacts}/> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchContacts} /> : ""}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  contacts.map((item, index) => {
+                    const createdDate = item.createdOn ? new Date(item.createdOn) : null;
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{item.name}</TableCell>
+                        <TableCell>{item.email}</TableCell>
+                        <TableCell>{item.phoneNumber}</TableCell>
+                        <TableCell>{item.company}</TableCell>
+                        <TableCell>{item.package}</TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell>{createdDate ? createdDate.toLocaleDateString() : 'N/A'}</TableCell>
+                        <TableCell>{createdDate ? createdDate.toLocaleTimeString() : 'N/A'}</TableCell>
+                        <TableCell align="right">
+                          {update ? <EditCashFlowType item={item} fetchItems={fetchContacts} /> : ""}
+                          {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchContacts} /> : ""}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
                 )}
               </TableBody>
             </Table>

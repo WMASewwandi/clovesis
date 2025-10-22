@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Checkbox, FormControl, FormControlLabel, Grid, InputLabel, MenuItem, Select, Typography } from "@mui/material";
+import { Checkbox, FormControlLabel, Grid, MenuItem, Select, Typography } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
@@ -9,6 +9,7 @@ import * as Yup from "yup";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import useApi from "@/components/utils/useApi";
 
 const style = {
   position: "absolute",
@@ -23,19 +24,16 @@ const style = {
 
 const validationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
-  UserType: Yup.string().required("User Type is required"),
- OrderNumber: Yup.number()
-    .typeError("Order Number must be a number")
-    .required("Order Number is required")
-    .positive("Order Number must be positive")
-    .integer("Order Number must be an integer"),
-  
+  SupplierId: Yup.string().required("Please Select Supplier"),
 });
 
-export default function AddTask({ fetchItems }) {
+export default function AddDBRMachine({ fetchItems }) {
   const [open, setOpen] = React.useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [salesPersons, setSalesPersons] = useState([]);
   const handleClose = () => setOpen(false);
-  const [userTypes, setUserTypes] = useState([]);
+
+  const { data: supplierList } = useApi("/Supplier/GetAllSupplier");
 
   const inputRef = useRef(null);
 
@@ -49,15 +47,10 @@ export default function AddTask({ fetchItems }) {
     }
   }, [open]);
 
-  const handleOpen = async () => {
-    fetchUserTypes();
-    setOpen(true);
-  };
-
-  const fetchUserTypes = async () => {
+  const fetchSalesPerson = async (supplierId) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/User/GetAllUserTypes`,
+        `${BASE_URL}/SalesPerson/GetSalesPersonsBySupplier?supplierId=${supplierId}`,
         {
           method: "GET",
           headers: {
@@ -68,18 +61,27 @@ export default function AddTask({ fetchItems }) {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch");
+        throw new Error("Failed to fetch Neck Body List");
       }
-
       const data = await response.json();
-      setUserTypes(data);
+      setSalesPersons(data);
     } catch (error) {
-      console.error("Error fetching:", error);
+      console.error("Error fetching Neck Body List:", error);
     }
   };
 
+  useEffect(() => {
+    if (supplierList) {
+      setSuppliers(supplierList);
+    }
+  }, [supplierList]);
+
+  const handleOpen = async () => {
+    setOpen(true);
+  };
+
   const handleSubmit = (values) => {
-    fetch(`${BASE_URL}/Tasks/CreateTask`, {
+    fetch(`${BASE_URL}/DBRMachine/CreateMachine`, {
       method: "POST",
       body: JSON.stringify(values),
       headers: {
@@ -105,7 +107,7 @@ export default function AddTask({ fetchItems }) {
   return (
     <>
       <Button variant="outlined" onClick={handleOpen}>
-        + new task
+        + add new
       </Button>
       <Modal
         open={open}
@@ -117,9 +119,8 @@ export default function AddTask({ fetchItems }) {
           <Formik
             initialValues={{
               Name: "",
-              Description: "",
-              UserType: null,
-              OrderNumber: null,
+              SupplierId: null,
+              SalesPersonId: null,
               IsActive: true,
             }}
             validationSchema={validationSchema}
@@ -136,10 +137,10 @@ export default function AddTask({ fetchItems }) {
                         mb: "5px",
                       }}
                     >
-                      Add Task
+                      Add DBR Machine
                     </Typography>
                   </Grid>
-                  <Box>
+                  <Box sx={{ maxHeight: '60vh', overflowY: 'scroll' }}>
                     <Grid container spacing={1}>
                       <Grid item xs={12}>
                         <Typography
@@ -159,89 +160,56 @@ export default function AddTask({ fetchItems }) {
                           helperText={touched.Name && errors.Name}
                         />
                       </Grid>
-                      <Grid item xs={12}>
-                        <Typography
-                          as="h5"
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "12px",
-                          }}
-                        >
-                          User Type
-                        </Typography>
-                        <FormControl fullWidth>
-                          <InputLabel id="demo-simple-select-label">
-                            User Type
-                          </InputLabel>
-                          <Field
-                            as={Select}
-                            labelId="category-select-label"
-                            id="category-select"
-                            name="UserType"
-                            label="User Type"
-                            value={values.UserType}
-                            onChange={(e) =>
-                              setFieldValue("UserType", e.target.value)
-                            }
-                          >
-                            {userTypes.length === 0 ? (
-                              <MenuItem disabled color="error">
-                                No User Types Available
-                              </MenuItem>
-                            ) : (
-                              userTypes.map((type, index) => (
-                                <MenuItem
-                                  key={index}
-                                  value={type.id}
-                                >
-                                  {type.name}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                          {touched.UserType && Boolean(errors.UserType) && (
-                            <Typography variant="caption" color="error">
-                              {errors.UserType}
-                            </Typography>
-                          )}
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12}>
+                      <Grid item xs={12} mt={1}>
                         <Typography
                           sx={{
                             fontWeight: "500",
                             mb: "5px",
                           }}
                         >
-                          Description
+                          Supplier
                         </Typography>
-                        <Field
-                          as={TextField}
+                        <Select
                           fullWidth
-                          name="Description"
-                        />
+                          value={values.SupplierId}
+                          onChange={(e) => {
+                            setFieldValue("SupplierId", e.target.value);
+                            fetchSalesPerson(e.target.value);
+                            setFieldValue("SalesPersonId", null);
+                          }}
+                        >
+                          {suppliers.length === 0 ? <MenuItem value="">No Suppliers Available</MenuItem>
+                            : (suppliers.map((supplier) => (
+                              <MenuItem key={supplier.id} value={supplier.id}>{supplier.name}</MenuItem>
+                            )))}
+                        </Select>
+                        {touched.SupplierId && Boolean(errors.SupplierId) && (
+                          <Typography variant="caption" color="error">
+                            {errors.SupplierId}
+                          </Typography>
+                        )}
                       </Grid>
                       <Grid item xs={12} mt={1}>
-                       <Typography
-                        sx={{
-                          fontWeight: "500",
-                          fontSize: "14px",
-                          mb: "5px",
-                        }}
-                      >
-                        Order Number
-                      </Typography>
-
-                      <Field
-                        as={TextField}
-                        fullWidth
-                        name="OrderNumber"
-                        type="number"
-                        error={touched.OrderNumber && Boolean(errors.OrderNumber)}
-                        helperText={touched.OrderNumber && errors.OrderNumber}
-                      />
-
+                        <Typography
+                          sx={{
+                            fontWeight: "500",
+                            mb: "5px",
+                          }}
+                        >
+                          Sales Person
+                        </Typography>
+                        <Select
+                          fullWidth
+                          value={values.SalesPersonId}
+                          onChange={(e) => {
+                            setFieldValue("SalesPersonId", e.target.value);
+                          }}
+                        >
+                          {salesPersons.length === 0 ? <MenuItem value="">No Sales Persons Available</MenuItem>
+                            : (salesPersons.map((persons) => (
+                              <MenuItem key={persons.id} value={persons.id}>{persons.name}</MenuItem>
+                            )))}
+                        </Select>
                       </Grid>
                       <Grid item xs={12} mt={1} p={1}>
                         <FormControlLabel

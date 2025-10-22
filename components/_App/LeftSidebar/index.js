@@ -151,25 +151,43 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
           <SidebarWrap>
             <Box
               sx={{
-                mb: "20px",
-                px: "20px",
+                px: "10px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
+                height: "100px",
+                justifyContent: {xs:"space-between",lg:"center"},
               }}
             >
-              <Link href={ProjectNo === 2 ? "/dashboard/reservation" : "/"}>
+              <Link
+                href={ProjectNo === 2 ? "/dashboard/reservation" : "/"}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  height: "100%",
+                }}
+              >
                 {ProjectNo === 1 ? (
                   <>
                     <img
-                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png"}
+                      src={companyLogo !== "" ? companyLogo : "/images/logo(1).png"}
                       alt="Logo"
                       className="black-logo"
+                      style={{
+                        maxHeight: "100%",
+                        maxWidth: "180px",
+                        objectFit: "contain",
+                      }}
                     />
                     <img
-                      src={companyLogo != "" ? companyLogo : "/images/logo(1).png"}
+                      src={companyLogo !== "" ? companyLogo : "/images/logo(1).png"}
                       alt="Logo"
                       className="white-logo"
+                      style={{
+                        maxHeight: "100%",
+                        maxWidth: "180px",
+                        objectFit: "contain",
+                        display: "none",
+                      }}
                     />
                   </>
                 ) : (
@@ -178,11 +196,22 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                       src="/images/db-logo.png"
                       alt="Logo"
                       className="black-logo"
+                      style={{
+                        maxHeight: "100%",
+                        maxWidth: "180px",
+                        objectFit: "contain",
+                      }}
                     />
                     <img
                       src="/images/db-logo.png"
                       alt="Logo"
                       className="white-logo"
+                      style={{
+                        maxHeight: "100%",
+                        maxWidth: "180px",
+                        objectFit: "contain",
+                        display: "none",
+                      }}
                     />
                   </>
                 )}
@@ -199,6 +228,8 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                 <ClearIcon />
               </IconButton>
             </Box>
+
+
             {availableItems.map((item, index) => (
               <SubMenu item={item} allItems={allItems} key={index} onCheckPermission={handleSetPermission} />
             ))}

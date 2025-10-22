@@ -50,6 +50,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Chart Of Account", path: "/finance/chart-of-account/", categoryId: 41, isAvailable: true },
                 { title: "Payments", path: "/finance/payments/", categoryId: 42, isAvailable: true },
                 { title: "Tax", path: "/finance/tax/", categoryId: 58, isAvailable: true },
+                { title: "Bank History", path: "/finance/bank-history/", categoryId: 97, isAvailable: true },
+                { title: "Cheque Payments", path: "/finance/cheque-payments/", categoryId: 98, isAvailable: true },
             ],
         },
         {
@@ -96,6 +98,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Steward", path: "/master/steward/", categoryId: 90, isAvailable: true },                
                 { title: "Employee", path: "/master/Employee/", categoryId: 93, isAvailable: true },
                 { title: "Combo Meal", path: "/master/combo/", categoryId: 94, isAvailable: true },
+                { title: "DBR Machine", path: "/master/dbr-machine/", categoryId: 100, isAvailable: true },
             ],
         },
         {
@@ -163,7 +166,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             IsAvailable: true,
             subNav: [
                 { title: "Invoice", path: "/sales/invoice/", categoryId: 22, isAvailable: true },
-                { title: "Customer Credit Notes", path: "/sales/credit-note/", categoryId: 23, isAvailable: true },
+                { title: "Customer Credit/Debit Notes", path: "/sales/credit-note/", categoryId: 23, isAvailable: true },
                 { title: "Receipt", path: "/sales/receipt/", categoryId: 24, isAvailable: true },
                 { title: "Shift", path: "/sales/shift/", categoryId: 25, isAvailable: true },
                 { title: "Day End", path: "/sales/day-end/", categoryId: 26, isAvailable: true },
@@ -297,6 +300,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             { title: "Company", path: "/administrator/company/", categoryId: 36, isAvailable: true },
             { title: "Fiscal Periods", path: "/administrator/fiscal-period/", categoryId: 37, isAvailable: true },
             { title: "Terminal", path: "/administrator/terminal/", categoryId: 38, isAvailable: true },
+             { title: "Printers", path: "/administrator/Printers/", categoryId: 99, isAvailable: true },
         ],
     });
 

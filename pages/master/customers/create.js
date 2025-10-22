@@ -38,6 +38,11 @@ const validationSchema = Yup.object().shape({
     Yup.object().shape({
       ContactName: Yup.string().required("Contact Name is required"),
       EmailAddress: Yup.string().email("Invalid email address"),
+    ContactNo: Yup.string()
+  .matches(/^\d+$/, "Contact No must contain only digits"),
+  
+
+      
     })
   ),
 });
@@ -560,6 +565,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                                   as={TextField}
                                   fullWidth
                                   name={`CustomerContactDetails.${index}.ContactNo`}
+                                  
                                   error={
                                     touched.CustomerContactDetails?.[index]
                                       ?.ContactNo &&
@@ -631,6 +637,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                         type="button"
                         color="error"
                         variant="contained"
+                         onClick={handleClose}  // <-- This is what was missing
                       >
                         Cancel
                       </Button>

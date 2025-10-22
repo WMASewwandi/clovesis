@@ -25,6 +25,11 @@ const style = {
 const validationSchema = Yup.object().shape({
   Name: Yup.string().required("Name is required"),
   UserType: Yup.string().required("User Type is required"),
+   OrderNumber: Yup.number()
+      .typeError("Order Number must be a number")
+      .required("Order Number is required")
+      .positive("Order Number must be positive")
+      .integer("Order Number must be an integer"),
 });
 
 export default function EditTask({ fetchItems, item }) {
@@ -219,7 +224,7 @@ export default function EditTask({ fetchItems, item }) {
                         />
                       </Grid>
                       <Grid item xs={12} mt={1}>
-                        <Typography
+                       <Typography
                           sx={{
                             fontWeight: "500",
                             fontSize: "14px",
@@ -228,11 +233,16 @@ export default function EditTask({ fetchItems, item }) {
                         >
                           Order Number
                         </Typography>
+
                         <Field
                           as={TextField}
                           fullWidth
                           name="OrderNumber"
+                          type="number"
+                          error={touched.OrderNumber && Boolean(errors.OrderNumber)}
+                          helperText={touched.OrderNumber && errors.OrderNumber}
                         />
+
                       </Grid>
                       <Grid item xs={12} mt={1} p={1}>
                         <FormControlLabel

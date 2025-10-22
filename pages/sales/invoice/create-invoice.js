@@ -6,9 +6,11 @@ import {
   Box,
   Button,
   IconButton,
+  MenuItem,
   Modal,
   Paper,
   Radio,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -70,10 +72,14 @@ const InvoiceCreate = () => {
   const [isDisable, setIsDisable] = useState(false);
   const [rows, setRows] = useState([]);
   const [rowsCC, setRowsCC] = useState([]);
+  const [paymentType, setPaymentType] = useState(null);
   const guidRef = useRef(uuidv4());
   const { result: shiftResult, message: shiftMessage } = useShiftCheck();
   const { data: IsCostPriceVisible } = IsAppSettingEnabled(
     "IsCostPriceVisible"
+  );
+  const { data: isPaymentTypeEnableToInvoice } = IsAppSettingEnabled(
+    "IsPaymentTypeEnableToInvoice"
   );
   const { data: IsExpireDateAvailable } = IsAppSettingEnabled(
     "IsExpireDateAvailable"
@@ -258,6 +264,11 @@ const InvoiceCreate = () => {
       toast.warning(shiftMessage);
       return;
     }
+
+    // if (isPaymentTypeEnableToInvoice && !paymentType) {
+    //   toast.warning("Please Select Payment Type");
+    //   return;
+    // }
     const outletRows = rows.map((row, i) => ({
       DocumentNo: invNo,
       ProductId: row.productId,
@@ -391,6 +402,7 @@ const InvoiceCreate = () => {
       DoctorId: selectedDoctor ? selectedDoctor.id : null,
       DoctorName: selectedDoctor ? selectedDoctor.firstName + " " + selectedDoctor.lastName : "",
       InvoiceLineDetails: invoiceLines,
+      PaymentType: paymentType
     };
 
     const invalidItem = invoiceLines.some(r => !r.Qty || r.Qty <= 0);
@@ -819,6 +831,39 @@ const InvoiceCreate = () => {
                   </Grid>
                 }
 
+                {isPaymentTypeEnableToInvoice ?
+                  <Grid
+                    item
+                    xs={12}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    mt={0.5}
+                  >
+                    <Typography
+                      component="label"
+                      sx={{
+                        fontWeight: "500",
+                        p: 1,
+                        fontSize: "14px",
+                        display: "block",
+                        width: "35%",
+                      }}
+                    >
+                      Payment Type
+                    </Typography>
+                    <Select
+                      value={paymentType}
+                      onChange={(e) => setPaymentType(e.target.value)} sx={{ width: "60%" }} size="small">
+                      <MenuItem value={1}>Cash</MenuItem>
+                      <MenuItem value={2}>Card</MenuItem>
+                      <MenuItem value={3}>Cash & Card</MenuItem>
+                      <MenuItem value={4}>Bank Transfer</MenuItem>
+                      <MenuItem value={5}>Cheque</MenuItem>
+                    </Select>
+                  </Grid> : ""
+                }
+
                 {isDoctorInvolved && (
                   <>
                     <Grid
@@ -936,7 +981,7 @@ const InvoiceCreate = () => {
                   />}
                 {isBookingSystem && (
                   <Button variant={isItemSearch ? "contained" : "outlined"} size="small" color={isItemSearch ? "warning" : "secondary"} onClick={() => { setIsItemSearch(prev => !prev); setStock([]); setSelectedItem(); }}>
-                   Items
+                    Items
                   </Button>
                 )}
                 {IsOutletAvailable && (

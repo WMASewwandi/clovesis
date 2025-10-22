@@ -7,10 +7,6 @@ import Outlet from "./Outlet";
 import Sales from "./Sales";
 import OutstandingCustomers from "./OutstandingCustomers";
 import OutstandingSuppliers from "./OutstandingSuppliers";
-import StockValueCard from "./StockValueCard";
-import TotalOutstandingCard from "./TotalOutstandingCard";
-import TotalPurchaseCard from "./TotalPurchaseCard";
-import TotalSalesCard from "./TotalSalesCard";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -200,47 +196,20 @@ const [toDate, setToDate] = useState(lastDayOfMonth.toISOString().split('T')[0])
                   </Box>
                 </Box>
               </Box>
+              <Box mt={1}>
+                <Typography sx={{color: '#00c851'}}>Date filter applicable</Typography>
+              </Box>
             </Card>
           </Grid>
         ))}
 
         {/* Sales Section */}
         <Grid item xs={12} sm={12} md={6} lg={6} xl={6}>
-          <Sales />
-
-          {/* Financial Summary Cards After Sales */}
-          <Grid container spacing={2}>
-            {/* First Row */}
-            <Grid container item spacing={2}>
-              <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
-                <TotalSalesCard
-                       amount={features.totalSales}
-                       profit={features.profit}
-                       profitMargin={features.profitMargin}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
-                <TotalOutstandingCard
-                  outStandingFeatures={features}
-                />
-              </Grid>
-            </Grid>
-
-           
-            <Grid container item spacing={2}>
-              <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
-                <TotalPurchaseCard purchase={features.totalPurchase} />
-              </Grid>
-              <Grid item xs={12} sm={6} md={6} lg={6} xl={6}>
-                <StockValueCard stock={features.stock} />
-              </Grid>
-            </Grid>
-          </Grid>
+          <Sales totalStock={features.stock} totalPurchase={features.totalPurchase}/>          
         </Grid>
 
-        {/* Outstanding Section */}
         <Grid item xs={12} sm={12} md={6} lg={6} xl={6}>
-          <OutstandingCustomers />
+          <OutstandingCustomers totalProfit={features.profit} totalProfitMargin={features.profitMargin} totalSales={features.totalSales} totalCustomers={features.customers}/>
           <OutstandingSuppliers />
         </Grid>
       </Grid>

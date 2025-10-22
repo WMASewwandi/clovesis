@@ -27,6 +27,7 @@ import CustomerPaymentSummaryReport from "@/components/UIElements/Modal/Reports/
 import DoctorWiseSalesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/DoctorWiseSalesSummaryReport";
 
 import BASE_URL from "Base/api";
+import CashBookSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashBookSummaryReport";
 
 const componentMap = {
   CompanyWiseProfit,
@@ -41,7 +42,8 @@ const componentMap = {
   FiscalPeriodReport,
   CashFlowSummaryReport,
   CustomerPaymentSummaryReport,
-  DoctorWiseSalesSummaryReport
+  DoctorWiseSalesSummaryReport,
+  CashBookSummaryReport
 };
 
 const SummeryReports = () => {

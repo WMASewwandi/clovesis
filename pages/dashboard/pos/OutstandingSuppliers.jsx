@@ -37,9 +37,12 @@ const OutstandingSuppliers = () => {
         mb: "15px",
       }}
     >
-      <Box sx={{ paddingBottom: "10px" }}>
+      <Box sx={{ paddingBottom: "10px" }} display="flex" justifyContent="space-between">
         <Typography as="h3" sx={{ fontSize: 18, fontWeight: 500 }}>
           Suppliers Outstanding
+        </Typography>
+        <Typography as="h3" sx={{ fontSize: 18, fontWeight: 500 }}>
+          Total :  Rs. {formatCurrency(totalOutstandingSum)}
         </Typography>
       </Box>
 

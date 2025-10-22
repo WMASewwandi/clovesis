@@ -16,7 +16,7 @@ import {
   Tooltip,
   IconButton,
 } from "@mui/material";
-import { Form, Formik } from "formik";
+import { Field, Form, Formik } from "formik";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -52,7 +52,7 @@ export default function EditShift({ fetchItems, item }) {
     }
   }, [open]);
 
-  const handleOpen = () => {
+  const handleOpen = () => {    
     setCashData(denominations.map((val) => ({ val, qty: "", total: 0 })));
     setOpen(true);
   };
@@ -168,8 +168,8 @@ export default function EditShift({ fetchItems, item }) {
                   </Grid>
 
                   <Box sx={{ maxHeight: '60vh', overflowY: 'scroll' }}>
-                    <Grid container>
-                      <Grid item xs={12} lg={3} mt={2}>
+                    <Grid container spacing={1}>
+                      <Grid item xs={12} lg={6} mt={2}>
                         <Typography
                           sx={{
                             fontWeight: "500",
@@ -179,8 +179,6 @@ export default function EditShift({ fetchItems, item }) {
                         >
                           Terminal
                         </Typography>
-                      </Grid>
-                      <Grid item xs={12} lg={5} mt={2}>
                         <TextField
                           size="small"
                           fullWidth

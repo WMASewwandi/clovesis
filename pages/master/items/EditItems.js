@@ -454,17 +454,18 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                             name="UOM"
                             size="small"
                           >
-                            {uoms.length === 0 ? (
-                              <MenuItem disabled>
-                                No Unit of Measures Available
-                              </MenuItem>
+                           {uoms.filter(uom => uom.isActive).length === 0 ? (
+                              <MenuItem disabled>No Active UOM Available</MenuItem>
                             ) : (
-                              uoms.map((uom, index) => (
-                                <MenuItem key={index} value={uom.id}>
-                                  {uom.name}
-                                </MenuItem>
-                              ))
+                              uoms
+                                .filter(uom => uom.isActive)
+                                .map((uom, index) => (
+                                  <MenuItem key={index} value={uom.id}>
+                                    {uom.name}
+                                  </MenuItem>
+                                ))
                             )}
+
                           </Field>
                         </FormControl>
                       </Grid>

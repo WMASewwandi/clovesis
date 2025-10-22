@@ -26,6 +26,7 @@ export default function ViewCustomerDialog({ customerId }) {
   const [scroll, setScroll] = React.useState("paper");
   const [customer, setCustomer] = useState();
 
+  console.log(customer);
   const fetchCustomerDetails = async () => {
     try {
       const response = await fetch(
@@ -113,7 +114,11 @@ export default function ViewCustomerDialog({ customerId }) {
                           Address
                         </TableCell>
                         <TableCell align="right">
-                          {customer && customer.address}
+                          {customer && (
+                            [customer.addressLine1, customer.addressLine2, customer.addressLine3]
+                              .filter(Boolean)
+                              .join(', ')
+                          )}
                         </TableCell>
                       </TableRow>
                       <TableRow>

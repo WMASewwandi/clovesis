@@ -52,6 +52,9 @@ const StockValueCard = ({ stock }) => {
           </Box>
         </Box>
       </Box>
+      <Box mt={1}>
+        <Typography sx={{ color: '#ff4444' }}>Date filter not applicable</Typography>
+      </Box>
     </Card>
   );
 };

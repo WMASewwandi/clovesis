@@ -51,14 +51,17 @@ const TotalSalesCard = ({ amount, profit, profitMargin }) => {
             <Typography variant="h1" sx={{ fontSize: 25, fontWeight: 700, marginTop: '4px' }}>
               {formatCurrency(amount)}
             </Typography>
-            <Typography sx={{ fontSize: '13px', marginTop: '8px' }}>
+            {/* <Typography sx={{ fontSize: '13px', marginTop: '8px' }}>
               Profit: {formatCurrency(profit)}
             </Typography>
             <Typography sx={{ fontSize: '13px', marginTop: '4px' }}>
               Profit Margin: {formatPercentage(profitMargin)}
-            </Typography>
+            </Typography> */}
           </Box>
         </Box>
+      </Box>
+      <Box mt={1}>
+        <Typography sx={{ color: '#00c851' }}>Date filter applicable</Typography>
       </Box>
     </Card>
   );

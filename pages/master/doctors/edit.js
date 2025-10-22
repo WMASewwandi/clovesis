@@ -25,7 +25,11 @@ const style = {
 const validationSchema = Yup.object().shape({
   FirstName: Yup.string().required("First Name is required"),
   LastName: Yup.string().required("Last Name is required"),
-  NIC: Yup.string().required("NIC is required"),
+ NIC: Yup.string()
+  .required("NIC is required")
+  .matches(/^[0-9]+$/, "NIC must contain only numbers")
+  .min(9, "NIC must be at least 9 digits")
+  .max(12, "NIC must be at most 12 digits"),
   MobileNo: Yup.string().required("Mobile No is required"),
 });
 

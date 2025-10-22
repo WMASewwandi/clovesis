@@ -3,9 +3,10 @@ import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { formatCurrency } from "@/components/utils/formatHelper";
+import { Button, ButtonGroup } from "@mui/material";
 
 
-const TotalOutstandingCard = ({ outStandingFeatures }) => {
+const TotalOutstandingCard = ({ customers }) => {
 
   return (
     <Card
@@ -38,29 +39,31 @@ const TotalOutstandingCard = ({ outStandingFeatures }) => {
             }}
             className="mr-10px"
           >
-            <i className="ri-exchange-dollar-line"></i>
+            <i className="ri-user-line"></i>
           </Box>
 
-          <Box>
-            <Typography sx={{ fontSize: "13px" }}>Total Outstanding</Typography>
+          <Box >
+            <Typography sx={{ fontSize: "13px" }}>Total Customers</Typography>
+
             <Typography
               variant="h1"
               sx={{ fontSize: 25, fontWeight: 700, marginTop: "4px" }}
             >
-              {formatCurrency(outStandingFeatures.totalOutstanding
-)}
+              {customers}
             </Typography>
           </Box>
         </Box>
       </Box>
-      <Box sx={{ marginTop: "8px" }}>
+      {/* <Box sx={{ marginTop: "8px" }}>
         <Typography sx={{ fontSize: "11px", color: "#666" }}>
-          Customers: Rs. {formatCurrency(outStandingFeatures.customerOutstanding)}
+          Customers: Rs. {formatCurrency(cus)}
         </Typography>
         <Typography sx={{ fontSize: "11px", color: "#666" }}>
-          Suppliers: Rs. {formatCurrency(outStandingFeatures.supplierOutstanding
-)}
+          Suppliers: Rs. {formatCurrency(sup)}
         </Typography>
+      </Box> */}
+      <Box mt={1}>
+        <Typography sx={{ color: '#ff4444' }}>Date filter not applicable</Typography>
       </Box>
     </Card>
   );

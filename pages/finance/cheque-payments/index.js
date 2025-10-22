@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { } from "react";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
@@ -9,32 +9,23 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Box, Chip } from "@mui/material";
 import { ToastContainer } from "react-toastify";
-import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
-import AddSalesPerson from "./create";
-import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
-import EditSalesPerson from "./edit";
-// import ViewViewSalesPersonDialog from "./view";
+import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import usePaginatedFetch from "@/components/hooks/usePaginatedFetch"; // adjust import as needed
+import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
+import CreateBankHistory from "./create";
+import ApproveCheque from "./approve";
+import RejectCheque from "./reject";
+import CreateCheque from "./create";
 
-
-
-
-export default function Customers() {
+export default function ChequePayments() {
   const cId = sessionStorage.getItem("category")
-  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [chartOfAccounts, setChartOfAccounts] = useState([]);
-  const [chartOfAccInfo, setChartOfAccInfo] = useState({});
-  //const { data: accountList } = useApi("/ChartOfAccount/GetAll");
-  
- 
+  const { navigate, create, update,remove } = IsPermissionEnabled(cId);
   const {
-    
-    data: customerList,
+    data: chequePayments,
     totalCount,
     page,
     pageSize,
@@ -42,40 +33,26 @@ export default function Customers() {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchCustomerList,
-  } = usePaginatedFetch("SalesPerson/GetAll");
-
-
-  const controller = "SalesPerson/DeleteSalesPerson";
+    fetchData: fetchChequePayments,
+  } = usePaginatedFetch("BankHistory/GetAllChequeRecordsAsync");
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
-    fetchCustomerList(1, event.target.value, pageSize);
+    fetchChequePayments(1, event.target.value, pageSize);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchCustomerList(value, search, pageSize);
+    fetchChequePayments(value, search, pageSize);
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchCustomerList(1, search, size);
+    fetchChequePayments(1, search, size);
   };
-
-  // useEffect(() => {
-  //     if (accountList) {
-  //       const accMap = accountList.reduce((acc, account) => {
-  //         acc[account.id] = account;
-  //         return acc;
-  //       }, {});
-  //       setChartOfAccInfo(accMap);
-  //       setChartOfAccounts(accountList);
-  //     }
-  //   }, [accountList]);
 
   if (!navigate) {
     return <AccessDenied />;
@@ -85,10 +62,10 @@ export default function Customers() {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Customers</h1>
+        <h1>Cheque Payments</h1>
         <ul>
           <li>
-            <Link href="/master/customers/">Customers</Link>
+            <Link href="/finance/cheque-payments/">Cheque Payment</Link>
           </li>
         </ul>
       </div>
@@ -104,7 +81,7 @@ export default function Customers() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddSalesPerson fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts}/> : ""}
+          {create ? <CreateCheque fetchItems={fetchChequePayments} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -112,34 +89,50 @@ export default function Customers() {
               <TableHead>
                 <TableRow>
                   <TableCell>Code</TableCell>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Mobile Number</TableCell>
-                  <TableCell>remark</TableCell>
-              
+                  <TableCell>Cheque No</TableCell>
+                  <TableCell>Cheque Date</TableCell>
+                  <TableCell>Description</TableCell>
+                  <TableCell>Shift Code</TableCell>
+                  <TableCell>Warehouse</TableCell>
+                  <TableCell>Created By</TableCell>
+                  <TableCell>Amount</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {customerList.length === 0 ? (
+                {chequePayments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
-                      <Typography color="error">No Customers Available</Typography>
+                    <TableCell colSpan={9}>
+                      <Typography color="error">No Records Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  customerList.map((item, index) => (
+                  chequePayments.map((item, index) => (
                     <TableRow key={index}>
-                      <TableCell>
-                        {[ item?.code].filter(Boolean).join(" ")}
-                      </TableCell>
-                      <TableCell>  {[ item?.name].filter(Boolean).join(" ")}</TableCell>
-                      <TableCell>  {[ item?.mobileNumber].filter(Boolean).join(" ")}</TableCell>
-                      <TableCell>  {[ item?.remark].filter(Boolean).join(" ")}</TableCell>
-
-                      
+                      <TableCell>{item.documentNo}</TableCell>
+                      <TableCell>{item.chequeNo}</TableCell>
+                      <TableCell>{formatDate(item.chequeDate)}</TableCell>
+                      <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.shiftCode}</TableCell>
+                      <TableCell>{item.warehouseName}</TableCell>
+                      <TableCell>{item.createdUser}</TableCell>
+                      <TableCell>{formatCurrency(item.amount)}</TableCell>
                       <TableCell align="right">
-                        {update ? <EditSalesPerson fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts}/> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchCustomerList} /> : ""}
+                        {item.chequeStatus === 1 && (
+                          <Box display="flex" gap={1}>
+                            <ApproveCheque id={item.id} fetchItems={fetchChequePayments} />
+                            <RejectCheque id={item.id} fetchItems={fetchChequePayments}/>
+                          </Box>
+                        )}
+                        {item.chequeStatus === 2 && (
+                          <span className="successBadge">Approved</span>
+                        )}
+                        {item.chequeStatus === 3 && (
+                          <>
+                          <span className="dangerBadge">Rejected</span>
+                          <Typography sx={{mt:1}}>{item.rejectedReason}</Typography>
+                          </>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
@@ -170,4 +163,4 @@ export default function Customers() {
   );
 
 
-    }
+}

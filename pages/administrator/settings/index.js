@@ -79,9 +79,9 @@ export default function Settings() {
         if (data.statusCode == 200) {
           toast.success(data.message);
           fetchSettings();
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
+          // setTimeout(() => {
+          //   window.location.reload();
+          // }, 2000);
         } else {
           toast.error(data.message);
         }

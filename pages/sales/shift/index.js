@@ -81,7 +81,8 @@ export default function Shift() {
   }, []);
 
   useEffect(() => {
-    const activeShift = shifts.find(shift => shift.isActive === true);
+    const user = localStorage.getItem('userid');
+    const activeShift = shifts.find(shift => shift.isActive === true && shift.createdBy == user);
     if (activeShift) {
       setActiveShiftId(activeShift.id);
     } else {
@@ -112,13 +113,11 @@ export default function Shift() {
         </Grid>
         <Grid item xs={12} >
           <TableContainer component={Paper}>
-            <Table aria-label="simple table" className="dark-table">
+            <Table size="small" aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
                   <TableCell>Shift Code</TableCell>
-                  <TableCell>Terminal</TableCell>
-                  <TableCell>Warehouse</TableCell>
-                  <TableCell>User</TableCell>
+                  <TableCell>Terminal</TableCell>                  
                   <TableCell>Start Date</TableCell>
                   <TableCell>End Date</TableCell>
                   <TableCell>Start Amount</TableCell>
@@ -128,6 +127,8 @@ export default function Shift() {
                   <TableCell>Canceled Inv.</TableCell>
                   <TableCell>Receipt Total</TableCell>
                   <TableCell>Summary</TableCell>
+                  <TableCell>Warehouse</TableCell>
+                  <TableCell>User</TableCell>
                   <TableCell>Cash In/Out</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
@@ -136,7 +137,7 @@ export default function Shift() {
               <TableBody>
                 {shifts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={13}>
+                    <TableCell colSpan={11}>
                       <Typography color="error">No Shift Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -144,9 +145,7 @@ export default function Shift() {
                   shifts.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.documentNo}</TableCell>
-                      <TableCell>{item.terminalCode}</TableCell>
-                      <TableCell>{item.warehouseName}</TableCell>
-                      <TableCell>{item.createdUser}</TableCell>
+                      <TableCell>{item.terminalCode}</TableCell>                      
                       <TableCell>{formatDateWithTime(item.startDate)}</TableCell>
                       <TableCell>{!item.isActive && formatDateWithTime(item.endDate)}</TableCell>
                       <TableCell>{formatCurrency(item.totalStartAmount)}</TableCell>
@@ -164,6 +163,8 @@ export default function Shift() {
                           ""
                         )}
                       </TableCell>
+                      <TableCell>{item.warehouseName}</TableCell>
+                      <TableCell>{item.createdUser}</TableCell>
                       <TableCell>
                         <ViewCashInOut fetchItems={fetchShifts} shift={item}/>
                       </TableCell>

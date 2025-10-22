@@ -479,15 +479,19 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                             name="UOM"
                             size="small"
                           >
-                            {uoms.length === 0 ? (
-                              <MenuItem disabled>No UOM Available</MenuItem>
-                            ) : (
-                              uoms.map((uom, index) => (
-                                <MenuItem key={index} value={uom.id}>
-                                  {uom.name}
-                                </MenuItem>
-                              ))
-                            )}
+                           {uoms.filter(uom => uom.isActive).length === 0 ? (
+                                <MenuItem disabled>No Active UOM Available</MenuItem>
+                                ) : (
+                                  uoms
+                                    .filter(uom => uom.isActive)
+                                    .map((uom, index) => (
+                                      <MenuItem key={index} value={uom.id}>
+                                        {uom.name}
+                                      </MenuItem>
+                                    ))
+                            )
+                           }
+
                           </Field>
                           {touched.UOM && Boolean(errors.UOM) && (
                             <Typography variant="caption" color="error">
@@ -644,7 +648,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                               }
                             />
                           }
-                          label="Inventory Item"
+                          label="Non Inventory Item"
                         />
                         <FormControlLabel
                           control={

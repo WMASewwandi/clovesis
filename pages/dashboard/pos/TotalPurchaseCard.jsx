@@ -55,6 +55,9 @@ const TotalPurchaseCard = ({purchase}) => {
           </Box>
         </Box>
       </Box>
+      <Box mt={1}>
+                      <Typography sx={{color: '#00c851'}}>Date filter applicable</Typography>
+                    </Box>
     </Card>
   );
 };
