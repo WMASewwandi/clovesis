@@ -10,6 +10,7 @@ const IsPermissionEnabled = (cId) => {
   const [remove, setRemove] = useState(false);
   const [print, setPrint] = useState(false);
   const [approve1, setApprove1] = useState(false);
+  const [approve3, setApprove3] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,6 +47,9 @@ const IsPermissionEnabled = (cId) => {
         if (data.some(item => item.permissionType === 6)) {
           setApprove1(true);
         }
+        if (data.some(item => item.permissionType === 8)) {
+          setApprove3(true);
+        }
       } catch (err) {
         //
       }
@@ -54,7 +58,7 @@ const IsPermissionEnabled = (cId) => {
     fetchData();
   }, [cId]);
 
-  return { navigate, create, update, remove, print,approve1 };
+  return { navigate, create, update, remove, print,approve1 ,approve3};
 };
 
 export default IsPermissionEnabled;

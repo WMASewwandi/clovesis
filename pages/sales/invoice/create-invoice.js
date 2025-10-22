@@ -182,7 +182,7 @@ const InvoiceCreate = () => {
     setRowsCC((prev) => [
       ...prev,
       {
-        machine: 1,
+        machine: null,
         code: "",
         name: "",
         qty: "",
@@ -269,6 +269,12 @@ const InvoiceCreate = () => {
     //   toast.warning("Please Select Payment Type");
     //   return;
     // }
+
+    if (rowsCC.length > 0 && rowsCC.some(row => row.machine === null)) {
+      toast.info('Please select machine');
+      return;
+    }
+
     const outletRows = rows.map((row, i) => ({
       DocumentNo: invNo,
       ProductId: row.productId,

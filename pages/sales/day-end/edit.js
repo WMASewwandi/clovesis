@@ -1,4 +1,4 @@
-import React, { useState,useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Grid, IconButton, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Tooltip, Typography, TextField
@@ -15,6 +15,9 @@ import NorthIcon from '@mui/icons-material/North';
 import { getCashType } from "@/components/types/types";
 import CashInOut from "./create-cash-in-out";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
+import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
+import SettingsBackupRestoreIcon from '@mui/icons-material/SettingsBackupRestore';
+import { toast } from "react-toastify";
 
 const modalStyle = {
   position: "absolute",
@@ -28,6 +31,7 @@ const modalStyle = {
 };
 
 export default function EditDayEnd({ date }) {
+  const { approve3 } = IsPermissionEnabled(26);
   const [open, setOpen] = useState(false);
   const [shifts, setShifts] = useState([]);
   const [cashItems, setCashItems] = useState([]);
@@ -97,6 +101,30 @@ export default function EditDayEnd({ date }) {
       console.error("Save error:", err);
     }
   };
+  const handleRevert = async (shiftId) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${BASE_URL}/Shift/RevertShiftEnd?shiftId=${shiftId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+      if (data.statusCode === 200) {
+        toast.success(data.message);
+        setOpen(false);
+      } else {
+        toast.error(data.message);
+      }
+
+    } catch (err) {
+      console.error("Save error:", err);
+    }
+  };
+
 
   const handleReload = async () => {
     try {
@@ -256,6 +284,12 @@ export default function EditDayEnd({ date }) {
                                       <BorderColorIcon color="primary" />
                                     </IconButton>
                                   )}
+                                  {approve3 && (
+                                    <IconButton onClick={() => handleRevert(s.shiftId)}>
+                                      <SettingsBackupRestoreIcon color="error" />
+                                    </IconButton>
+                                  )}
+
                                 </TableCell>
                               </TableRow>
                             ))

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Grid from "@mui/material/Grid";
 import {
     IconButton,
@@ -19,42 +19,24 @@ import useApi from "@/components/utils/useApi";
 
 const AddCustomColorItem = ({ rows, onChange, onDelete }) => {
     if (!rows.length) return null;
-    // const {
-    //     data: itemList,
-    //     loading: itemLoading,
-    //     error: itemError,
-    // } = useApi("/CustomColorMachine/GetAllColorMachine");
+    const [machineList, setMachineList] = useState([]);
+    const { data: machines } = useApi("/DBRMachine/GetAll");
 
     const handleChange = (index, field, value) => {
         const updatedRows = [...rows];
         updatedRows[index][field] = value;
-    
-        // if (field === "code" && itemList?.length) {
-        //     const matchedItem = itemList.find((item) => item.code === value);
-        //     if (matchedItem) {
-        //         updatedRows[index].name = matchedItem.name || "";
-        //         updatedRows[index].costPrice = matchedItem.costPrice || 0;
-        //         updatedRows[index].value = matchedItem.value || 0;
-        //         updatedRows[index].sellingPrice = matchedItem.sellingPrice || 0;
-        //         updatedRows[index].totalAmount = (updatedRows[index].qty || 0) * (matchedItem.sellingPrice || 0);
-        //         updatedRows[index].id = matchedItem.id || 0;
-        //         updatedRows[index].warehouse = matchedItem.warehouseId || 0;
-        //     } else {
-        //         updatedRows[index].name = "";
-        //         updatedRows[index].costPrice = 0;
-        //         updatedRows[index].value = 0;
-        //         updatedRows[index].sellingPrice = 0;
-        //         updatedRows[index].totalAmount = 0;
-        //     }
-        // }
-    
         const qty = parseFloat(updatedRows[index].value || 0);
         const price = parseFloat(updatedRows[index].sellingPrice || 0);
-        updatedRows[index].totalAmount = price; 
-    
+        updatedRows[index].totalAmount = price;
+
         onChange(updatedRows);
     };
-    
+
+     useEffect(() => {
+        if (machines) {
+          setMachineList(machines);
+        }
+      }, [machines]);
 
     return (
         <Grid container rowSpacing={1} columnSpacing={{ xs: 1, md: 1 }}>
@@ -81,10 +63,12 @@ const AddCustomColorItem = ({ rows, onChange, onDelete }) => {
                                 <TableRow key={index}>
                                     <TableCell>{index + 1}</TableCell>
                                     <TableCell>
-                                        <Select size="small" onChange={(e) => handleChange(index, "machine", e.target.value)} value={row.machine}>
-                                            <MenuItem value={1}>Dupond</MenuItem>
-                                            <MenuItem value={2}>Debeer</MenuItem>
-                                            <MenuItem value={3}>Nippon</MenuItem>
+                                        <Select sx={{minWidth: '150px'}} size="small" onChange={(e) => handleChange(index, "machine", e.target.value)} value={row.machine}>
+                                            {machineList.length === 0 ?
+                                                <MenuItem value="">No Data Available</MenuItem>
+                                                : (machineList.map((item, i) => (
+                                                    <MenuItem key={i} value={item.id}>{item.name}</MenuItem>
+                                                )))}
                                         </Select>
                                     </TableCell>
                                     <TableCell>
