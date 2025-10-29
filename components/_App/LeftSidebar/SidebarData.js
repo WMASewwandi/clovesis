@@ -176,7 +176,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Sales Return", path: "/sales/sales-return/", categoryId: 62, isAvailable: true },
                 { title: "POS Shift", path: "/sales/pos-shift/", categoryId: 95, isAvailable: true },
                 { title: "POS Day End", path: "/sales/pos-dayend/", categoryId: 96, isAvailable: true },
-                { title: "Cash Summary", path: "/sales/summary/", categoryId: 103, isAvailable: true },
+                { title: "Shift Summary", path: "/sales/summary/", categoryId: 103, isAvailable: true },
             ],
         },
         {
