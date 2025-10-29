@@ -21,10 +21,7 @@ import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch"; // adjust import as needed
 
-
-
-
-export default function Customers() {
+export default function SalesPerson() { // <-- Renamed component
   const cId = sessionStorage.getItem("category")
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
   const [chartOfAccounts, setChartOfAccounts] = useState([]);
@@ -33,8 +30,7 @@ export default function Customers() {
   
  
   const {
-    
-    data: customerList,
+    data: salesPersonList, // <-- Renamed variable
     totalCount,
     page,
     pageSize,
@@ -42,8 +38,16 @@ export default function Customers() {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchCustomerList,
-  } = usePaginatedFetch("SalesPerson/GetAll");
+    fetchData: fetchSalesPersonList, // <-- Renamed function
+  } = usePaginatedFetch("SalesPerson/GetAllSalesPerson");
+
+
+  // --- THIS IS THE FIX ---
+  useEffect(() => {
+    // Fetch data when the component mounts using the initial state from the hook
+    fetchSalesPersonList(page, search, pageSize);
+  }, []); // <-- The empty array [] ensures this runs only ONCE on mount
+  // --- END OF FIX ---
 
 
   const controller = "SalesPerson/DeleteSalesPerson";
@@ -51,19 +55,19 @@ export default function Customers() {
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
-    fetchCustomerList(1, event.target.value, pageSize);
+    fetchSalesPersonList(1, event.target.value, pageSize); // <-- Use renamed function
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchCustomerList(value, search, pageSize);
+    fetchSalesPersonList(value, search, pageSize); // <-- Use renamed function
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchCustomerList(1, search, size);
+    fetchSalesPersonList(1, search, size); // <-- Use renamed function
   };
 
   // useEffect(() => {
@@ -85,10 +89,10 @@ export default function Customers() {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Customers</h1>
+        <h1>Sales Person</h1>
         <ul>
           <li>
-            <Link href="/master/customers/">Customers</Link>
+            <Link href="/master/sales-person/">Sales Person</Link>
           </li>
         </ul>
       </div>
@@ -104,7 +108,7 @@ export default function Customers() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddSalesPerson fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts}/> : ""}
+          {create ? <AddSalesPerson fetchItems={fetchSalesPersonList} chartOfAccounts={chartOfAccounts}/> : ""} {/* <-- Pass renamed function */}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -120,14 +124,14 @@ export default function Customers() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {customerList.length === 0 ? (
+                {salesPersonList.length === 0 ? ( // <-- Use renamed variable
                   <TableRow>
                     <TableCell colSpan={6}>
-                      <Typography color="error">No Customers Available</Typography>
+                      <Typography color="error">No Sales Person Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  customerList.map((item, index) => (
+                  salesPersonList.map((item, index) => ( // <-- Use renamed variable
                     <TableRow key={index}>
                       <TableCell>
                         {[ item?.code].filter(Boolean).join(" ")}
@@ -138,8 +142,8 @@ export default function Customers() {
 
                       
                       <TableCell align="right">
-                        {update ? <EditSalesPerson fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts}/> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchCustomerList} /> : ""}
+                        {update ? <EditSalesPerson fetchItems={fetchSalesPersonList} item={item} chartOfAccounts={chartOfAccounts}/> : ""} {/* <-- Pass renamed function */}
+                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchSalesPersonList} /> : ""} {/* <-- Pass renamed function */}
                       </TableCell>
                     </TableRow>
                   ))
@@ -168,6 +172,5 @@ export default function Customers() {
       </Grid>
     </>
   );
-
-
-    }
+}
+// Note: I also removed an extra closing brace } that was at the end of your original file.

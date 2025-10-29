@@ -41,8 +41,8 @@ import { formatDate } from "@/components/utils/formatHelper";
 import getUserByEmail from "@/components/utils/getUserByEmail";
 import Swal from "sweetalert2";
 import { useRouter } from "next/navigation";
-import getShiftDetails from "@/components/utils/getShiftDetails";
 import usePOSShiftCheck from "@/components/utils/usePOSShiftCheck";
+import getPOSShiftDetails from "@/components/utils/getPOSShiftDetails";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -68,7 +68,7 @@ export default function Dashboard() {
   const [offerTotal, setOfferTotal] = useState(null);
 
   const { data: user } = getUserByEmail(userEmail);
-  const { data: shift } = getShiftDetails();
+  const { data: shift } = getPOSShiftDetails();
 
   const menuItems = [
     { key: "home", label: "Home", icon: <HomeIcon sx={{ fontSize: "2rem", my: 1 }} /> },
@@ -124,7 +124,16 @@ export default function Dashboard() {
     setOrderId(item.orderId);
     setSteward(item.stewardDetails);
     setTable(item.tableDetails);
-    setCartItems(item.orderItems);
+    setCartItems(
+      item.isOffer
+        ? (item.orderItems || []).map((row) => ({
+            ...row,
+            isOfferItem: true,
+            // Track current quantity as included in the offer/base so only extras add cost
+            offerIncludedQty: row.qty || 0,
+          }))
+        : (item.orderItems || [])
+    );
     setPickUpType(item.pickUpType);
   }
 
@@ -143,6 +152,8 @@ export default function Dashboard() {
     // setPickUpType(null);
     setSteward(null);
     setTable(null);
+    setIsOffer(false);
+    setOfferTotal(null);
     if (homeRef.current) {
       homeRef.current.clean();
     }
@@ -176,6 +187,8 @@ export default function Dashboard() {
   if (!navigate) {
     return <AccessDenied />;
   }
+
+  console.log(shiftDetails);
 
   const SidebarContent = (
     <Box

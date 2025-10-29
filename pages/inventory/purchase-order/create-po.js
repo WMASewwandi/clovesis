@@ -59,7 +59,7 @@ const POCreate = () => {
 
   const navigateToBack = () => {
     router.push({
-      pathname: "/inventory/grn",
+      pathname: "/inventory/purchase-order",
     });
   };
 
@@ -149,7 +149,7 @@ const POCreate = () => {
             setIsDisable(true);
             toast.success(jsonResponse.result.message);
             setTimeout(() => {
-              window.location.href = "/inventory/grn";
+              window.location.href = "/inventory/purchase-order";
             }, 1500);
           } else {
             toast.error(jsonResponse.result.message);
@@ -268,7 +268,7 @@ const POCreate = () => {
         <h1>Purchase Order Create</h1>
         <ul>
           <li>
-            <Link href="/inventory/grn">Purchase Order</Link>
+            <Link href="/inventory/purchase-order">Purchase Order</Link>
           </li>
           <li>Create</li>
         </ul>

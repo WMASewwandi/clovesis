@@ -20,6 +20,7 @@ import EventSeatOutlinedIcon from "@mui/icons-material/EventSeatOutlined";
 import PrecisionManufacturingIcon from '@mui/icons-material/PrecisionManufacturing';
 import FastfoodIcon from '@mui/icons-material/Fastfood';
 import CallIcon from '@mui/icons-material/Call';
+import People from '@mui/icons-material/People';
 
 
 export const getSidebarData = (IsGarmentSystem) => {
@@ -148,6 +149,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             IsAvailable: true,
             subNav: [
                 { title: "Goods Receive Note", path: "/inventory/grn/", categoryId: 17, isAvailable: true },
+                { title: "Purchase Order Note", path: "/inventory/purchase-order/", categoryId: 18, isAvailable: true },
                 { title: "Shipment", path: "/inventory/shipment/", categoryId: 19, isAvailable: true },
                 { title: "Outlet Note", path: "/inventory/outlet-note/", categoryId: 20, isAvailable: true },
                 { title: "Stock Dispatch", path: "/inventory/stock-dispatch/", categoryId: 21, isAvailable: true },
@@ -174,6 +176,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Sales Return", path: "/sales/sales-return/", categoryId: 62, isAvailable: true },
                 { title: "POS Shift", path: "/sales/pos-shift/", categoryId: 95, isAvailable: true },
                 { title: "POS Day End", path: "/sales/pos-dayend/", categoryId: 96, isAvailable: true },
+                { title: "Cash Summary", path: "/sales/summary/", categoryId: 103, isAvailable: true },
             ],
         },
         {
@@ -280,6 +283,20 @@ export const getSidebarData = (IsGarmentSystem) => {
             { title: "Summary Reports", path: "/reports/summery-report/", categoryId: 29, isAvailable: true },
             { title: "Customer Outstanding", path: "/reports/outstanding/", categoryId: 30, isAvailable: true },
             { title: "Reservation Reports", path: "/reservation/reports/", categoryId: 50, isAvailable: true },
+        ],
+    });
+    sidebarData.push({
+        title: "CRM",
+        path: "/crm/crm/",
+        icon: <People />,
+        iconClosed: <ArrowRight />,
+        iconOpened: <ArrowDown />,
+        ModuleId: 18,
+        IsAvailable: true,
+        subNav: [
+            { title: "Leads", path: "/crm/lead/", categoryId: 101, isAvailable: true },
+            { title: "Contact", path: "/crm/contact/", categoryId: 102, isAvailable: true },
+            
         ],
     });
 

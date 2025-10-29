@@ -1,5 +1,5 @@
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
-import { Grid, Typography, Button, ButtonGroup, Box, IconButton, TextField, CircularProgress } from "@mui/material";
+import { Grid, Typography, Button, ButtonGroup, Box, IconButton, TextField, CircularProgress, Menu, MenuItem } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { formatCurrency } from "@/components/utils/formatHelper";
@@ -8,6 +8,8 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
     const [cart, setCart] = useState([]);
     const [loadingId, setLoadingId] = useState(null);
     const [cartItems, setCartItems] = useState([]);
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [dropdownItem, setDropdownItem] = useState(null);
 
     useImperativeHandle(ref, () => ({
         clean() {
@@ -16,13 +18,11 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
     }));
 
     useEffect(() => {
-        if (billUpdatedItems) {
-            setCartItems(billUpdatedItems);
-        }
+        if (billUpdatedItems) setCartItems(billUpdatedItems);
     }, []);
 
     useEffect(() => {
-        const mapped = itemList.map((item) => ({
+        const mapped = itemList.map(item => ({
             id: item.id,
             name: item.name,
             img: item.productImage,
@@ -37,11 +37,8 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
     }, [itemList]);
 
     useEffect(() => {
-        if (onAddItems) {
-            onAddItems(cartItems);
-        }
+        if (onAddItems) onAddItems(cartItems);
     }, [cartItems]);
-
 
     const handleSizeChange = (id, newSize) => {
         setCart(prevCart =>
@@ -78,13 +75,10 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
             const existingIndex = prevItems.findIndex(
                 i => i.id === current.id && i.portionId === current.portionId
             );
-
             let updatedItems = [...prevItems];
-
             if (existingIndex >= 0) {
                 if (billUpdatedItems && billUpdatedItems.length > 0) {
                     updatedItems = [...billUpdatedItems];
-
                     if (updatedItems[existingIndex]) {
                         updatedItems[existingIndex] = {
                             ...updatedItems[existingIndex],
@@ -92,7 +86,6 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                             total: (updatedItems[existingIndex].qty + current.qty) * current.price
                         };
                     } else {
-                        // fallback → add as new one
                         updatedItems.push({
                             id: current.id,
                             name: current.name,
@@ -119,7 +112,6 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                     kitchenId: current.kitchenId
                 });
             }
-
             return updatedItems;
         });
 
@@ -127,17 +119,31 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
         setLoadingId(null);
     };
 
+    const handleMenuOpen = (event, item) => {
+        setAnchorEl(event.currentTarget);
+        setDropdownItem(item);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+        setDropdownItem(null);
+    };
 
     return (
         <Grid container spacing={2} mt={2}>
-            {cart.length === 0 ?
+            {cart.length === 0 ? (
                 <Grid item xs={12}>
                     <Box px={2}>
                         <Typography color="error">No Items Available</Typography>
                     </Box>
                 </Grid>
-                : (
-                    cart.map((item) => (
+            ) : (
+                cart.map((item) => {
+                    const maxVisible = 3;
+                    const visible = item.pricing.slice(0, maxVisible);
+                    const hidden = item.pricing.slice(maxVisible);
+
+                    return (
                         <Grid item xs={12} sm={6} md={4} lg={3} key={item.id}>
                             <Box p={2} sx={{ background: '#fff' }} borderRadius={2}>
                                 <img src={item.img ? item.img : '/images/no-image.jpg'} alt={item.name} style={{ width: "100%", height: 150, borderRadius: "8px" }} />
@@ -147,7 +153,7 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                                 </Typography>
                                 <Box display="flex" justifyContent="center">
                                     <ButtonGroup size="small">
-                                        {item.pricing.map((p) => (
+                                        {visible.map((p) => (
                                             <Button
                                                 key={p.portionId}
                                                 variant={item.size === p.portionName ? "contained" : "outlined"}
@@ -164,17 +170,45 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                                                 {p.portionName}
                                             </Button>
                                         ))}
+                                        {hidden.length > 0 && (
+                                            <>
+                                                <Button
+                                                    variant="outlined"
+                                                    onClick={(e) => handleMenuOpen(e, item)}
+                                                    sx={{
+                                                        color: "#fe6564",
+                                                        borderColor: "#fe6564",
+                                                        "&:hover": { backgroundColor: "rgba(255,0,0,0.08)" }
+                                                    }}
+                                                >
+                                                 ▼
+                                                </Button>
+                                                <Menu
+                                                    anchorEl={anchorEl}
+                                                    open={dropdownItem?.id === item.id}
+                                                    onClose={handleMenuClose}
+                                                >
+                                                    {hidden.map((p) => (
+                                                        <MenuItem
+                                                            key={p.portionId}
+                                                            onClick={() => {
+                                                                handleSizeChange(item.id, p.portionName);
+                                                                handleMenuClose();
+                                                            }}
+                                                        >
+                                                            {p.portionName}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Menu>
+                                            </>
+                                        )}
                                     </ButtonGroup>
                                 </Box>
                                 <Box display="flex" my={1} alignItems="center" justifyContent="center" borderRadius={1} overflow="hidden">
                                     <IconButton
                                         onClick={() => handleQtyChange(item.id, -1)}
                                         size="small"
-                                        sx={{
-                                            p: 0.5,
-                                            color: "#fe6564",
-                                            border: '1px solid #fe6564'
-                                        }}
+                                        sx={{ p: 0.5, color: "#fe6564", border: '1px solid #fe6564' }}
                                     >
                                         <RemoveIcon fontSize="small" />
                                     </IconButton>
@@ -192,11 +226,7 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                                     <IconButton
                                         onClick={() => handleQtyChange(item.id, 1)}
                                         size="small"
-                                        sx={{
-                                            p: 0.5,
-                                            color: "#fe6564",
-                                            border: '1px solid #fe6564'
-                                        }}
+                                        sx={{ p: 0.5, color: "#fe6564", border: '1px solid #fe6564' }}
                                     >
                                         <AddIcon fontSize="small" />
                                     </IconButton>
@@ -215,8 +245,9 @@ const FilteredItems = forwardRef(({ itemList, onAddItems, billUpdatedItems }, re
                                 </Button>
                             </Box>
                         </Grid>
-                    ))
-                )}
+                    );
+                })
+            )}
         </Grid>
     );
 });

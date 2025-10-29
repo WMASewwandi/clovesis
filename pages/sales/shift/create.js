@@ -23,6 +23,7 @@ import "react-toastify/dist/ReactToastify.css";
 import * as Yup from "yup";
 import IsDayEndDone from "@/components/utils/IsDayEndDone";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import { formatCurrency } from "@/components/utils/formatHelper";
 
 const style = {
   position: "absolute",
@@ -44,12 +45,15 @@ const validationSchema = Yup.object().shape({
 export default function AddShift({ fetchItems }) {
   const [open, setOpen] = useState(false);
   const [terminalList, setTerminalList] = useState([]);
+  const [lastShiftBalance, setLastShiftBalance] = useState(0);
+  const [saveDisabled, setSaveDisabled] = useState(false);
   const [cashData, setCashData] = useState(
     denominations.map((val) => ({ val, qty: "", total: 0 }))
   );
   const inputRef = useRef(null);
   const { data: isDayEndDone } = IsDayEndDone();
   const { data: isPOSShiftLinkToBackOffice } = IsAppSettingEnabled("IsPOSShiftLinkToBackOffice");
+  const { data: getLastShiftBalanceToNext } = IsAppSettingEnabled("GetLastShiftBalanceToNext");
 
   const fetchAvailableTerminalList = async () => {
     try {
@@ -72,8 +76,36 @@ export default function AddShift({ fetchItems }) {
     }
   };
 
-  useEffect(() => {
+  const fetchLastShiftData = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/Shift/GetLastShiftDetails`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error("Failed to fetch Supplier List");
+      }
+
+      const data = await response.json();
+      const result = data.result?.result;
+      if (result) {
+        setLastShiftBalance(result.endAmount);
+      } else {
+        setLastShiftBalance(0);
+      }
+    } catch (error) {
+      console.error("Error fetching Supplier List:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (getLastShiftBalanceToNext) {
+      setSaveDisabled(true);
+    }
     if (open) {
       setTimeout(() => {
         if (inputRef.current) {
@@ -81,9 +113,13 @@ export default function AddShift({ fetchItems }) {
         }
       }, 100);
     }
+
   }, [open]);
 
   const handleOpen = () => {
+    if (getLastShiftBalanceToNext) {
+      fetchLastShiftData();
+    }
     if (isPOSShiftLinkToBackOffice) {
       if (isDayEndDone) {
         toast.warning("Work cannot continue as the day-end process has already been completed.");
@@ -119,6 +155,14 @@ export default function AddShift({ fetchItems }) {
     updated[index].qty = qty;
     updated[index].total = parseFloat(qty || 0) * updated[index].val;
     setCashData(updated);
+    if (getLastShiftBalanceToNext) {
+      var enteredTotal = getTotalAmount();
+      if (parseFloat(enteredTotal) === parseFloat(lastShiftBalance)) {
+        setSaveDisabled(false);
+      } else {
+        setSaveDisabled(true);
+      }
+    }
   };
 
   const getTotalAmount = () => {
@@ -204,7 +248,7 @@ export default function AddShift({ fetchItems }) {
       <Modal open={open}>
         <Box sx={style}>
           <Formik
-            initialValues={{ Name: "", TerminalId: "" ,IsActive: true }}
+            initialValues={{ Name: "", TerminalId: "", IsActive: true }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
@@ -212,10 +256,15 @@ export default function AddShift({ fetchItems }) {
               <Form onSubmit={handleSubmit}>
                 <Grid container spacing={1}>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} mt={2}>
+                    <Grid item xs={12} display="flex" justifyContent="space-between" mt={2}>
                       <Typography variant="h5" fontWeight={500}>
                         Start Shift
                       </Typography>
+                      {getLastShiftBalanceToNext && (
+                        <Typography variant="h5" fontWeight={500}>
+                          {formatCurrency(lastShiftBalance)}
+                        </Typography>
+                      )}
                     </Grid>
                   </Grid>
                   <Box sx={{ maxHeight: '60vh', overflowY: 'scroll' }}>
@@ -336,7 +385,7 @@ export default function AddShift({ fetchItems }) {
                             <TableFooter>
                               <TableRow>
                                 <TableCell colSpan={3}>Total Amount</TableCell>
-                                <TableCell>{getTotalAmount().toFixed(2)}</TableCell>
+                                <TableCell>{getLastShiftBalanceToNext ? lastShiftBalance : getTotalAmount().toFixed(2)}</TableCell>
                               </TableRow>
                             </TableFooter>
                           </Table>
@@ -353,7 +402,7 @@ export default function AddShift({ fetchItems }) {
                       >
                         Cancel
                       </Button>
-                      <Button type="submit" variant="contained">
+                      <Button disabled={saveDisabled} type="submit" variant="contained">
                         Save
                       </Button>
                     </Grid>

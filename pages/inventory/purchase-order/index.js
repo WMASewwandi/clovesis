@@ -19,6 +19,8 @@ import {
   MenuItem,
   Select,
 } from "@mui/material";
+import styles from "@/styles/PageTitle.module.css";
+import Link from "next/link";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import { useRouter } from "next/router";
 import { formatDate } from "@/components/utils/formatHelper";
@@ -32,10 +34,12 @@ import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import { Catelogue } from "Base/catelogue";
 import IsFiscalPeriodAvailable from "@/components/utils/IsFiscalPeriodAvailable";
+import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 
 export default function PurchaseOrder() {
   const name = localStorage.getItem("name");
-  const { navigate, create, update, remove, print } = IsPermissionEnabled(18);
+  const cId = sessionStorage.getItem("category")
+  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
   const router = useRouter();
   const { data: ReportName } = GetReportSettingValueByName("PurchaseOrder");
   const { data: isFiscalPeriodAvailable } = IsFiscalPeriodAvailable();
@@ -49,6 +53,10 @@ export default function PurchaseOrder() {
       pathname: "/inventory/purchase-order/create-po",
     });
   };
+
+  if (!navigate) {
+    return <AccessDenied />;
+  }
 
   const navigateToEdit = (id) => {
     router.push(`/inventory/purchase-order/edit-po?id=${id}`);
@@ -86,6 +94,14 @@ export default function PurchaseOrder() {
 
   return (
     <>
+      <div className={styles.pageTitle}>
+        <h1>Purchase Order</h1>
+        <ul>
+          <li>
+            <Link href="/inventory/purchase-order">Purchase Order</Link>
+          </li>
+        </ul>
+      </div>
       <Grid
         container
         rowSpacing={1}

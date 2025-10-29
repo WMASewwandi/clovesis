@@ -18,6 +18,17 @@ const COLORS = [
   "#f28b82", "#fbbc04", "#34a853", "#4285f4", "#a142f4", "#24c1e0", "#ff6d01", "#46bdc6"
 ];
 
+const getCategoryColor = (categoryId) => {
+  const key = String(categoryId || "");
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash) + key.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  const index = Math.abs(hash) % COLORS.length;
+  return COLORS[index];
+};
+
 export default function Offers({ onOrderClick }) {
   const [offers, setOffers] = useState([]);
   const [open, setOpen] = useState(false);
@@ -107,20 +118,28 @@ export default function Offers({ onOrderClick }) {
     setOpen(false);
   };
 
+  console.log(offers)
+
+  const categoryCounts = useMemo(() => {
+    const map = {};
+    if (selectedItem && selectedItem.orderItems) {
+      selectedItem.orderItems.forEach((it) => {
+        const key = it.categoryId;
+        map[key] = (map[key] || 0) + 1;
+      });
+    }
+    return map;
+  }, [selectedItem]);
 
   const categoryColors = useMemo(() => {
     const map = {};
-    let colorIndex = 0;
-
     offers.forEach(offer => {
       offer.orderItems.forEach(item => {
         if (item.categoryId && !map[item.categoryId]) {
-          map[item.categoryId] = COLORS[colorIndex % COLORS.length];
-          colorIndex++;
+          map[item.categoryId] = getCategoryColor(item.categoryId);
         }
       });
     });
-
     return map;
   }, [offers]);
 
@@ -231,6 +250,7 @@ export default function Offers({ onOrderClick }) {
                             <Checkbox
                               checked={item.isDefault}
                               onChange={() => handleToggleItem(item.categoryId, i)}
+                              disabled={(categoryCounts[item.categoryId] || 0) <= 1}
                             />
                           </TableCell>
                         </TableRow>

@@ -69,11 +69,11 @@ export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,sup
       .then((response) => response.json())
       .then((data) => {
         if (data.statusCode == 200) {
-          toast.success(data.message);
+          toast.success(data.result.message);
           setOpen(false);
           fetchItems();
         } else {
-          toast.error(data.message);
+          toast.error(data.result.message);
         }
       })
       .catch((error) => {
@@ -135,11 +135,9 @@ export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,sup
                       <Field
                         as={TextField}
                         fullWidth
-                        inputRef={inputRef}
+                        disabled
                         name="Code"
                         size="small"
-                        error={touched.Code && Boolean(errors.Code)}
-                        helperText={touched.Code && errors.Code}
                       />
                     </Grid>
                     <Grid item xs={12} mt={1}>

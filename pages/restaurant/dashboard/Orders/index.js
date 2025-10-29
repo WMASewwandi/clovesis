@@ -61,9 +61,9 @@ export default function Orders({ searchText, onOrderClick }) {
                         title: "Payment",
                         html: `
           <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 20px;">
-            <div class="payment-tile" data-method="Cash">💵 Cash</div>
-            <div class="payment-tile" data-method="Card">💳 Card</div>
-            <div class="payment-tile" data-method="Bank">🏦 Bank</div>
+            <div class="payment-tile" data-method="1">💵 Cash</div>
+            <div class="payment-tile" data-method="2">💳 Card</div>
+            <div class="payment-tile" data-method="4">🏦 Bank</div>
           </div>
         `,
                         showCancelButton: true,
@@ -133,7 +133,7 @@ export default function Orders({ searchText, onOrderClick }) {
 
     const onPaymentDone = async (item) => {
         try {
-            const response = await fetch(`${BASE_URL}/RestaurantPOS/CreateOrderPayment?orderId=${item.orderId}`, {
+            const response = await fetch(`${BASE_URL}/RestaurantPOS/CreateOrderPayment?orderId=${item.orderId}&paymentType=${selectedPayment}`, {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,

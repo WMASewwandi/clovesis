@@ -94,8 +94,8 @@ export default function EditMenuItem({ item, fetchItems }) {
       portionName: item.name,
       portionId: item.id,
       sellingPrice: null,
-      costPrice: null,
-      tax: null
+      costPrice: 0,
+      tax: 0
     };
     setPriceList((prev) => {
       if (prev.some((p) => p.portionId === newItem.portionId)) {
@@ -259,7 +259,7 @@ export default function EditMenuItem({ item, fetchItems }) {
                       mb: "12px",
                     }}
                   >
-                    Add Menu Item
+                    Edit Menu Item
                   </Typography>
                 </Box>
                 <Box sx={{ maxHeight: '70vh', overflowY: 'scroll' }}>

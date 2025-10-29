@@ -124,7 +124,9 @@ export default function POSShift() {
                   <TableCell>Start Amount</TableCell>
                   <TableCell>End Amount</TableCell>
                   <TableCell>Invoice Total</TableCell>
+                  <TableCell>Cash Inv. Total</TableCell>
                   <TableCell>Cash In/Out</TableCell>
+                  <TableCell>Variance</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
@@ -147,9 +149,19 @@ export default function POSShift() {
                       <TableCell>{!item.isActive && formatDateWithTime(item.endDate)}</TableCell>
                       <TableCell>{formatCurrency(item.totalStartAmount)}</TableCell>
                       <TableCell>{!item.isActive && formatCurrency(item.totalEndAmount)}</TableCell>
-                      <TableCell>{!item.isActive && formatCurrency(item.totalInvoice)}</TableCell>                      
+                      <TableCell>{!item.isActive && formatCurrency(item.totalInvoice)}</TableCell>
+                      <TableCell>{!item.isActive && formatCurrency(item.totalCashInvoice)}</TableCell>
                       <TableCell>
-                        <ViewCashInOut fetchItems={fetchShifts} shift={item}/>
+                        <ViewCashInOut fetchItems={fetchShifts} shift={item} />
+                      </TableCell>
+                      <TableCell>
+                        {item.variance < 0 ? (
+                          <span className="dangerBadge">Short /{item.variance} </span>
+                        ) : item.variance > 0 ? (
+                          <span className="successBadge">Excess /{item.variance}</span>
+                        ) : (
+                          ""
+                        )}
                       </TableCell>
                       <TableCell>
                         {item.isActive ? (

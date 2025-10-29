@@ -4,6 +4,8 @@ import { formatCurrency } from "@/components/utils/formatHelper";
 import BASE_URL from "Base/api";
 import Swal from "sweetalert2";
 import ReplayIcon from '@mui/icons-material/Replay';
+import getSettingValueByName from "@/components/utils/getSettingValueByName";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 export default function Bill({
     billItems,
@@ -18,6 +20,11 @@ export default function Bill({
     offerTotal }) {
     const [items, setItems] = useState([]);
     const audioRef = useRef(null);
+
+    const { data: restaurantServiceChargeValue } = getSettingValueByName("RestaurantServiceCharge");
+    const { data: restaurantServiceCharge } = IsAppSettingEnabled("RestaurantServiceCharge");
+
+    const [serveCharge, setServeCharge] = useState(0);
 
     const handleQtyChange = (id, delta) => {
         setItems(prevItems => {
@@ -41,15 +48,37 @@ export default function Bill({
         }
     };
 
-    const subtotal = isOffer ? offerTotal : items.reduce((acc, item) => acc + item.price * item.qty, 0);
-    const charge = subtotal * 0.05;
+    const subtotal = (() => {
+        if (!isOffer) {
+            return items.reduce((acc, item) => acc + item.price * item.qty, 0);
+        }
+        const base = offerTotal || 0;
+        const extraFromOfferItems = items
+            .filter(it => it.isOfferItem)
+            .reduce((sum, it) => {
+                const included = it.offerIncludedQty || 0;
+                const extraQty = Math.max(0, (it.qty || 0) - included);
+                return sum + (it.price || 0) * extraQty;
+            }, 0);
+        const addedNonOfferItems = items
+            .filter(it => !it.isOfferItem)
+            .reduce((sum, it) => sum + (it.price || 0) * (it.qty || 0), 0);
+        return base + extraFromOfferItems + addedNonOfferItems;
+    })();
+    const charge = subtotal * (serveCharge / 100);
     const total = subtotal + charge;
 
     useEffect(() => {
         if (billItems) {
             setItems(billItems);
         }
-    }, [billItems]);
+        if (restaurantServiceCharge) {
+            const value = parseFloat(restaurantServiceChargeValue);
+            setServeCharge(isNaN(value) ? 0 : value);
+        }
+
+    }, [billItems, restaurantServiceCharge, restaurantServiceChargeValue]);
+
 
     const handleSubmit = async () => {
         if (!pickupType) {
@@ -183,7 +212,7 @@ export default function Bill({
                     <Typography>Rs.{formatCurrency(subtotal)}</Typography>
                 </Grid>
                 <Grid container justifyContent="space-between">
-                    <Typography>Service Charge (5%)</Typography>
+                    <Typography>Service Charge ({serveCharge}%)</Typography>
                     <Typography>Rs.{formatCurrency(charge)}</Typography>
                 </Grid>
                 <Grid container justifyContent="space-between" mt={1}>

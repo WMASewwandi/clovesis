@@ -1,48 +1,42 @@
-import { Grid, Switch, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Avatar, TextField } from "@mui/material";
-import React, { useState, useEffect } from "react";
-import dayjs from "dayjs";
+import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
+import { Grid, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Avatar, TextField } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import usePaginatedFetch from "../usePaginatedFetch";
+import PaginationUI from "../pagination";
 
-const sampleOrders = [
-    {
-        id: 1,
-        name: "Cheese Pizza",
-        image: "/images/restaurant/sample.jpg",
-        billNo: "B101",
-        price: 12.99,
-        qty: 2,
-        date: dayjs().subtract(1, 'day').format("YYYY-MM-DD"),
-        type: "Dine In"
-    },
-    {
-        id: 2,
-        name: "Veg Burger",
-        image: "/images/restaurant/sample.jpg",
-        billNo: "B102",
-        price: 8.5,
-        qty: 1,
-        date: dayjs().format("YYYY-MM-DD"),
-        type: "Pickup"
-    }
-];
 
 export default function History() {
-    const [isPickup, setIsPickup] = useState(false);
-    const [orders, setOrders] = useState(sampleOrders);
-    const [dateFilter, setDateFilter] = useState("");
+    const today = new Date();
+    const [dateFilter, setDateFilter] = useState(formatDate(today));
 
-    const handleChange = () => setIsPickup(!isPickup);
+    const {
+        data: orderList,
+        totalCount,
+        page,
+        pageSize,
+        setPage,
+        setPageSize,
+        setSearch,
+        fetchData: fetchOrderList,
+    } = usePaginatedFetch(`RestaurantPOS/GetAllOrderHistoryByUser?date=${dateFilter}`);
+
+
+
+    const handlePageChange = (event, value) => {
+        setPage(value);
+        fetchOrderList(value, searchText, pageSize);
+    };
+
+    const handlePageSizeChange = (event) => {
+        const size = event.target.value;
+        setPageSize(size);
+        setPage(1);
+        fetchOrderList(1, searchText, size);
+    };
 
     useEffect(() => {
-        let filtered = sampleOrders;
-
-        if (dateFilter) {
-            filtered = filtered.filter(order => order.date === dateFilter);
-        }
-
-        filtered = filtered.filter(order => order.type === (isPickup ? "Pickup" : "Dine In"));
-
-        setOrders(filtered);
-    }, [isPickup, dateFilter]);
+        fetchOrderList(1, "", pageSize);
+    }, [dateFilter]);
 
     return (
         <Grid container spacing={1}>
@@ -57,32 +51,6 @@ export default function History() {
                 <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                     Order History
                 </Typography>
-                <Box display="flex" alignItems="center" gap={1}>
-                    <Typography sx={{ color: isPickup ? '#fe6564' : 'gray', fontWeight: isPickup ? 'bold' : 'normal' }}>
-                        Pickup
-                    </Typography>
-                    <Switch
-                        checked={isPickup}
-                        onChange={handleChange}
-                        color="error"
-                        sx={{
-                            '& .MuiSwitch-switchBase.Mui-checked': {
-                                color: 'white',
-                                '&:hover': { backgroundColor: 'rgba(255,0,0,0.1)' }
-                            },
-                            '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                backgroundColor: '#fe6564'
-                            },
-                            '& .MuiSwitch-track': {
-                                borderRadius: 20,
-                                backgroundColor: '#ccc'
-                            }
-                        }}
-                    />
-                    <Typography sx={{ color: !isPickup ? '#fe6564' : 'gray', fontWeight: !isPickup ? 'bold' : 'normal' }}>
-                        Dine In
-                    </Typography>
-                </Box>
             </Grid>
 
             <Grid item xs={12} sx={{ mb: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
@@ -96,38 +64,57 @@ export default function History() {
             </Grid>
 
             <Grid item xs={12}>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead sx={{ backgroundColor: '#fe6564' }}>
+                <TableContainer
+                    component={Paper}
+                    sx={{ flex: 1, overflowY: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                    <Table size="small" stickyHeader>
+                        <TableHead>
                             <TableRow>
-                                <TableCell sx={{ color: 'white' }}>Image</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Name</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Bill No</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Price</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Qty</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Date</TableCell>
-                                <TableCell sx={{ color: 'white' }}>Type</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Bill No</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Order Type</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Steward</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Table</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Pick Up Type</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Items</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Service Charge</TableCell>
+                                <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Total Amount</TableCell>
+
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {orders.length ? orders.map(order => (
-                                <TableRow key={order.id}>
-                                    <TableCell><Avatar src={order.image} variant="square" /></TableCell>
-                                    <TableCell>{order.name}</TableCell>
-                                    <TableCell>{order.billNo}</TableCell>
-                                    <TableCell>${order.price.toFixed(2)}</TableCell>
-                                    <TableCell>{order.qty}</TableCell>
-                                    <TableCell>{order.date}</TableCell>
-                                    <TableCell>{order.type}</TableCell>
-                                </TableRow>
-                            )) : (
+                            {orderList.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center">No orders found</TableCell>
+                                    <TableCell colSpan={9}><Typography color="error">No Orders Available</Typography></TableCell>
                                 </TableRow>
+                            ) : (
+                                orderList.map((item, index) => (
+                                    <TableRow
+                                        key={index}
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '&:hover': { backgroundColor: 'rgba(254,101,100,0.1)' }
+                                        }}
+                                    >
+                                        <TableCell>{item.orderNo}</TableCell>
+                                        <TableCell>{item.orderTypeName}</TableCell>
+                                        <TableCell>{item.stewardDetails ? item.stewardDetails.firstName : ""}</TableCell>
+                                        <TableCell>{item.tableDetails ? item.tableDetails.code : ""}</TableCell>
+                                        <TableCell>{item.pickupTypeName}</TableCell>
+                                        <TableCell>
+                                            {item.orderItems.map((x, idx) => <Box key={idx}>{x.name} x {x.qty} - Rs.{x.price * x.qty}</Box>)}
+                                        </TableCell>
+                                        <TableCell>{formatCurrency(item.serviceCharge)}</TableCell>
+                                        <TableCell>{formatCurrency(item.totalAmount)}</TableCell>
+                                    </TableRow>
+                                ))
                             )}
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <Box sx={{ mt: 1 }}>
+                    <PaginationUI totalCount={totalCount} pageSize={pageSize} page={page} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
+                </Box>
             </Grid>
         </Grid>
     );

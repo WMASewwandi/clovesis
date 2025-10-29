@@ -32,15 +32,7 @@ export default function SearchBar({ onSearch }) {
                         },
                     }}
                 />
-                <Button
-                    variant="contained"
-                    sx={{
-                        backgroundColor: '#fe6564',
-                        '&:hover': { backgroundColor: '#fe6564' },
-                    }}
-                >
-                    +&nbsp;New&nbsp;Item
-                </Button>
+                
                 <Button
                     variant="contained"
                     sx={{

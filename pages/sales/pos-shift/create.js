@@ -24,6 +24,7 @@ import useApi from "@/components/utils/useApi";
 import * as Yup from "yup";
 import IsDayEndDone from "@/components/utils/IsDayEndDone";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import IsPOSDayEndDone from "@/components/utils/IsPOSDayEndDone";
 
 const style = {
   position: "absolute",
@@ -49,7 +50,7 @@ export default function AddShift({ fetchItems }) {
     denominations.map((val) => ({ val, qty: "", total: 0 }))
   );
   const inputRef = useRef(null);
-  const { data: isDayEndDone } = IsDayEndDone();
+  const { data: isDayEndDone } = IsPOSDayEndDone();
   const { data: isPOSShiftLinkToBackOffice } = IsAppSettingEnabled("IsPOSShiftLinkToBackOffice");
 
   const fetchAvailableTerminalList = async () => {

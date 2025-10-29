@@ -34,6 +34,8 @@ export const getModule = (type) => {
       return "Restaurant POS";
       case 17:
       return "Contact";
+      case 18:
+      return "CRM";
     default:
       return "N/A";
   }

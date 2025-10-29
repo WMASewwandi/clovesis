@@ -174,7 +174,7 @@ const POEdit = () => {
 
   const navigateToBack = () => {
     router.push({
-      pathname: "/inventory/grn",
+      pathname: "/inventory/purchase-order",
     });
   };
   const handleSubmit = async () => {
@@ -259,7 +259,7 @@ const POEdit = () => {
           setIsDisable(true);
           toast.success(jsonResponse.result.message);
           setTimeout(() => {
-            window.location.href = "/inventory/grn";
+            window.location.href = "/inventory/purchase-order";
           }, 1500);
           S;
         } else {
@@ -290,9 +290,9 @@ const POEdit = () => {
         <h1>Purchase Order Edit</h1>
         <ul>
           <li>
-            <Link href="/inventory/grn">Purchase Order</Link>
+            <Link href="/inventory/purchase-order">Purchase Order</Link>
           </li>
-          <li>Purchase Order Edit</li>
+          <li> Edit</li>
         </ul>
       </div>
 
