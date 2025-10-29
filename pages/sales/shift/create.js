@@ -103,7 +103,7 @@ export default function AddShift({ fetchItems }) {
   };
 
   useEffect(() => {
-    if (getLastShiftBalanceToNext) {
+    if (getLastShiftBalanceToNext && parseFloat(lastShiftBalance) != 0) {
       setSaveDisabled(true);
     }
     if (open) {
@@ -155,7 +155,7 @@ export default function AddShift({ fetchItems }) {
     updated[index].qty = qty;
     updated[index].total = parseFloat(qty || 0) * updated[index].val;
     setCashData(updated);
-    if (getLastShiftBalanceToNext) {
+    if (getLastShiftBalanceToNext && parseFloat(lastShiftBalance) != 0) {
       var enteredTotal = getTotalAmount();
       if (parseFloat(enteredTotal) === parseFloat(lastShiftBalance)) {
         setSaveDisabled(false);
@@ -260,7 +260,7 @@ export default function AddShift({ fetchItems }) {
                       <Typography variant="h5" fontWeight={500}>
                         Start Shift
                       </Typography>
-                      {getLastShiftBalanceToNext && (
+                      {(getLastShiftBalanceToNext  && parseFloat(lastShiftBalance) != 0) && (
                         <Typography variant="h5" fontWeight={500}>
                           {formatCurrency(lastShiftBalance)}
                         </Typography>
@@ -385,7 +385,7 @@ export default function AddShift({ fetchItems }) {
                             <TableFooter>
                               <TableRow>
                                 <TableCell colSpan={3}>Total Amount</TableCell>
-                                <TableCell>{getLastShiftBalanceToNext ? lastShiftBalance : getTotalAmount().toFixed(2)}</TableCell>
+                                <TableCell>{(getLastShiftBalanceToNext && parseFloat(lastShiftBalance) != 0) ? lastShiftBalance : getTotalAmount().toFixed(2)}</TableCell>
                               </TableRow>
                             </TableFooter>
                           </Table>
