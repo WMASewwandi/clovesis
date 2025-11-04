@@ -73,7 +73,7 @@ const GRNCreate = () => {
   const [referenceNo, setReferenceNo] = useState("");
   const [grnDate, setGrnDate] = useState(formatDate(today));
   const [remark, setRemark] = useState("");
-  const [isCredit, setIsCredit] = useState(true);
+  const [isCredit, setIsCredit] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [grnNo, setGrnNo] = useState("");
   const [filteredItems, setFilteredItems] = useState([]);

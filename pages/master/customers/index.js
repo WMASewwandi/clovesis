@@ -60,15 +60,15 @@ export default function Customers() {
   };
 
   useEffect(() => {
-      if (accountList) {
-        const accMap = accountList.reduce((acc, account) => {
-          acc[account.id] = account;
-          return acc;
-        }, {});
-        setChartOfAccInfo(accMap);
-        setChartOfAccounts(accountList);
-      }
-    }, [accountList]);
+    if (accountList) {
+      const accMap = accountList.reduce((acc, account) => {
+        acc[account.id] = account;
+        return acc;
+      }, {});
+      setChartOfAccInfo(accMap);
+      setChartOfAccounts(accountList);
+    }
+  }, [accountList]);
 
   if (!navigate) {
     return <AccessDenied />;
@@ -97,7 +97,7 @@ export default function Customers() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddCustomerDialog fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts}/> : ""}
+          {create ? <AddCustomerDialog fetchItems={fetchCustomerList} chartOfAccounts={chartOfAccounts} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -105,9 +105,11 @@ export default function Customers() {
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
+                  <TableCell>Display Name</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>NIC</TableCell>
                   <TableCell>Address</TableCell>
+                  <TableCell>Organization</TableCell>
                   <TableCell>Contact No</TableCell>
                   <TableCell>Receivable Acc</TableCell>
                   <TableCell>Details</TableCell>
@@ -127,18 +129,20 @@ export default function Customers() {
                       <TableCell>
                         {[item?.title, item?.firstName, item?.lastName].filter(Boolean).join(" ")}
                       </TableCell>
+                      <TableCell>{item.displayName}</TableCell>
                       <TableCell>{item.customerContactDetails?.[0]?.emailAddress || ""}</TableCell>
                       <TableCell>{item.nic || ""}</TableCell>
                       <TableCell>
                         {[item?.addressLine1, item?.addressLine2, item?.addressLine3].filter(Boolean).join(", ")}
                       </TableCell>
+                      <TableCell>{item.company || ""}</TableCell>
                       <TableCell>{item.customerContactDetails?.[0]?.contactNo || ""}</TableCell>
                       <TableCell>{chartOfAccInfo[item.receivableAccount]?.code || "-"} - {chartOfAccInfo[item.receivableAccount]?.description || "-"}</TableCell>
                       <TableCell>
                         <ViewCustomerDialog customerId={item.id} />
                       </TableCell>
                       <TableCell align="right">
-                        {update ? <EditCustomerDialog fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts}/> : ""}
+                        {update ? <EditCustomerDialog fetchItems={fetchCustomerList} item={item} chartOfAccounts={chartOfAccounts} /> : ""}
                         {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchCustomerList} /> : ""}
                       </TableCell>
                     </TableRow>

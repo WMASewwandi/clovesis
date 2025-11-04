@@ -108,11 +108,13 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
   const handleClickOpen = (scrollType) => () => {
     setOpen(true);
     setScroll(scrollType);
+    setContacts(initialContacts);
   };
 
   const handleClose = () => {
     setOpen(false);
   };
+
 
   const descriptionElementRef = React.useRef(null);
   React.useEffect(() => {
@@ -235,6 +237,7 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
                 Title: item.title || "",
                 FirstName: item.firstName || "",
                 LastName: item.lastName || "",
+                DisplayName: item.displayName || "",
                 AddressLine1: item.addressLine1 || "",
                 AddressLine2: item.addressLine2 || "",
                 AddressLine3: item.addressLine3 || "",
@@ -333,6 +336,24 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
                         name="LastName"
                         error={touched.LastName && Boolean(errors.LastName)}
                         helperText={touched.LastName && errors.LastName}
+                      />
+                    </Grid>
+                    <Grid item xs={12} lg={6}>
+                      <Typography
+                        component="label"
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "10px",
+                          display: "block",
+                        }}
+                      >
+                        Display Name
+                      </Typography>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        name="DisplayName"
                       />
                     </Grid>
                     <Grid item xs={12} lg={6}>
@@ -509,7 +530,7 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
                       />
                     </Grid>
 
-                    <Grid item lg={6} xs={12}>
+                    <Grid item xs={12}>
                       <Typography
                         component="label"
                         sx={{

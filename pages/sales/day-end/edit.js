@@ -275,7 +275,8 @@ export default function EditDayEnd({ date }) {
                                   ) : s.cashOutAmount}
                                 </TableCell>
                                 <TableCell>
-                                  {editingRowId === s.shiftId ? (
+                                  <Box display="flex" justifyContent="end" gap={1}>
+                                    {editingRowId === s.shiftId ? (
                                     <IconButton onClick={() => handleSaveRow(s.shiftId)}>
                                       <SaveIcon color="success" />
                                     </IconButton>
@@ -289,7 +290,7 @@ export default function EditDayEnd({ date }) {
                                       <SettingsBackupRestoreIcon color="error" />
                                     </IconButton>
                                   )}
-
+                                  </Box>
                                 </TableCell>
                               </TableRow>
                             ))

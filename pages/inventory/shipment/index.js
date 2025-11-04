@@ -1,39 +1,66 @@
-import React, { useEffect, useState } from "react";
-import Grid from "@mui/material/Grid";
-import {
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  TablePagination,
-  Tooltip,
-  IconButton,
-} from "@mui/material";
-import BorderColorIcon from "@mui/icons-material/BorderColor";
-import Link from "next/link";
+import React, { } from "react";
 import styles from "@/styles/PageTitle.module.css";
-import { toast, ToastContainer } from "react-toastify";
-import { useRouter } from "next/router";
-import BASE_URL from "Base/api";
-import { formatDate } from "@/components/utils/formatHelper";
+import Link from "next/link";
+import Grid from "@mui/material/Grid";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableContainer from "@mui/material/TableContainer";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import Paper from "@mui/material/Paper";
+import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
+import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Button, IconButton, Tooltip } from "@mui/material";
+import { ToastContainer } from "react-toastify";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
-import StatusType from "pages/production/ongoing/Types/StatusType";
-import ShipmentReport from "@/components/UIElements/Modal/Reports/Shipment";
-import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
+import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
+import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
+import StatusType from "pages/production/ongoing/Types/StatusType";
+import { useRouter } from "next/router";
+import { formatDate } from "@/components/utils/formatHelper";
+import BorderColorIcon from "@mui/icons-material/BorderColor";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 
-const Shipment = () => {
+export default function ShipmentNote() {
   const cId = sessionStorage.getItem("category")
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [shipments, setShipments] = useState([]);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState("");
+  const name = localStorage.getItem("name");
+  const { data: ReportName } = GetReportSettingValueByName("ShipmentNote");
+
+  const {
+    data: shipmentList,
+    totalCount,
+    page,
+    pageSize,
+    search,
+    setPage,
+    setPageSize,
+    setSearch,
+    fetchData: fetchShipmentList,
+  } = usePaginatedFetch("ShipmentNote/GetAll");
+
+
+  const handleSearchChange = (event) => {
+    setSearch(event.target.value);
+    setPage(1);
+    fetchShipmentList(1, event.target.value, pageSize);
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    fetchShipmentList(value, search, pageSize);
+  };
+
+  const handlePageSizeChange = (event) => {
+    const size = event.target.value;
+    setPageSize(size);
+    setPage(1);
+    fetchShipmentList(1, search, size);
+  };
+
   const router = useRouter();
 
   const navigateToCreate = () => {
@@ -49,58 +76,6 @@ const Shipment = () => {
     });
   };
 
-  const fetchShipments = async () => {
-    try {
-      const response = await fetch(
-        `${BASE_URL}/ShipmentNote/GetAllShipmentNotes`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch GSM List");
-      }
-
-      const data = await response.json();
-      setShipments(data.result);
-    } catch (error) {
-      console.error("Error fetching GSM List:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchShipments();
-  }, []);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleSearchChange = (event) => {
-    setSearchTerm(event.target.value);
-  };
-
-  const filteredData = shipments.filter(
-    (item) =>
-      item.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.documentNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.referanceNo.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const paginatedData = filteredData.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
 
   if (!navigate) {
     return <AccessDenied />;
@@ -113,57 +88,43 @@ const Shipment = () => {
         <h1>Shipment Note</h1>
         <ul>
           <li>
-            <Link href="/inventory/shipment">Shipment Note</Link>
+            <Link href="/inventory/shipment/">Shipment Note</Link>
           </li>
         </ul>
       </div>
-
-      <Grid
-        container
-        rowSpacing={1}
-        columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}
-      >
+      <Grid container rowSpacing={1} columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}>
         <Grid item xs={12} lg={4} order={{ xs: 2, lg: 1 }}>
           <Search className="search-form">
             <StyledInputBase
               placeholder="Search here.."
               inputProps={{ "aria-label": "search" }}
-              value={searchTerm}
+              value={search}
               onChange={handleSearchChange}
             />
           </Search>
         </Grid>
-        <Grid
-          item
-          xs={12}
-          lg={8}
-          mb={1}
-          display="flex"
-          justifyContent="end"
-          order={{ xs: 1, lg: 2 }}
-        >
+        <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
           {create ? <Button variant="outlined" onClick={() => navigateToCreate()}>
             + Add New
           </Button> : ""}
         </Grid>
-
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>#</TableCell>
                   <TableCell>Shipment Date</TableCell>
                   <TableCell>Shipment No</TableCell>
-                  <TableCell>Reference No</TableCell>
+                  <TableCell>PO No.</TableCell>
                   <TableCell>Supplier</TableCell>
+                  <TableCell>Reference No</TableCell>
                   <TableCell>Remark</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedData.length === 0 ? (
+                {shipmentList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} align="center">
                       <Typography color="error">
@@ -172,53 +133,78 @@ const Shipment = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedData.map((item, index) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{page * rowsPerPage + index + 1}</TableCell>
-                      <TableCell>{formatDate(item.shipmentDate)}</TableCell>
-                      <TableCell>{item.documentNo}</TableCell>
-                      <TableCell>{item.referanceNo}</TableCell>
-                      <TableCell>{item.supplierName}</TableCell>
-                      <TableCell>{item.remark}</TableCell>
-                      <TableCell>
-                        <StatusType type={item.status} />
-                      </TableCell>
-                      <TableCell align="right">
-                        {item.status != 7 ? (
-                          update ? (
-                            <Tooltip title="Edit" placement="top">
-                              <IconButton
-                                onClick={() => navigateToEdit(item.id)}
-                                aria-label="edit"
-                                size="small"
-                              >
-                                <BorderColorIcon color="primary" fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : null
-                        ) : (
-                          print ? <ShipmentReport shipment={item} /> : null
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  shipmentList.map((item, index) => {
+                    const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${ReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{formatDate(item.shipmentDate)}</TableCell>
+                        <TableCell>{item.documentNo}</TableCell>
+                        <TableCell>
+                          {item.shipmentNoteLineDetails && (
+                            [...new Set(item.shipmentNoteLineDetails.map(no => no.purchaseOrderNo))]
+                              .join(', ')
+                          )}
+                        </TableCell>
+                        <TableCell>{item.supplierName}</TableCell>
+                        <TableCell>{item.referanceNo}</TableCell>
+                        <TableCell>{item.remark}</TableCell>
+                        <TableCell>
+                          <StatusType type={item.status} />
+                        </TableCell>
+                        <TableCell align="right">
+                          {item.status != 7 ? (
+                            update ? (
+                              <Tooltip title="Edit" placement="top">
+                                <IconButton
+                                  onClick={() => navigateToEdit(item.id)}
+                                  aria-label="edit"
+                                  size="small"
+                                >
+                                  <BorderColorIcon color="primary" fontSize="inherit" />
+                                </IconButton>
+                              </Tooltip>
+                            ) : null
+                          ) : (
+                            print ?
+                              <>
+                                {/* <ShipmentReport shipment={item} />  */}
+                                <Tooltip title="Print" placement="top">
+                                  <a href={`${Report}` + reportLink} target="_blank">
+                                    <IconButton aria-label="print" size="small">
+                                      <LocalPrintshopIcon color="primary" fontSize="medium" />
+                                    </IconButton>
+                                  </a>
+                                </Tooltip>
+                              </>
+                              : null
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={filteredData.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
+            <Grid container justifyContent="space-between" mt={2} mb={2}>
+              <Pagination
+                count={Math.ceil(totalCount / pageSize)}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+                shape="rounded"
+              />
+              <FormControl size="small" sx={{ mr: 2, width: "100px" }}>
+                <InputLabel>Page Size</InputLabel>
+                <Select value={pageSize} label="Page Size" onChange={handlePageSizeChange}>
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={25}>25</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </TableContainer>
         </Grid>
       </Grid>
     </>
   );
-};
-
-export default Shipment;
+}

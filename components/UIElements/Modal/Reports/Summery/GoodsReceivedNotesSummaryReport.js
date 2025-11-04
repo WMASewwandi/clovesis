@@ -15,8 +15,8 @@ import "react-toastify/dist/ReactToastify.css";
 import { Visibility } from "@mui/icons-material";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import { Report } from "Base/report";
-import useApi from "@/components/utils/useApi";
 import { Catelogue } from "Base/catelogue";
+import useApi from "@/components/utils/useApi";
 import BASE_URL from "Base/api";
 
 const style = {
@@ -30,15 +30,13 @@ const style = {
   p: 2,
 };
 
-export default function ProfitabilityReport({ docName, reportName }) {
+export default function GoodsReceivedNotesSummaryReport({ docName, reportName }) {
   const warehouseId = localStorage.getItem("warehouse");
-  const name = localStorage.getItem("name");
   const [open, setOpen] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [customers, setCustomers] = useState([]);
-  const [customerId, setCustomerId] = useState(0);
-  const { data: ProfitabilityReport } = GetReportSettingValueByName(reportName);
+  const { data: goodsReceivedNotesSummaryReport } = GetReportSettingValueByName(reportName);
+  const name = localStorage.getItem("name");
   const [items, setItems] = useState([]);
   const [itemId, setItemId] = useState(0);
   const [categories, setCategories] = useState([]);
@@ -51,18 +49,11 @@ export default function ProfitabilityReport({ docName, reportName }) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-
-  const isFormValid = fromDate && toDate;
-
-  const { data: customerList } = useApi("/Customer/GetAllCustomer");
   const { data: itemList } = useApi("/Items/GetAllItems");
   const { data: supplierList } = useApi("/Supplier/GetAllSupplier");
   const { data: categoryList } = useApi("/Category/GetAllCategory");
 
   useEffect(() => {
-    if (customerList) {
-      setCustomers(customerList);
-    }
     if (itemList) {
       setItems(itemList);
     }
@@ -72,7 +63,9 @@ export default function ProfitabilityReport({ docName, reportName }) {
     if (categoryList) {
       setCategories(categoryList);
     }
-  }, [customerList, itemList, supplierList, categoryList]);
+  }, [ itemList, supplierList, categoryList]);
+
+  const isFormValid = fromDate && toDate;
 
   const handleGetSupplierItems = async (id) => {
     setItemId(0);
@@ -124,7 +117,6 @@ export default function ProfitabilityReport({ docName, reportName }) {
       console.error("Error:", error);
     }
   }
-
   return (
     <>
       <Tooltip title="View" placement="top">
@@ -144,10 +136,10 @@ export default function ProfitabilityReport({ docName, reportName }) {
             <Grid container spacing={1}>
               <Grid item xs={12} my={2} display="flex" justifyContent="space-between">
                 <Typography variant="h5" fontWeight="bold">
-                  Profitability Report
+                  Goods Received Notes Summary Report
                 </Typography>
               </Grid>
-              <Grid item lg={6} xs={12}>
+              <Grid item xs={12} lg={6}>
                 <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
                   From
                 </Typography>
@@ -159,7 +151,7 @@ export default function ProfitabilityReport({ docName, reportName }) {
                   onChange={(e) => setFromDate(e.target.value)}
                 />
               </Grid>
-              <Grid lg={6} item xs={12}>
+              <Grid item xs={12} lg={6}>
                 <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
                   To
                 </Typography>
@@ -170,23 +162,6 @@ export default function ProfitabilityReport({ docName, reportName }) {
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
                 />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
-                  Select Customer
-                </Typography>
-                <Select
-                  fullWidth
-                  size="small"
-                  value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
-                >
-                  <MenuItem value={0}>All</MenuItem>
-                  {customers.length === 0 ? <MenuItem value="">No Customers Available</MenuItem>
-                    : (customers.map((customer) => (
-                      <MenuItem key={customer.id} value={customer.id}>{customer.firstName} {customer.lastName}</MenuItem>
-                    )))}
-                </Select>
               </Grid>
               <Grid item xs={12}>
                 <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
@@ -269,8 +244,8 @@ export default function ProfitabilityReport({ docName, reportName }) {
                 <Button onClick={handleClose} variant="contained" color="error">
                   Close
                 </Button>
-                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${ProfitabilityReport}&customerId=${customerId}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&item=${itemId}&supplier=${supplierId}&category=${categoryId}&subCategory=${subCategoryId}`} target="_blank">
-                  <Button variant="contained" disabled={!isFormValid} aria-label="print" size="small">
+                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${goodsReceivedNotesSummaryReport}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&item=${itemId}&supplier=${supplierId}&category=${categoryId}&subCategory=${subCategoryId}`} target="_blank">
+                   <Button variant="contained" disabled={!isFormValid} aria-label="print" size="small">
                     Submit
                   </Button>
                 </a>

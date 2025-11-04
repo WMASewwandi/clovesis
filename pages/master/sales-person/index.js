@@ -16,21 +16,21 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import AddSalesPerson from "./create";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 import EditSalesPerson from "./edit";
-// import ViewViewSalesPersonDialog from "./view";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import usePaginatedFetch from "@/components/hooks/usePaginatedFetch"; // adjust import as needed
+import usePaginatedFetch from "@/components/hooks/usePaginatedFetch"; 
+import useApi from "@/components/utils/useApi";
 
-export default function SalesPerson() { // <-- Renamed component
+export default function SalesPerson() { 
   const cId = sessionStorage.getItem("category")
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  const [chartOfAccounts, setChartOfAccounts] = useState([]);
-  const [chartOfAccInfo, setChartOfAccInfo] = useState({});
-  //const { data: accountList } = useApi("/ChartOfAccount/GetAll");
-  
- 
+  const { data: supplierList } = useApi("/Supplier/GetAllSupplier");
+  const [suppliers, setSuppliers] = useState([]);
+  const { data: isSupplierSalesRef } = IsAppSettingEnabled("IsSupplierSalesRef");
+  const [supplierInfo, setSupplierInfo] = useState({});
+
   const {
-    data: salesPersonList, // <-- Renamed variable
+    data: salesPersonList, 
     totalCount,
     page,
     pageSize,
@@ -38,16 +38,13 @@ export default function SalesPerson() { // <-- Renamed component
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchSalesPersonList, // <-- Renamed function
-  } = usePaginatedFetch("SalesPerson/GetAllSalesPerson");
+    fetchData: fetchSalesPersonList,
+  } = usePaginatedFetch("SalesPerson/GetAll");
 
 
-  // --- THIS IS THE FIX ---
   useEffect(() => {
-    // Fetch data when the component mounts using the initial state from the hook
     fetchSalesPersonList(page, search, pageSize);
-  }, []); // <-- The empty array [] ensures this runs only ONCE on mount
-  // --- END OF FIX ---
+  }, []); 
 
 
   const controller = "SalesPerson/DeleteSalesPerson";
@@ -55,31 +52,32 @@ export default function SalesPerson() { // <-- Renamed component
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
-    fetchSalesPersonList(1, event.target.value, pageSize); // <-- Use renamed function
+    fetchSalesPersonList(1, event.target.value, pageSize); 
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchSalesPersonList(value, search, pageSize); // <-- Use renamed function
+    fetchSalesPersonList(value, search, pageSize); 
   };
 
   const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchSalesPersonList(1, search, size); // <-- Use renamed function
+    fetchSalesPersonList(1, search, size); 
   };
 
-  // useEffect(() => {
-  //     if (accountList) {
-  //       const accMap = accountList.reduce((acc, account) => {
-  //         acc[account.id] = account;
-  //         return acc;
-  //       }, {});
-  //       setChartOfAccInfo(accMap);
-  //       setChartOfAccounts(accountList);
-  //     }
-  //   }, [accountList]);
+  useEffect(() => {
+    if (supplierList) {
+      setSuppliers(supplierList);
+
+      const supplierMap = supplierList.reduce((acc, supplier) => {
+        acc[supplier.id] = supplier;
+        return acc;
+      }, {});
+      setSupplierInfo(supplierMap);
+    }
+  }, [supplierList]);
 
   if (!navigate) {
     return <AccessDenied />;
@@ -108,7 +106,7 @@ export default function SalesPerson() { // <-- Renamed component
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddSalesPerson fetchItems={fetchSalesPersonList} chartOfAccounts={chartOfAccounts}/> : ""} {/* <-- Pass renamed function */}
+          {create ? <AddSalesPerson fetchItems={fetchSalesPersonList} isSupplierSalesRef={isSupplierSalesRef} suppliers={suppliers} /> : ""} {/* <-- Pass renamed function */}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -118,31 +116,30 @@ export default function SalesPerson() { // <-- Renamed component
                   <TableCell>Code</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Mobile Number</TableCell>
-                  <TableCell>remark</TableCell>
-              
+                  {isSupplierSalesRef && (<TableCell> Supplier</TableCell>)}
+                  <TableCell>Remark</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {salesPersonList.length === 0 ? ( // <-- Use renamed variable
+                {salesPersonList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6}>
                       <Typography color="error">No Sales Person Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  salesPersonList.map((item, index) => ( // <-- Use renamed variable
+                  salesPersonList.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>
-                        {[ item?.code].filter(Boolean).join(" ")}
+                        {item?.code}
                       </TableCell>
-                      <TableCell>  {[ item?.name].filter(Boolean).join(" ")}</TableCell>
-                      <TableCell>  {[ item?.mobileNumber].filter(Boolean).join(" ")}</TableCell>
-                      <TableCell>  {[ item?.remark].filter(Boolean).join(" ")}</TableCell>
-
-                      
+                      <TableCell>  {item?.name}</TableCell>
+                      <TableCell>  {item?.mobileNumber}</TableCell>
+                      {isSupplierSalesRef && (<TableCell>  {supplierInfo[item.supplier]?.name || "-"}</TableCell>)}
+                      <TableCell>  {item?.remark}</TableCell>
                       <TableCell align="right">
-                        {update ? <EditSalesPerson fetchItems={fetchSalesPersonList} item={item} chartOfAccounts={chartOfAccounts}/> : ""} {/* <-- Pass renamed function */}
+                        {update ? <EditSalesPerson fetchItems={fetchSalesPersonList} item={item} isSupplierSalesRef={isSupplierSalesRef} suppliers={suppliers} /> : ""} {/* <-- Pass renamed function */}
                         {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchSalesPersonList} /> : ""} {/* <-- Pass renamed function */}
                       </TableCell>
                     </TableRow>
@@ -173,4 +170,3 @@ export default function SalesPerson() { // <-- Renamed component
     </>
   );
 }
-// Note: I also removed an extra closing brace } that was at the end of your original file.

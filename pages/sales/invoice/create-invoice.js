@@ -68,7 +68,7 @@ const InvoiceCreate = () => {
   const router = useRouter();
   const [grossTotal, setGrossTotal] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [salesPerson, setSalesPerson] = useState("");
+  const [salesPerson, setSalesPerson] = useState(null);
   const [isDisable, setIsDisable] = useState(false);
   const [rows, setRows] = useState([]);
   const [rowsCC, setRowsCC] = useState([]);
@@ -153,6 +153,19 @@ const InvoiceCreate = () => {
   const handleQtyRef = (el, index) => {
     qtyRefs.current[index] = el;
   };
+
+  useEffect(() => {
+    if (customer) {
+      if (customer.firstName && customer.firstName.trim().toLowerCase() === "cash") {
+        setPaymentType(null);
+      } else {
+        setPaymentType(7);
+      }
+    } else {
+      setPaymentType(null);
+    }
+  }, [customer]);
+
   useEffect(() => {
     const sum = (arr, key) =>
       arr.reduce((total, row) => total + (Number(row[key]) || 0), 0);
@@ -265,10 +278,10 @@ const InvoiceCreate = () => {
       return;
     }
 
-    // if (isPaymentTypeEnableToInvoice && !paymentType) {
-    //   toast.warning("Please Select Payment Type");
-    //   return;
-    // }
+    if (isPaymentTypeEnableToInvoice && !paymentType) {
+      toast.warning("Please Select Payment Type");
+      return;
+    }
 
     if (rowsCC.length > 0 && rowsCC.some(row => row.machine === null)) {
       toast.info('Please select machine');
@@ -432,6 +445,7 @@ const InvoiceCreate = () => {
 
       if (res.ok && json.result.result !== "") {
         toast.success(json.result.message);
+        //router.push("/sales/invoice/");
         updateInvNo();
         setSelectedRows([]);
         setCustomer(null);
@@ -439,7 +453,7 @@ const InvoiceCreate = () => {
         setAddress2("");
         setAddress3("");
         setRemark("");
-        setSalesPerson("");
+        setSalesPerson(null);
         setRows([]);
         setRowsCC([]);
       } else {
@@ -597,6 +611,21 @@ const InvoiceCreate = () => {
     }
   }, [stockBalance, customerList, doctorsList]);
 
+  const isCashCustomer = customer && customer.firstName && customer.firstName.trim().toLowerCase() === "cash";
+  const isCreditCustomer = customer && customer.firstName && customer.firstName.trim().toLowerCase() !== "cash";
+
+  const paymentOptions = !customer
+    ? []
+    : isCashCustomer
+      ? [
+        { value: 1, label: "Cash" },
+        { value: 2, label: "Card" },
+        { value: 4, label: "Bank Transfer" },
+      ]
+      : [
+        { value: 7, label: "Credit" },
+      ];
+
   return (
     <>
       <ToastContainer />
@@ -650,7 +679,7 @@ const InvoiceCreate = () => {
                 </Typography>
                 <Autocomplete
                   sx={{ width: "60%" }}
-                  options={customers}
+                  options={customers || []}
                   getOptionLabel={(option) => option.firstName || ""}
                   value={customer}
                   onChange={(event, newValue) => {
@@ -859,13 +888,17 @@ const InvoiceCreate = () => {
                       Payment Type
                     </Typography>
                     <Select
-                      value={paymentType}
-                      onChange={(e) => setPaymentType(e.target.value)} sx={{ width: "60%" }} size="small">
-                      <MenuItem value={1}>Cash</MenuItem>
-                      <MenuItem value={2}>Card</MenuItem>
-                      <MenuItem value={3}>Cash & Card</MenuItem>
-                      <MenuItem value={4}>Bank Transfer</MenuItem>
-                      <MenuItem value={5}>Cheque</MenuItem>
+                      value={paymentType || ""}
+                      onChange={(e) => setPaymentType(e.target.value)}
+                      sx={{ width: "60%" }}
+                      size="small"
+                      disabled={!customer || isCreditCustomer}
+                    >
+                      {paymentOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </Grid> : ""
                 }
@@ -893,7 +926,7 @@ const InvoiceCreate = () => {
                       </Typography>
                       <Autocomplete
                         sx={{ width: "60%" }}
-                        options={doctors}
+                        options={doctors || []}
                         getOptionLabel={(option) => option.firstName + " " + option.lastName || ""}
                         value={selectedDoctor}
                         onChange={(event, newValue) => {

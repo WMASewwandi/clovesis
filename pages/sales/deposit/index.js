@@ -96,18 +96,12 @@ export default function DailyDeposits() {
   }, []);
 
   const navigateToCreate = async () => {
-    const latestDayEndDone = await refetchDayEndDone();
-    const latestDailyDepositDone = await refetchDailyDepositDone();
+    // const latestDayEndDone = await refetchDayEndDone();
 
-    if (!latestDayEndDone) {
-      toast.warning("Please Complete Day End First");
-      return;
-    }
-
-    if (latestDailyDepositDone) {
-      toast.warning("Daily deposit has already been completed for today.");
-      return;
-    }
+    // if (!latestDayEndDone) {
+    //   toast.warning("Please Complete Day End First");
+    //   return;
+    // }
 
     router.push({
       pathname: "/sales/deposit/create",

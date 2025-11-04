@@ -55,7 +55,7 @@ const POCreate = () => {
   const { data: pOrderNo } = getNext(`9`);
   const [poType, setPOType] = useState("");
   const [isDisable, setIsDisable] = useState(false);
-  const [isCredit, setIsCredit] = useState(true);
+  const [isCredit, setIsCredit] = useState(false);
 
   const navigateToBack = () => {
     router.push({

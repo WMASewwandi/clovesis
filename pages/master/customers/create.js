@@ -38,11 +38,11 @@ const validationSchema = Yup.object().shape({
     Yup.object().shape({
       ContactName: Yup.string().required("Contact Name is required"),
       EmailAddress: Yup.string().email("Invalid email address"),
-    ContactNo: Yup.string()
-  .matches(/^\d+$/, "Contact No must contain only digits"),
-  
+      ContactNo: Yup.string()
+        .matches(/^\d+$/, "Contact No must contain only digits"),
 
-      
+
+
     })
   ),
 });
@@ -220,6 +220,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                 Title: "",
                 FirstName: "",
                 LastName: "",
+                DisplayName: "",
                 AddressLine1: "",
                 AddressLine2: "",
                 AddressLine3: "",
@@ -320,6 +321,24 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                               name="LastName"
                               error={touched.LastName && Boolean(errors.LastName)}
                               helperText={touched.LastName && errors.LastName}
+                            />
+                          </Grid>
+                          <Grid item xs={12} lg={6}>
+                            <Typography
+                              component="label"
+                              sx={{
+                                fontWeight: "500",
+                                fontSize: "14px",
+                                mb: "10px",
+                                display: "block",
+                              }}
+                            >
+                              Display Name
+                            </Typography>
+                            <Field
+                              as={TextField}
+                              fullWidth
+                              name="DisplayName"
                             />
                           </Grid>
                           <Grid item xs={12} lg={6}>
@@ -495,7 +514,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                               helperText={touched.Designation && errors.Designation}
                             />
                           </Grid>
-                          <Grid item lg={6} xs={12}>
+                          <Grid item xs={12}>
                             <Typography
                               component="label"
                               sx={{
@@ -565,7 +584,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                                   as={TextField}
                                   fullWidth
                                   name={`CustomerContactDetails.${index}.ContactNo`}
-                                  
+
                                   error={
                                     touched.CustomerContactDetails?.[index]
                                       ?.ContactNo &&
@@ -637,7 +656,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                         type="button"
                         color="error"
                         variant="contained"
-                         onClick={handleClose}  // <-- This is what was missing
+                        onClick={handleClose}  // <-- This is what was missing
                       >
                         Cancel
                       </Button>

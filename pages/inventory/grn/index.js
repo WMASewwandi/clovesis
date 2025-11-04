@@ -152,6 +152,7 @@ const GRN = () => {
                   <TableCell>#</TableCell>
                   <TableCell>GRN Date</TableCell>
                   <TableCell>GRN No</TableCell>
+                  <TableCell>PO No</TableCell>
                   <TableCell>Reference No</TableCell>
                   <TableCell>Supplier</TableCell>
                   {IsSupplierSalesRef && (
@@ -179,8 +180,11 @@ const GRN = () => {
                     return (
                       <TableRow key={item.id}>
                         <TableCell>{index + 1}</TableCell>
-                        <TableCell>{item.grnDate ? formatDate(item.grnDate) : formatDate(item.createdOn)}</TableCell>
+                        <TableCell>
+                          {item.purchaseOrderNo != null ? item.updatedOn ? formatDate(item.updatedOn) : formatDate(item.createdOn) : item.grnDate ? formatDate(item.grnDate) : formatDate(item.createdOn)}
+                        </TableCell>
                         <TableCell>{item.documentNo}</TableCell>
+                        <TableCell>{item.purchaseOrderNo != null ? item.purchaseOrderNo : "N/A"}</TableCell>
                         <TableCell>{item.referanceNo}</TableCell>
                         <TableCell>{item.supplierName}</TableCell>
                         {IsSupplierSalesRef && (

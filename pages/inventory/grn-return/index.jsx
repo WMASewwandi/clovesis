@@ -68,6 +68,7 @@ const GrnReturn = () => {
     fetchData: fetchGrnReturnList,
   } = usePaginatedFetch("GoodReceivedNote/GetAllGoodsReturnNotes");
 
+
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
     setPage(1);
@@ -180,7 +181,7 @@ const GrnReturn = () => {
                         </TableCell>
                         <TableCell>{item.documentNo}</TableCell>
                         <TableCell>{item.supplierName}</TableCell>
-                        <TableCell>{item.grnDocumentNo}</TableCell>
+                        <TableCell>{item.grnDocumentNo ? item.grnDocumentNo : "Non-GRN"}</TableCell>
                         <TableCell>
                           {formatCurrency(item.totalAmount)}
                         </TableCell>

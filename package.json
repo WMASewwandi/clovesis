@@ -22,7 +22,7 @@
     "@mui/lab": "^5.0.0-alpha.115",
     "@mui/material": "^5.11.4",
     "@mui/x-data-grid": "^5.17.17",
-    "@mui/x-date-pickers": "^5.0.12",
+    "@mui/x-date-pickers": "^5.0.20",
     "@ramonak/react-progress-bar": "^5.0.3",
     "@react-pdf/renderer": "^3.4.4",
     "@reduxjs/toolkit": "^2.2.2",

@@ -183,14 +183,26 @@ const POEdit = () => {
       0
     );
 
-    const invalidRow = selectedRows.find(
-      (row) => row.sellingPrice <= 0 || row.sellingPrice <= row.costPrice
-    );
     const invalidQty = selectedRows.find((row) => row.poReceivedQty <= 0);
     if (invalidQty) {
       toast.info("Received Quantity Cannot be 0.");
       return;
     }
+
+    const missingSellingPrice = selectedRows.find(
+      (row) => !row.sellingPrice || row.sellingPrice === "" || row.sellingPrice === null || row.sellingPrice === undefined
+    );
+    if (missingSellingPrice) {
+      toast.info("Selling Price is required.");
+      return;
+    }
+
+    const invalidRow = selectedRows.find(
+      (row) =>
+        parseFloat(row.sellingPrice) <= 0 ||
+        parseFloat(row.sellingPrice) <= parseFloat(row.costPrice)
+    );
+    
     if (invalidRow) {
       toast.info("Please Enter Selling Price greater than Cost Price.");
       return;
@@ -559,7 +571,7 @@ const POEdit = () => {
                             type="number"
                             sx={{ width: "150px" }}
                             fullWidth
-                            value={row.sellingPrice || 0}
+                            value={row.sellingPrice === 0 || row.sellingPrice === null || row.sellingPrice === undefined ? "" : row.sellingPrice}
                             onChange={(e) =>
                               handleInputChange(
                                 index,
@@ -575,7 +587,7 @@ const POEdit = () => {
                             type="number"
                             fullWidth
                             sx={{ width: "150px" }}
-                            value={row.discountAmount || "0"}
+                            value={row.discountAmount === 0 || row.discountAmount === null || row.discountAmount === undefined ? "" : row.discountAmount}
                             onChange={(e) =>
                               handleInputChange(
                                 index,

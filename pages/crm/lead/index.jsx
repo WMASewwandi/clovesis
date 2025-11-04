@@ -9,12 +9,19 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
+  // --- REMOVED ---
+  // TablePagination,
   Chip,
   Box,
   IconButton,
   Tooltip,
   Typography,
+  // --- ADDED ---
+  Pagination,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Link from "next/link";
@@ -65,8 +72,6 @@ const Leads = () => {
 
   const navigateToCreate = () => router.push("/crm/lead/create-lead");
 
-  // --- THIS IS THE UPDATED FUNCTION ---
-  // Removed the window.confirm() wrapper
   const handleDelete = async (id) => {
     try {
       const response = await fetch(
@@ -91,7 +96,6 @@ const Leads = () => {
       toast.error("An error occurred while connecting to the server.");
     }
   };
-  // --- END OF UPDATE ---
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
@@ -99,13 +103,15 @@ const Leads = () => {
     setPage(1);
   };
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage + 1);
-    fetchLeads(newPage + 1, search, pageSize);
+  // --- CHANGED: Handler for Pagination component ---
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    fetchLeads(value, search, pageSize);
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    const size = parseInt(event.target.value, 10);
+  // --- CHANGED: Handler for PageSize Select component ---
+  const handlePageSizeChange = (event) => {
+    const size = event.target.value;
     setPageSize(size);
     setPage(1);
     fetchLeads(1, search, size);
@@ -114,11 +120,16 @@ const Leads = () => {
   const getStageChipColor = (stageId) => {
     const stageName = LEAD_STAGE_MAP[stageId] || "";
     switch (stageName.toLowerCase()) {
-      case "qualified": return "success";
-      case "contacted": return "warning";
-      case "new": return "primary";
-      case "unqualified": return "error";
-      default: return "default";
+      case "qualified":
+        return "success";
+      case "contacted":
+        return "warning";
+      case "new":
+        return "primary";
+      case "unqualified":
+        return "error";
+      default:
+        return "default";
     }
   };
 
@@ -131,12 +142,12 @@ const Leads = () => {
       <ToastContainer />
       <div className={styles.pageTitle}>
         <h1>Leads</h1>
-        <h1>Contact</h1>
-          <ul>
-            <li>
-               <Link href="/crm/lead">Lead</Link>
-            </li>
-          </ul>
+        {/* --- FIXED: Removed extra H1 --- */}
+        <ul>
+          <li>
+            <Link href="/crm/lead">Lead</Link>
+          </li>
+        </ul>
       </div>
       <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
@@ -178,11 +189,24 @@ const Leads = () => {
                   </TableRow>
                 ) : (
                   leads.map((item) => {
-                    const tagNames = Array.isArray(item.tags)
-                      ? item.tags
-                          .map(tagId => tagMap[tagId])
+                    // --- FIXED: Added JSON.parse logic for tags ---
+                    let tagIds = [];
+                    try {
+                      if (typeof item.tags === "string") {
+                        tagIds = JSON.parse(item.tags);
+                      } else if (Array.isArray(item.tags)) {
+                        tagIds = item.tags;
+                      }
+                    } catch (e) {
+                      console.error("Failed to parse tags:", item.tags, e);
+                    }
+
+                    const tagNames = Array.isArray(tagIds)
+                      ? tagIds
+                          .map((tagId) => tagMap[tagId])
                           .filter(Boolean)
                       : [];
+                    // --- END OF FIX ---
 
                     return (
                       <TableRow key={item.id}>
@@ -200,7 +224,13 @@ const Leads = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 0.5,
+                            }}
+                          >
                             {tagNames.length > 0 ? (
                               tagNames.map((name, index) => (
                                 <Chip
@@ -211,7 +241,7 @@ const Leads = () => {
                                 />
                               ))
                             ) : (
-                              '--'
+                              "--"
                             )}
                           </Box>
                         </TableCell>
@@ -241,15 +271,29 @@ const Leads = () => {
                 )}
               </TableBody>
             </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={totalCount}
-              rowsPerPage={pageSize}
-              page={page - 1}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
+            
+            <Grid container justifyContent="space-between" mt={2} mb={2}>
+              <Pagination
+                count={Math.ceil(totalCount / pageSize)}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+                shape="rounded"
+              />
+              <FormControl size="small" sx={{ mr: 2, width: "100px" }}>
+                <InputLabel>Page Size</InputLabel>
+                <Select
+                  value={pageSize}
+                  label="Page Size"
+                  onChange={handlePageSizeChange}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={25}>25</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
           </TableContainer>
         </Grid>
       </Grid>

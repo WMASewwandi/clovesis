@@ -74,6 +74,7 @@ const ShipmentEdit = () => {
         (row) => ({
           ...row,
           lineTotal: parseFloat(row.receivedQty) * parseFloat(row.unitPrice),
+          damagedQty: row.damagedQty || null,
         })
       );
 
@@ -92,7 +93,17 @@ const ShipmentEdit = () => {
 
   const handleChange = (index, field, value) => {
     const updatedShipmentLineDetails = [...shipmentLineDetails];
-    updatedShipmentLineDetails[index][field] = parseFloat(value) || 0;
+    
+    if (field === "damagedQty") {
+      const maxDamagedQty = updatedShipmentLineDetails[index].qty - updatedShipmentLineDetails[index].receivedQty;
+      const damagedValue = parseFloat(value) || null;
+      if (damagedValue && damagedValue > maxDamagedQty) {
+        toast.info("Damaged Quantity cannot exceed the difference between Ordered and Received Quantity.");
+        return;
+      }
+    }
+    
+    updatedShipmentLineDetails[index][field] = parseFloat(value) || null;
 
     updatedShipmentLineDetails[index].lineTotal =
       updatedShipmentLineDetails[index].receivedQty *
@@ -110,17 +121,29 @@ const ShipmentEdit = () => {
     let hasInvalidValues = false;
 
     shipmentLineDetails.forEach((row) => {
-      if (row.receivedQty === 0 || row.unitPrice === 0) {
+      if (!row.receivedQty || row.receivedQty <= 0 || !row.unitPrice || row.unitPrice <= 0) {
         hasInvalidValues = true;
       }
     });
 
-    // if (hasInvalidValues) {
-    //   toast.info(
-    //     "Please enter values greater than 0 for Received Quantity and Unit Price."
-    //   );
-    //   return;
-    // }
+    if (hasInvalidValues) {
+      toast.info(
+        "Please enter values greater than 0 for Received Quantity and Unit Price."
+      );
+      return;
+    }
+
+    const invalidDamagedQty = shipmentLineDetails.find((row) => {
+      const maxDamagedQty = row.qty - row.receivedQty;
+      return row.damagedQty && row.damagedQty > maxDamagedQty;
+    });
+
+    if (invalidDamagedQty) {
+      toast.info(
+        "Damaged Quantity cannot exceed the difference between Ordered and Received Quantity."
+      );
+      return;
+    }
 
     const data = {
       Id: id,
@@ -144,6 +167,7 @@ const ShipmentEdit = () => {
         productName: row.productName,
         qty: row.qty,
         receivedQty: row.receivedQty,
+        damagedQty : row.damagedQty,
         freightDutyCost: row.freightDutyCost,
         additionalCost: row.additionalCost,
         LineTotal: row.lineTotal,
@@ -382,6 +406,7 @@ const ShipmentEdit = () => {
                       <TableCell sx={{ color: "#fff" }}>Ordered Qty</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Unit Price</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Received Qty</TableCell>
+                      <TableCell sx={{ color: "#fff" }}>Damaged Qty</TableCell>
                       <TableCell sx={{ color: "#fff" }}>
                         Additional Cost
                       </TableCell>
@@ -415,9 +440,10 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.unitPrice}
+                            value={row.unitPrice === 0 || row.unitPrice === null ? "" : row.unitPrice}
                             fullWidth
                             size="small"
+                            inputProps={{ min: 0.01, step: "0.01" }}
                             onChange={(e) =>
                               handleChange(
                                 index,
@@ -430,9 +456,10 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.receivedQty}
+                            value={row.receivedQty === 0 || row.receivedQty === null ? "" : row.receivedQty}
                             fullWidth
                             size="small"
+                            inputProps={{ min: 0.01, step: "0.01" }}
                             onChange={(e) =>
                               handleChange(
                                 index,
@@ -442,10 +469,26 @@ const ShipmentEdit = () => {
                             }
                           />
                         </TableCell>
+                         <TableCell sx={{ p: 1 }}>
+                          <TextField
+                            type="number"
+                            value={row.damagedQty === 0 || row.damagedQty === null ? "" : row.damagedQty}
+                            fullWidth
+                            size="small"
+                            inputProps={{ min: 0, max: row.qty - row.receivedQty }}
+                            onChange={(e) =>
+                              handleChange(
+                                index,
+                                "damagedQty",
+                                parseFloat(e.target.value)
+                              )
+                            }
+                          />
+                        </TableCell>
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.additionalCost}
+                            value={row.additionalCost === 0 || row.additionalCost === null ? "" : row.additionalCost}
                             fullWidth
                             size="small"
                             onChange={(e) =>
@@ -460,7 +503,7 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.freightDutyCost}
+                            value={row.freightDutyCost === 0 || row.freightDutyCost === null ? "" : row.freightDutyCost}
                             fullWidth
                             size="small"
                             onChange={(e) =>
@@ -488,7 +531,7 @@ const ShipmentEdit = () => {
                           />
                         </TableCell>
                         <TableCell align="right" sx={{ p: 1 }}>
-                          {row.lineTotal || 0}
+                          {formatCurrency(row.lineTotal)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -497,7 +540,7 @@ const ShipmentEdit = () => {
                         Total
                       </TableCell>
                       <TableCell align="right">
-                        {formatCurrency(finalTotal || 0)}
+                        {formatCurrency(finalTotal || null)}
                       </TableCell>
                     </TableRow>
                   </TableBody>

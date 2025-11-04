@@ -10,6 +10,8 @@ export const getPaymentMethods = (type) => {
       return "Bank Transfer";
     case 5:
       return "Cheque";
+    case 7:
+      return "Credit";
     default:
       return "Not Selected";
   }

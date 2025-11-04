@@ -10,12 +10,13 @@ import {
   TableHead,
   TableRow,
   // --- REMOVED ---
-  // TablePagination,
+  // TablePagination, 
   Chip,
   Box,
   IconButton,
   Tooltip,
   Typography,
+  Link as MuiLink,
   // --- ADDED ---
   Pagination,
   FormControl,
@@ -32,34 +33,30 @@ import { useRouter } from "next/router";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import EditContactCRM from "./edit";
+import EditAccount from "./edit"; 
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import useApi from "@/components/utils/useApi";
 import BASE_URL from "Base/api";
 
-const ContactCRM = () => {
+const Account = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove } = IsPermissionEnabled(cId);
   const router = useRouter();
 
   const [tagMap, setTagMap] = useState({});
-  const [lifeCycleMap, setLifeCycleMap] = useState({});
 
   const { data: enumsData, loading: enumsLoading } = useApi("/Enums/crm");
-
+  
   useEffect(() => {
     if (enumsData) {
       if (enumsData.leadTags) {
         setTagMap(enumsData.leadTags);
       }
-      if (enumsData.lifeCycleStages) {
-        setLifeCycleMap(enumsData.lifeCycleStages);
-      }
     }
   }, [enumsData]);
 
   const {
-    data: contacts,
+    data: accounts, 
     totalCount,
     page,
     pageSize,
@@ -67,21 +64,21 @@ const ContactCRM = () => {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchContacts,
-    loading: contactsLoading,
-  } = usePaginatedFetch("ContactCRM/GetAllContactCRMs");
+    fetchData: fetchAccounts, 
+    loading: accountsLoading, 
+  } = usePaginatedFetch("Account/GetAllAccounts"); 
 
   // Fetch data on component mount
   useEffect(() => {
-    fetchContacts();
-  }, [fetchContacts]);
+    fetchAccounts();
+  }, [fetchAccounts]); // fetchAccounts is memoized by useCallback in the hook
 
-  const navigateToCreate = () => router.push("/crm/contact/create-contact");
+  const navigateToCreate = () => router.push("/crm/account/create-account");
 
   const handleDelete = async (id) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/ContactCRM/DeleteContactCRM?id=${id}`,
+        `${BASE_URL}/Account/DeleteAccount?id=${id}`,
         {
           method: "POST",
           headers: {
@@ -93,10 +90,10 @@ const ContactCRM = () => {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success(result.message || "Contact deleted successfully!");
-        fetchContacts();
+        toast.success(result.message || "Account deleted successfully!");
+        fetchAccounts(); // Refresh accounts list
       } else {
-        toast.error(result.message || "Failed to delete contact.");
+        toast.error(result.message || "Failed to delete account.");
       }
     } catch (err) {
       toast.error("An error occurred while connecting to the server.");
@@ -105,14 +102,14 @@ const ContactCRM = () => {
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
-    fetchContacts(1, event.target.value, pageSize);
+    fetchAccounts(1, event.target.value, pageSize);
     setPage(1);
   };
 
   // --- CHANGED: Handler for Pagination component ---
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchContacts(value, search, pageSize);
+    fetchAccounts(value, search, pageSize);
   };
 
   // --- CHANGED: Handler for PageSize Select component ---
@@ -120,27 +117,9 @@ const ContactCRM = () => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchContacts(1, search, size);
+    fetchAccounts(1, search, size);
   };
-
-  const getLifeCycleChipColor = (stageId) => {
-    const stageName = lifeCycleMap[stageId] || "";
-    switch (stageName.toLowerCase()) {
-      case "customer":
-        return "success";
-      case "sql":
-        return "warning";
-      case "mql":
-        return "secondary";
-      case "lead":
-        return "primary";
-      case "subscriber":
-        return "default";
-      default:
-        return "default";
-    }
-  };
-
+  
   if (!navigate) {
     return <AccessDenied />;
   }
@@ -149,12 +128,12 @@ const ContactCRM = () => {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Contact</h1>
-        <ul>
-          <li>
-            <Link href="/crm/contact">Contact</Link>
-          </li>
-        </ul>
+        <h1>Accounts</h1>
+          <ul>
+            <li>
+              <Link href="/crm/account">Account</Link>
+            </li>
+          </ul>
       </div>
       <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
@@ -169,7 +148,7 @@ const ContactCRM = () => {
         <Grid item xs={12} md={8} display="flex" justifyContent="end" gap={1}>
           {create && (
             <Button variant="outlined" size="small" onClick={navigateToCreate}>
-              + New Contact
+              + New Account
             </Button>
           )}
         </Grid>
@@ -179,34 +158,34 @@ const ContactCRM = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Name</TableCell>
-                  <TableCell>Email</TableCell>
+                  <TableCell>Industry</TableCell>
+                  <TableCell>Website</TableCell>
                   <TableCell>Phone</TableCell>
-                  <TableCell>Title</TableCell>
-                  <TableCell>Lifecycle Stage</TableCell>
-                  <TableCell>Tag</TableCell>
+                  <TableCell>Annual Revenue</TableCell>
+                  <TableCell>Tags</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {contactsLoading || enumsLoading ? (
+                {accountsLoading || enumsLoading ? (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
                       <Typography>Loading...</Typography>
                     </TableCell>
                   </TableRow>
-                ) : contacts.length === 0 ? (
+                ) : accounts.length === 0 ? ( 
                   <TableRow>
                     <TableCell colSpan={7} align="center">
                       <Typography color="error">
-                        No Contacts Available
+                        No Accounts Available
                       </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  contacts.map((item) => {
+                  accounts.map((item) => { 
                     let tagIds = [];
                     try {
-                      if (typeof item.tags === "string") {
+                      if (typeof item.tags === 'string') {
                         tagIds = JSON.parse(item.tags); 
                       } else if (Array.isArray(item.tags)) {
                         tagIds = item.tags;
@@ -214,29 +193,33 @@ const ContactCRM = () => {
                     } catch (e) {
                       console.error("Failed to parse tags:", item.tags, e);
                     }
-
+                    
                     const tagNames = Array.isArray(tagIds)
                       ? tagIds
-                          .map((tagId) => tagMap[tagId]) 
+                          .map((tagId) => tagMap[tagId])
                           .filter(Boolean)
                       : [];
 
                     return (
                       <TableRow key={item.id}>
                         <TableCell>
-                          {item.firstname} {item.lastname}
+                          {item.name}
                         </TableCell>
-                        <TableCell>{item.email}</TableCell>
-                        <TableCell>{item.phone}</TableCell>
-                        <TableCell>{item.title || "--"}</TableCell>
+                        <TableCell>{item.industry || "--"}</TableCell>
                         <TableCell>
-                          <Chip
-                            label={
-                              lifeCycleMap[item.lifeCycleStage] || "Unknown"
-                            }
-                            color={getLifeCycleChipColor(item.lifeCycleStage)}
-                            size="small"
-                          />
+                           {item.website ? (
+                            <MuiLink href={item.website} target="_blank" rel="noopener noreferrer">
+                              {item.website}
+                            </MuiLink>
+                          ) : (
+                            "--"
+                          )}
+                        </TableCell>
+                        <TableCell>{item.phone}</TableCell>
+                        <TableCell>
+                          {item.annualRevenue
+                            ? item.annualRevenue.toLocaleString()
+                            : "--"}
                         </TableCell>
                         <TableCell>
                           <Box
@@ -265,13 +248,13 @@ const ContactCRM = () => {
                             sx={{ display: "flex", justifyContent: "flex-end" }}
                           >
                             {update && (
-                              <EditContactCRM
+                              <EditAccount
                                 item={item}
-                                fetchItems={fetchContacts}
+                                fetchItems={fetchAccounts}
                               />
                             )}
                             {remove && (
-                              <Tooltip title="Delete Contact">
+                              <Tooltip title="Delete Account">
                                 <IconButton
                                   size="small"
                                   color="error"
@@ -289,6 +272,8 @@ const ContactCRM = () => {
                 )}
               </TableBody>
             </Table>
+            
+            
             <Grid container justifyContent="space-between" mt={2} mb={2}>
               <Pagination
                 count={Math.ceil(totalCount / pageSize)}
@@ -310,6 +295,8 @@ const ContactCRM = () => {
                 </Select>
               </FormControl>
             </Grid>
+          
+
           </TableContainer>
         </Grid>
       </Grid>
@@ -317,4 +304,4 @@ const ContactCRM = () => {
   );
 };
 
-export default ContactCRM;
+export default Account;

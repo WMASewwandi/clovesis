@@ -86,12 +86,13 @@ export default function Dashboard() {
       >
         <Grid item xs={12} md={12} lg={6} xl={6}>          
           <AudienceOverview />
-          <TotalItems />
+          {/* <TotalItems /> */}
+          <ShippingTargetData/>
         </Grid>
         <Grid item xs={12} md={12} lg={6} xl={6}>
           <OutstandingCustomers outstandingCustomers={outstandingCustomers}/>
           <SalesAnalytics />
-          <ShippingTargetData/>
+          
         </Grid>       
       </Grid>
     </>

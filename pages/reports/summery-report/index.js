@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
+import BASE_URL from "Base/api";
 
 import CompanyWiseProfit from "@/components/UIElements/Modal/Reports/Summery/CompanyWiseProfit";
 import DailyDepositSummary from "@/components/UIElements/Modal/Reports/Summery/DailyDepositSummary";
@@ -25,9 +26,10 @@ import FiscalPeriodReport from "@/components/UIElements/Modal/Reports/Summery/Fi
 import CashFlowSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashFlowSummaryReport";
 import CustomerPaymentSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CustomerPaymentSummaryReport";
 import DoctorWiseSalesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/DoctorWiseSalesSummaryReport";
-
-import BASE_URL from "Base/api";
 import CashBookSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashBookSummaryReport";
+import ShipmentSummaryReport from "@/components/UIElements/Modal/Reports/Summery/ShipmentSummaryReport";
+import GoodsReceivedNotesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/GoodsReceivedNotesSummaryReport";
+import PurchaseOrderNotesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/PurchaseOrderNotesSummaryReport";
 
 const componentMap = {
   CompanyWiseProfit,
@@ -43,7 +45,10 @@ const componentMap = {
   CashFlowSummaryReport,
   CustomerPaymentSummaryReport,
   DoctorWiseSalesSummaryReport,
-  CashBookSummaryReport
+  CashBookSummaryReport,
+  ShipmentSummaryReport,
+  GoodsReceivedNotesSummaryReport,
+  PurchaseOrderNotesSummaryReport
 };
 
 const SummeryReports = () => {

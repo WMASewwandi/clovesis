@@ -92,6 +92,8 @@ export default function PurchaseOrder() {
     fetchReceiptList(1, search, size);
   };
 
+  console.log(poList);
+
   return (
     <>
       <div className={styles.pageTitle}>
@@ -136,11 +138,11 @@ export default function PurchaseOrder() {
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>#</TableCell>
                   <TableCell>PO Date</TableCell>
-                  <TableCell>PO No</TableCell>
-                  <TableCell>Reference No</TableCell>
+                  <TableCell>PO No</TableCell>                  
+                  <TableCell>GRN No</TableCell>                  
                   <TableCell>Supplier</TableCell>
+                  <TableCell>Reference No</TableCell>
                   <TableCell>Remark</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
@@ -148,7 +150,7 @@ export default function PurchaseOrder() {
               <TableBody>
                 {poList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={6} align="center">
                       <Typography color="error">
                         No Purchase Orders Available
                       </Typography>
@@ -159,17 +161,17 @@ export default function PurchaseOrder() {
                     const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${item.purchaseOrderNo}&reportName=${ReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
                     const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.purchaseOrderNo}&reportName=${ReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
                     return (
-                      <TableRow key={item.id}>
-                        <TableCell>{index + 1}</TableCell>
+                      <TableRow key={index}>
                         <TableCell>{formatDate(item.poDate)}</TableCell>
-                        <TableCell>{item.purchaseOrderNo}</TableCell>
-                        <TableCell>{item.referanceNo}</TableCell>
+                        <TableCell>{item.purchaseOrderNo}</TableCell>                        
+                        <TableCell>{item.documentNo}</TableCell>                        
                         <TableCell>{item.supplierName}</TableCell>
+                        <TableCell>{item.referanceNo}</TableCell>
                         <TableCell>{item.remark}</TableCell>
                         <TableCell align="right">
                           <Box display="flex" justifyContent="end" gap={1}>
-                            <ShareReports url={whatsapp} mobile={item.supplierMobileNo} />
-                            {update ? <Tooltip title="Edit" placement="top">
+                            
+                            {update && !item.isPurchasingOrderComplete ? <Tooltip title="Edit" placement="top">
                               <IconButton
                                 onClick={() => navigateToEdit(item.id)}
                                 aria-label="edit"
@@ -181,6 +183,7 @@ export default function PurchaseOrder() {
                                 />
                               </IconButton>
                             </Tooltip> : ""}
+                            <ShareReports url={whatsapp} mobile={item.supplierMobileNo} />
                             {print ? <Tooltip title="Print" placement="top">
                               <a href={`${Report}` + reportLink} target="_blank">
                                 <IconButton aria-label="print" size="small">
