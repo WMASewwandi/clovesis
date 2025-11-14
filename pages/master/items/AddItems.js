@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Checkbox, FormControlLabel, Grid, Typography } from "@mui/material";
+import { Checkbox, FormControlLabel, Grid, Typography, Tabs, Tab, IconButton } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
@@ -12,6 +12,8 @@ import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { ChartOfAccountType } from "@/components/types/types";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const style = {
   position: "absolute",
@@ -33,7 +35,7 @@ const validationSchema = Yup.object().shape({
   UOM: Yup.number().required("Unit of Measure is required"),
 });
 
-export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled }) {
+export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled, IsEcommerceWebSiteAvailable }) {
   const [itemCode, setItemCode] = useState(null);
   const [open, setOpen] = React.useState(false);
   const handleClose = () => setOpen(false);
@@ -42,6 +44,9 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
   const [subCategoryList, setSubCategoryList] = useState([]);
   const [supplierList, setSupplierList] = useState([]);
   const inputRef = useRef(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -77,7 +82,6 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
     }
     setOpen(true);
   };
-
 
   const fetchSupplierList = async () => {
     try {
@@ -155,12 +159,57 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
     setSelectedCat(event.target.value);
     fetchSubCategoryList(event.target.value);
   };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setSelectedImage(imageUrl);
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setSelectedFile(null);
+  };
+
   const handleSubmit = (values) => {
+    if (values.IsWebView && values.AveragePrice === "") {
+      toast.warning("Please enter the average price for web view.");
+      return;
+    }
+    const formData = new FormData();
+
+    formData.append("Name", values.Name);
+    formData.append("Code", values.Code);
+    formData.append("AveragePrice", values.AveragePrice);
+    formData.append("ShipmentTarget", values.ShipmentTarget ? values.ShipmentTarget : "");
+    formData.append("ReorderLevel", values.ReorderLevel ?values.ReorderLevel : "");
+    formData.append("CategoryId", values.CategoryId);
+    formData.append("SubCategoryId", values.SubCategoryId);
+    formData.append("Supplier", values.Supplier);
+    formData.append("UOM", values.UOM);
+    if (values.Barcode !== undefined && values.Barcode !== null && values.Barcode !== "") {
+      formData.append("Barcode", values.Barcode);
+    }
+    formData.append("CostAccount", values.CostAccount ? values.CostAccount : "");
+    formData.append("AssetsAccount", values.AssetsAccount ? values.AssetsAccount : "");
+    formData.append("IncomeAccount", values.IncomeAccount ? values.IncomeAccount : "");
+    formData.append("IsActive", values.IsActive);
+    formData.append("IsNonInventoryItem", values.IsNonInventoryItem);
+    formData.append("HasSerialNumbers", values.HasSerialNumbers);
+    formData.append("IsWebView", values.IsWebView);
+    formData.append("ProductImage", selectedFile ? selectedFile : null);
+
     fetch(`${BASE_URL}/Items/CreateItems`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: formData,
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     })
@@ -201,13 +250,14 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
               SubCategoryId: "",
               Supplier: "",
               UOM: "",
-              Barcode: "",
+              Barcode: null,
               CostAccount: null,
               AssetsAccount: null,
               IncomeAccount: null,
               IsActive: true,
               IsNonInventoryItem: false,
               HasSerialNumbers: false,
+              IsWebView: false
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -215,7 +265,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
             {({ errors, touched, values, setFieldValue, resetForm }) => (
               <Form>
                 <Grid container>
-                  <Grid item xs={12}>
+                  <Grid item mb={2} xs={12}>
                     <Typography
                       variant="h5"
                       sx={{
@@ -226,446 +276,580 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                       Add Item
                     </Typography>
                   </Grid>
-                  <Box sx={{ height: "50vh", overflowY: "scroll" }}>
-                    <Grid container spacing={1}>
-                      <Grid item xs={12} lg={6}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            mb: "5px",
-                          }}
-                        >
-                          Item Name
-                        </Typography>
-                        <Field
-                          as={TextField}
-                          fullWidth
-                          name="Name"
-                          size="small"
-                          inputRef={inputRef}
-                          error={touched.Name && Boolean(errors.Name)}
-                          helperText={touched.Name && errors.Name}
-                        />
-                      </Grid>
-                      <Grid item xs={12} lg={6}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Item Code
-                        </Typography>
-                        <Field
-                          as={TextField}
-                          size="small"
-                          fullWidth
-                          name="Code"
-                          error={touched.Code && Boolean(errors.Code)}
-                          helperText={touched.Code && errors.Code}
-                        />
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Category
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="CategoryId"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("CategoryId", e.target.value);
-                              handleCategorySelect(e);
-                            }}
-                          >
-                            {categoryList.length === 0 ? (
-                              <MenuItem disabled color="error">
-                                No Categories Available
-                              </MenuItem>
-                            ) : (
-                              categoryList.map((category, index) => (
-                                <MenuItem key={index} value={category.id}>
-                                  {category.name}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                          {touched.CategoryId && Boolean(errors.CategoryId) && (
-                            <Typography variant="caption" color="error">
-                              {errors.CategoryId}
-                            </Typography>
-                          )}
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Sub Category
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="SubCategoryId"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("SubCategoryId", e.target.value);
-                            }}
-                          >
-                            {!selectedCat ? (
-                              <MenuItem disabled>
-                                Please Select Category First
-                              </MenuItem>
-                            ) : subCategoryList.length === 0 ? (
-                              <MenuItem disabled>
-                                No Sub Categories Available
-                              </MenuItem>
-                            ) : (
-                              subCategoryList.map((subcategory, index) => (
-                                <MenuItem key={index} value={subcategory.id}>
-                                  {subcategory.name}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                          {touched.SubCategoryId &&
-                            Boolean(errors.SubCategoryId) && (
-                              <Typography variant="caption" color="error">
-                                {errors.SubCategoryId}
-                              </Typography>
-                            )}
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Supplier
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="Supplier"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("Supplier", e.target.value);
-                            }}
-                          >
-                            {supplierList.length === 0 ? (
-                              <MenuItem disabled>
-                                No Suppliers Available
-                              </MenuItem>
-                            ) : (
-                              supplierList.map((supplier, index) => (
-                                <MenuItem key={index} value={supplier.id}>
-                                  {supplier.name}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                          {touched.Supplier && Boolean(errors.Supplier) && (
-                            <Typography variant="caption" color="error">
-                              {errors.Supplier}
-                            </Typography>
-                          )}
-                        </FormControl>
-                      </Grid>
-                      {isPOSSystem && (
-                        <>
-                          <Grid item xs={12} mt={1} lg={6}>
-                            <Typography
-                              sx={{
-                                fontWeight: "500",
-                                fontSize: "14px",
-                                mb: "5px",
-                              }}
-                            >
-                              Average Price
-                            </Typography>
-                            <Field
-                              as={TextField}
-                              fullWidth
-                              name="AveragePrice"
-                              size="small"
-                            />
-                          </Grid>
-                        </>
-                      )}
-                      <Grid item xs={12} mt={1} lg={6}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Reorder Level
-                        </Typography>
-                        <Field
-                          as={TextField}
-                          fullWidth
-                          name="ReorderLevel"
-                          size="small"
-                          type="number"
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            setFieldValue("ReorderLevel", value === '' ? null : value);
-                          }}
-                        />
-                      </Grid>
-                      {isGarmentSystem && (
-                        <>
-                          <Grid item xs={12} mt={1} lg={6}>
-                            <Typography
-                              sx={{
-                                fontWeight: "500",
-                                fontSize: "14px",
-                                mb: "5px",
-                              }}
-                            >
-                              Shipment Target
-                            </Typography>
-                            <Field
-                              as={TextField}
-                              fullWidth
-                              name="ShipmentTarget"
-                              size="small"
-                              type="number"
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setFieldValue("ShipmentTarget", value === '' ? null : value);
-                              }}
-                            />
-                          </Grid>
-                        </>
-                      )}
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Unit of Measure
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="UOM"
-                            size="small"
-                          >
-                           {uoms.filter(uom => uom.isActive).length === 0 ? (
-                                <MenuItem disabled>No Active UOM Available</MenuItem>
-                                ) : (
-                                  uoms
-                                    .filter(uom => uom.isActive)
-                                    .map((uom, index) => (
-                                      <MenuItem key={index} value={uom.id}>
-                                        {uom.name}
-                                      </MenuItem>
-                                    ))
-                            )
-                           }
+                  <Grid item xs={12} mb={2}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="item tabs">
+                      <Tab label="Item Details" />
+                      <Tab label="Image" />
+                    </Tabs>
+                  </Grid>
 
-                          </Field>
-                          {touched.UOM && Boolean(errors.UOM) && (
-                            <Typography variant="caption" color="error">
-                              {errors.UOM}
-                            </Typography>
-                          )}
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Cost Account
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="CostAccount"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("CostAccount", e.target.value);
-                            }}
-                          >
-                            {chartOfAccounts.length === 0 ? (
-                              <MenuItem disabled>
-                                No Accounts Available
-                              </MenuItem>
-                            ) : (
-                              chartOfAccounts.map((acc, index) => (
-                                <MenuItem key={index} value={acc.id}>
-                                  {acc.code} - {acc.description}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Income Account
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="IncomeAccount"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("IncomeAccount", e.target.value);
-                            }}
-                          >
-                            {chartOfAccounts.length === 0 ? (
-                              <MenuItem disabled>
-                                No Accounts Available
-                              </MenuItem>
-                            ) : (
-                              chartOfAccounts.map((acc, index) => (
-                                <MenuItem key={index} value={acc.id}>
-                                  {acc.code} - {acc.description}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} lg={6} mt={1}>
-                        <Typography
-                          sx={{
-                            fontWeight: "500",
-                            fontSize: "14px",
-                            mb: "5px",
-                          }}
-                        >
-                          Assets Account
-                        </Typography>
-                        <FormControl fullWidth>
-                          <Field
-                            as={TextField}
-                            select
-                            fullWidth
-                            name="AssetsAccount"
-                            size="small"
-                            onChange={(e) => {
-                              setFieldValue("AssetsAccount", e.target.value);
-                            }}
-                          >
-                            {chartOfAccounts.length === 0 ? (
-                              <MenuItem disabled>
-                                No Accounts Available
-                              </MenuItem>
-                            ) : (
-                              chartOfAccounts.map((acc, index) => (
-                                <MenuItem key={index} value={acc.id}>
-                                  {acc.code} - {acc.description}
-                                </MenuItem>
-                              ))
-                            )}
-                          </Field>
-                        </FormControl>
-                      </Grid>
-                      {barcodeEnabled && (
-                        <Grid item xs={12} lg={6} mt={1}>
+                  {tabValue === 0 && (
+                    <Box sx={{ height: "50vh", overflowY: "scroll", width: "100%" }}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} lg={6}>
                           <Typography
                             sx={{
                               fontWeight: "500",
                               mb: "5px",
                             }}
                           >
-                            Barcode
+                            Item Name
                           </Typography>
                           <Field
                             as={TextField}
                             fullWidth
-                            name="Barcode"
+                            name="Name"
                             size="small"
+                            inputRef={inputRef}
+                            error={touched.Name && Boolean(errors.Name)}
+                            helperText={touched.Name && errors.Name}
                           />
                         </Grid>
-                      )}
-                      <Grid item xs={12} p={1}>
-                        <FormControlLabel
-                          control={
+                        <Grid item xs={12} lg={6}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Item Code
+                          </Typography>
+                          <Field
+                            as={TextField}
+                            size="small"
+                            fullWidth
+                            name="Code"
+                            error={touched.Code && Boolean(errors.Code)}
+                            helperText={touched.Code && errors.Code}
+                          />
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Category
+                          </Typography>
+                          <FormControl fullWidth>
                             <Field
-                              as={Checkbox}
-                              name="IsActive"
-                              checked={values.IsActive}
-                              onChange={() =>
-                                setFieldValue("IsActive", !values.IsActive)
-                              }
-                            />
-                          }
-                          label="Active"
-                        />
-                        <FormControlLabel
-                          control={
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="CategoryId"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("CategoryId", e.target.value);
+                                handleCategorySelect(e);
+                              }}
+                            >
+                              {categoryList.length === 0 ? (
+                                <MenuItem disabled color="error">
+                                  No Categories Available
+                                </MenuItem>
+                              ) : (
+                                categoryList.map((category, index) => (
+                                  <MenuItem key={index} value={category.id}>
+                                    {category.name}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                            {touched.CategoryId && Boolean(errors.CategoryId) && (
+                              <Typography variant="caption" color="error">
+                                {errors.CategoryId}
+                              </Typography>
+                            )}
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Sub Category
+                          </Typography>
+                          <FormControl fullWidth>
                             <Field
-                              as={Checkbox}
-                              name="IsNonInventoryItem"
-                              checked={values.IsNonInventoryItem}
-                              onChange={() =>
-                                setFieldValue("IsNonInventoryItem", !values.IsNonInventoryItem)
-                              }
-                            />
-                          }
-                          label="Non Inventory Item"
-                        />
-                        <FormControlLabel
-                          control={
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="SubCategoryId"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("SubCategoryId", e.target.value);
+                              }}
+                            >
+                              {!selectedCat ? (
+                                <MenuItem disabled>
+                                  Please Select Category First
+                                </MenuItem>
+                              ) : subCategoryList.length === 0 ? (
+                                <MenuItem disabled>
+                                  No Sub Categories Available
+                                </MenuItem>
+                              ) : (
+                                subCategoryList.map((subcategory, index) => (
+                                  <MenuItem key={index} value={subcategory.id}>
+                                    {subcategory.name}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                            {touched.SubCategoryId &&
+                              Boolean(errors.SubCategoryId) && (
+                                <Typography variant="caption" color="error">
+                                  {errors.SubCategoryId}
+                                </Typography>
+                              )}
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Supplier
+                          </Typography>
+                          <FormControl fullWidth>
                             <Field
-                              as={Checkbox}
-                              name="HasSerialNumbers"
-                              checked={values.HasSerialNumbers}
-                              onChange={() =>
-                                setFieldValue("HasSerialNumbers", !values.HasSerialNumbers)
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="Supplier"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("Supplier", e.target.value);
+                              }}
+                            >
+                              {supplierList.length === 0 ? (
+                                <MenuItem disabled>
+                                  No Suppliers Available
+                                </MenuItem>
+                              ) : (
+                                supplierList.map((supplier, index) => (
+                                  <MenuItem key={index} value={supplier.id}>
+                                    {supplier.name}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                            {touched.Supplier && Boolean(errors.Supplier) && (
+                              <Typography variant="caption" color="error">
+                                {errors.Supplier}
+                              </Typography>
+                            )}
+                          </FormControl>
+                        </Grid>
+                        {isPOSSystem && (
+                          <>
+                            <Grid item xs={12} mt={1} lg={6}>
+                              <Typography
+                                sx={{
+                                  fontWeight: "500",
+                                  fontSize: "14px",
+                                  mb: "5px",
+                                }}
+                              >
+                                Average Price
+                              </Typography>
+                              <Field
+                                as={TextField}
+                                fullWidth
+                                name="AveragePrice"
+                                size="small"
+                              />
+                            </Grid>
+                          </>
+                        )}
+                        <Grid item xs={12} mt={1} lg={6}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Reorder Level
+                          </Typography>
+                          <Field
+                            as={TextField}
+                            fullWidth
+                            name="ReorderLevel"
+                            size="small"
+                            type="number"
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setFieldValue("ReorderLevel", value === '' ? null : value);
+                            }}
+                          />
+                        </Grid>
+                        {isGarmentSystem && (
+                          <>
+                            <Grid item xs={12} mt={1} lg={6}>
+                              <Typography
+                                sx={{
+                                  fontWeight: "500",
+                                  fontSize: "14px",
+                                  mb: "5px",
+                                }}
+                              >
+                                Shipment Target
+                              </Typography>
+                              <Field
+                                as={TextField}
+                                fullWidth
+                                name="ShipmentTarget"
+                                size="small"
+                                type="number"
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setFieldValue("ShipmentTarget", value === '' ? null : value);
+                                }}
+                              />
+                            </Grid>
+                          </>
+                        )}
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Unit of Measure
+                          </Typography>
+                          <FormControl fullWidth>
+                            <Field
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="UOM"
+                              size="small"
+                            >
+                              {uoms.filter(uom => uom.isActive).length === 0 ? (
+                                <MenuItem disabled>No Active UOM Available</MenuItem>
+                              ) : (
+                                uoms
+                                  .filter(uom => uom.isActive)
+                                  .map((uom, index) => (
+                                    <MenuItem key={index} value={uom.id}>
+                                      {uom.name}
+                                    </MenuItem>
+                                  ))
+                              )
                               }
+
+                            </Field>
+                            {touched.UOM && Boolean(errors.UOM) && (
+                              <Typography variant="caption" color="error">
+                                {errors.UOM}
+                              </Typography>
+                            )}
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Cost Account
+                          </Typography>
+                          <FormControl fullWidth>
+                            <Field
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="CostAccount"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("CostAccount", e.target.value);
+                              }}
+                            >
+                              {chartOfAccounts.length === 0 ? (
+                                <MenuItem disabled>
+                                  No Accounts Available
+                                </MenuItem>
+                              ) : (
+                                chartOfAccounts.map((acc, index) => (
+                                  <MenuItem key={index} value={acc.id}>
+                                    {acc.code} - {acc.description}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Income Account
+                          </Typography>
+                          <FormControl fullWidth>
+                            <Field
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="IncomeAccount"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("IncomeAccount", e.target.value);
+                              }}
+                            >
+                              {chartOfAccounts.length === 0 ? (
+                                <MenuItem disabled>
+                                  No Accounts Available
+                                </MenuItem>
+                              ) : (
+                                chartOfAccounts.map((acc, index) => (
+                                  <MenuItem key={index} value={acc.id}>
+                                    {acc.code} - {acc.description}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Assets Account
+                          </Typography>
+                          <FormControl fullWidth>
+                            <Field
+                              as={TextField}
+                              select
+                              fullWidth
+                              name="AssetsAccount"
+                              size="small"
+                              onChange={(e) => {
+                                setFieldValue("AssetsAccount", e.target.value);
+                              }}
+                            >
+                              {chartOfAccounts.length === 0 ? (
+                                <MenuItem disabled>
+                                  No Accounts Available
+                                </MenuItem>
+                              ) : (
+                                chartOfAccounts.map((acc, index) => (
+                                  <MenuItem key={index} value={acc.id}>
+                                    {acc.code} - {acc.description}
+                                  </MenuItem>
+                                ))
+                              )}
+                            </Field>
+                          </FormControl>
+                        </Grid>
+                        {barcodeEnabled && (
+                          <Grid item xs={12} lg={6} mt={1}>
+                            <Typography
+                              sx={{
+                                fontWeight: "500",
+                                mb: "5px",
+                              }}
+                            >
+                              Barcode
+                            </Typography>
+                            <Field
+                              as={TextField}
+                              fullWidth
+                              name="Barcode"
+                              size="small"
                             />
-                          }
-                          label="Serial Numbers Available"
-                        />
+                          </Grid>
+                        )}
+                        <Grid item xs={12} p={1}>
+                          <Grid container>
+                            <Grid item xs={12} lg={6}>
+                              <FormControlLabel
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsActive"
+                                    checked={values.IsActive}
+                                    onChange={() =>
+                                      setFieldValue("IsActive", !values.IsActive)
+                                    }
+                                  />
+                                }
+                                label="Active"
+                              />
+                            </Grid>
+                            <Grid item xs={12} lg={6}>
+                              <FormControlLabel
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsNonInventoryItem"
+                                    checked={values.IsNonInventoryItem}
+                                    onChange={() =>
+                                      setFieldValue("IsNonInventoryItem", !values.IsNonInventoryItem)
+                                    }
+                                  />
+                                }
+                                label="Non Inventory Item"
+                              />
+                            </Grid>
+                            <Grid item xs={12} lg={6}>
+                              <FormControlLabel
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="HasSerialNumbers"
+                                    checked={values.HasSerialNumbers}
+                                    onChange={() =>
+                                      setFieldValue("HasSerialNumbers", !values.HasSerialNumbers)
+                                    }
+                                  />
+                                }
+                                label="Serial Numbers Available"
+                              />
+                            </Grid>
+
+                            {IsEcommerceWebSiteAvailable && (
+                              <Grid item xs={12} lg={6} mt={1}>
+                                <FormControlLabel
+                                  control={
+                                    <Field
+                                      as={Checkbox}
+                                      name="IsWebView"
+                                      checked={values.IsWebView}
+                                      onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                    />
+                                  }
+                                  label="Show in web"
+                                />
+                              </Grid>
+                            )}
+                          </Grid>
+                        </Grid>
                       </Grid>
-                    </Grid>
-                  </Box>
+                    </Box>
+                  )}
+
+                  {tabValue === 1 && (
+                    <Box sx={{ height: "50vh", overflowY: "scroll", width: "100%", p: 2 }}>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                          <Typography variant="h6" sx={{ mb: 2 }}>
+                            Upload Item Image
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            component="label"
+                            startIcon={<CloudUploadIcon />}
+                            sx={{ mb: 3 }}
+                          >
+                            Choose Image
+                            <input
+                              type="file"
+                              hidden
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                            />
+                          </Button>
+                        </Grid>
+
+                        {selectedImage && (
+                          <Grid item xs={12}>
+                            <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                              Selected Image
+                            </Typography>
+                            <Grid container spacing={2}>
+                              <Grid item xs={12} sm={6} md={4}>
+                                <Box
+                                  sx={{
+                                    position: "relative",
+                                    border: "2px solid #e0e0e0",
+                                    borderRadius: "8px",
+                                    overflow: "hidden",
+                                    height: "250px",
+                                    "&:hover .delete-icon": {
+                                      opacity: 1,
+                                    },
+                                  }}
+                                >
+                                  <img
+                                    src={selectedImage}
+                                    alt="Preview"
+                                    style={{
+                                      width: "100%",
+                                      height: "100%",
+                                      objectFit: "cover",
+                                    }}
+                                  />
+                                  <IconButton
+                                    className="delete-icon"
+                                    onClick={handleRemoveImage}
+                                    sx={{
+                                      position: "absolute",
+                                      top: 5,
+                                      right: 5,
+                                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                                      opacity: 0,
+                                      transition: "opacity 0.3s",
+                                      "&:hover": {
+                                        backgroundColor: "rgba(255, 255, 255, 1)",
+                                      },
+                                    }}
+                                    size="small"
+                                  >
+                                    <DeleteIcon fontSize="small" color="error" />
+                                  </IconButton>
+                                </Box>
+                              </Grid>
+                            </Grid>
+                          </Grid>
+                        )}
+
+                        {!selectedImage && (
+                          <Grid item xs={12}>
+                            <Box
+                              sx={{
+                                border: "2px dashed #ccc",
+                                borderRadius: "8px",
+                                p: 4,
+                                textAlign: "center",
+                                backgroundColor: "#f9f9f9",
+                              }}
+                            >
+                              <CloudUploadIcon sx={{ fontSize: 60, color: "#999", mb: 2 }} />
+                              <Typography variant="body1" color="textSecondary">
+                                No image uploaded yet
+                              </Typography>
+                              <Typography variant="body2" color="textSecondary">
+                                Click "Choose Image" button to upload
+                              </Typography>
+                            </Box>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
+                  )}
+
                   <Grid container>
                     <Grid
                       display="flex"

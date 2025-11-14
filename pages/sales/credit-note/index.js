@@ -11,6 +11,8 @@ import {
   TableRow,
   Typography,
   TablePagination,
+  Tooltip,
+  IconButton,
 } from "@mui/material";
 import Link from "next/link";
 import styles from "@/styles/PageTitle.module.css";
@@ -18,11 +20,15 @@ import { toast, ToastContainer } from "react-toastify";
 import { useRouter } from "next/router";
 import useApi from "@/components/utils/useApi";
 import CreditNoteReport from "@/components/UIElements/Modal/Reports/CreditNote";
+import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import useShiftCheck from "@/components/utils/useShiftCheck";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 
 const CNN = () => {
   const cId = sessionStorage.getItem("category")
@@ -33,6 +39,8 @@ const CNN = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const router = useRouter();
   const { result: shiftResult, message: shiftMessage } = useShiftCheck();
+  const name = localStorage.getItem("name");
+  const { data: ReportName } = GetReportSettingValueByName("CustomerCreditDebitNote");
 
   const navigateToCreate = () => {
     if (shiftResult) {
@@ -163,7 +171,19 @@ const CNN = () => {
                       <TableCell>{item.salesPersonName}</TableCell>
                       <TableCell>{item.remark || "-"}</TableCell>
                       <TableCell align="right">
-                        {print ? <CreditNoteReport note={item} /> : ""}
+                        {print ?
+                          //<CreditNoteReport note={item} />
+                          <Tooltip title="Print" placement="top">
+                            <a
+                              href={`${Report}/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${ReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`}
+                              target="_blank"
+                            >
+                              <IconButton aria-label="print" size="small">
+                                <LocalPrintshopIcon color="primary" fontSize="inherit" />
+                              </IconButton>
+                            </a>
+                          </Tooltip>
+                          : ""}
                       </TableCell>
                     </TableRow>
                   ))

@@ -24,11 +24,13 @@ import { FormControl, Pagination } from "@mui/material";
 import { InputLabel, MenuItem, Select } from "@mui/material";
 import AddCategory from "./AddCategory";
 import EditCategory from "./EditCategory";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 const Category = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
   const controller = "Category/DeleteCategory";
+  const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled(`IsEcommerceWebSiteAvailable`);
 
   const {
     data: categotyList,
@@ -109,7 +111,7 @@ const Category = () => {
               </Search>
             </Grid>
             <Grid display="flex" justifyContent="end" item xs={12} md={6} lg={7} order={{ xs: 1, lg: 2 }}>
-              {create ? <AddCategory fetchItems={fetchCategoryList} /> : ""}
+              {create ? <AddCategory fetchItems={fetchCategoryList} IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable} /> : ""}
             </Grid>
           </Grid>
         </Grid>
@@ -122,6 +124,7 @@ const Category = () => {
                   <TableCell>Category</TableCell>
                   <TableCell>Created On</TableCell>
                   <TableCell>Status</TableCell>
+                  {IsEcommerceWebSiteAvailable && (<TableCell>Show In Web</TableCell>)}
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -165,11 +168,21 @@ const Category = () => {
                           <span className="dangerBadge">Inactive</span>
                         )}
                       </TableCell>
+                      {IsEcommerceWebSiteAvailable && (
+                        <TableCell>
+                          {cat.isWebView == true ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell align="right">
                         {update ? (
                           <EditCategory
                             fetchItems={fetchCategoryList}
                             category={cat}
+                            IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable}
                           />
                         ) : (
                           ""

@@ -24,7 +24,16 @@ const useApi = (url) => {
         }
 
         const result = await response.json();
-        setData(result.result);
+        // Handle different response structures
+        if (Array.isArray(result)) {
+          setData(result);
+        } else if (result.result !== undefined) {
+          setData(result.result);
+        } else if (result.data !== undefined) {
+          setData(result.data);
+        } else {
+          setData(result);
+        }
       } catch (err) {
         setError('Error fetching data');
       } finally {

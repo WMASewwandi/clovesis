@@ -136,7 +136,7 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
 
     try {
       const response = await fetch(
-        `${BASE_URL}/GoodReceivedNote/UpdatePOReceivedQuantity?shipmentId=${shipmentId}&poReceivedQty=${value}`,
+        `${BASE_URL}/GoodReceivedNote/UpdatePOReceivedQuantity?poTallyId=${shipmentId}&poReceivedQty=${value}`,
         {
           method: "POST",
           headers: {
@@ -161,9 +161,6 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
       }));
     }
   };
-
-  console.log(shipments);
-
   return (
     <>
       <Tooltip title="Add Products" placement="top">

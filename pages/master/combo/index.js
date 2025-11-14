@@ -37,8 +37,6 @@ export default function ComboMeal() {
     fetchData: fetchComboList,
   } = usePaginatedFetch("ComboMeal/GetAllComboMeals");
 
-  console.log(comboList);
-
   const controller = "ComboMeal/DeleteComboMeal";
 
   const navigateToViewImage = (url) => {

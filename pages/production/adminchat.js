@@ -263,7 +263,7 @@ export default function AdminChat() {
                     ""
                   )}
                   <Avatar src="/images/quotation/logo.jpg" />
-                  <Typography>ApexFlow</Typography>
+                  <Typography>CBASS-AI</Typography>
                 </Box>
               </Box>
             </Grid>

@@ -25,12 +25,15 @@ import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import { FormControl, Pagination } from "@mui/material";
 import { InputLabel, MenuItem, Select } from "@mui/material";
 import GetAllItemDetails from "@/components/utils/GetAllItemDetails";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+
 const SubCategory = () => {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
   const controller = "SubCategory/DeleteSubCategory";
   const [catInfo, setCatInfo] = useState({});
   const { categories } = GetAllItemDetails();
+  const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled(`IsEcommerceWebSiteAvailable`);
 
   useEffect(() => {
     if (categories) {
@@ -83,7 +86,6 @@ const SubCategory = () => {
     return <AccessDenied />;
   }
 
-  console.log(subCategoryList);
 
   return (
     <>
@@ -121,7 +123,7 @@ const SubCategory = () => {
               </Search>
             </Grid>
             <Grid item xs={12} md={6} lg={7} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-              <AddSubCategory fetchItems={fetchSubCategoryList} />
+              <AddSubCategory fetchItems={fetchSubCategoryList} IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable} />
             </Grid>
           </Grid>
         </Grid>
@@ -134,6 +136,7 @@ const SubCategory = () => {
                   <TableCell>Category</TableCell>
                   <TableCell>Created On</TableCell>
                   <TableCell>Status</TableCell>
+                  {IsEcommerceWebSiteAvailable && (<TableCell>Show In Web</TableCell>)}
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -168,11 +171,21 @@ const SubCategory = () => {
                           <span className="dangerBadge">Inactive</span>
                         )}
                       </TableCell>
+                      {IsEcommerceWebSiteAvailable && (
+                        <TableCell>
+                          {subCategory.isWebView == true ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell align="right">
                         {update ? (
                           <EditSubCategory
                             fetchItems={fetchSubCategoryList}
                             subcategory={subCategory}
+                            IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable}
                           />
                         ) : (
                           ""

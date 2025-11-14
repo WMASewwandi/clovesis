@@ -105,9 +105,11 @@ const ShipmentEdit = () => {
     
     updatedShipmentLineDetails[index][field] = parseFloat(value) || null;
 
+    const cost = updatedShipmentLineDetails[index].unitPrice + updatedShipmentLineDetails[index].additionalCost + updatedShipmentLineDetails[index].freightDutyCost;
+    updatedShipmentLineDetails[index].costPrice = cost;
     updatedShipmentLineDetails[index].lineTotal =
       updatedShipmentLineDetails[index].receivedQty *
-      updatedShipmentLineDetails[index].unitPrice;
+      cost;
 
     setShipmentLineDetails(updatedShipmentLineDetails);
   };
@@ -171,6 +173,7 @@ const ShipmentEdit = () => {
         freightDutyCost: row.freightDutyCost,
         additionalCost: row.additionalCost,
         LineTotal: row.lineTotal,
+        CostPrice: row.costPrice,
         UnitPrice: row.unitPrice,
         Remark: row.remark,
       })),

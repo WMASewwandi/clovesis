@@ -38,6 +38,9 @@ import AddOutletItem from "./add-outlet";
 import AddCustomColorItem from "./add-custom-color";
 import useShiftCheck from "@/components/utils/useShiftCheck";
 import SearchPackageByName from "@/components/utils/SearchPackageByName";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 
 const InvoiceCreate = () => {
   const today = new Date();
@@ -74,13 +77,14 @@ const InvoiceCreate = () => {
   const [rowsCC, setRowsCC] = useState([]);
   const [paymentType, setPaymentType] = useState(null);
   const guidRef = useRef(uuidv4());
-  const { result: shiftResult, message: shiftMessage } = useShiftCheck();
+  const { result: shiftResult, message: shiftMessage } = useShiftCheck(); 
+  const { data: POSInvoiceReportName } = GetReportSettingValueByName("POSInvoice");
+  const name = localStorage.getItem("name");
+  const warehouseId = localStorage.getItem("warehouse"); 
   const { data: IsCostPriceVisible } = IsAppSettingEnabled(
     "IsCostPriceVisible"
   );
-  const { data: isPaymentTypeEnableToInvoice } = IsAppSettingEnabled(
-    "IsPaymentTypeEnableToInvoice"
-  );
+  // --- OLD APP SETTING REMOVED ---
   const { data: IsExpireDateAvailable } = IsAppSettingEnabled(
     "IsExpireDateAvailable"
   );
@@ -107,6 +111,11 @@ const InvoiceCreate = () => {
 
   const { data: isAllowProfitMessageDisplay } = IsAppSettingEnabled(
     "IsAllowProfitMessageDisplay"
+  );
+
+  // --- NEW APP SETTING ---
+  const { data: paymentTypeEnableforCustomersIninvoiceView } = IsAppSettingEnabled(
+    "paymentTypeEnableforCustomersIninvoiceView"
   );
 
   const {
@@ -278,7 +287,8 @@ const InvoiceCreate = () => {
       return;
     }
 
-    if (isPaymentTypeEnableToInvoice && !paymentType) {
+    // --- UPDATED THIS LINE ---
+    if (paymentTypeEnableforCustomersIninvoiceView && !paymentType) {
       toast.warning("Please Select Payment Type");
       return;
     }
@@ -456,6 +466,11 @@ const InvoiceCreate = () => {
         setSalesPerson(null);
         setRows([]);
         setRowsCC([]);
+
+        var printURL = `${Report}/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${invNo}&reportName=${POSInvoiceReportName}&warehouseId=${warehouseId}&currentUser=${name}`;
+
+        window.open(printURL, '_blank');
+
       } else {
         toast.error(json.result.message || "Please fill all required fields");
       }
@@ -614,17 +629,26 @@ const InvoiceCreate = () => {
   const isCashCustomer = customer && customer.firstName && customer.firstName.trim().toLowerCase() === "cash";
   const isCreditCustomer = customer && customer.firstName && customer.firstName.trim().toLowerCase() !== "cash";
 
+  // --- THIS SECTION IS UPDATED ---
   const paymentOptions = !customer
-    ? []
+    ? [] // No customer, no options
     : isCashCustomer
-      ? [
+      ? [ // Is a cash customer
         { value: 1, label: "Cash" },
         { value: 2, label: "Card" },
         { value: 4, label: "Bank Transfer" },
       ]
-      : [
-        { value: 7, label: "Credit" },
-      ];
+      : paymentTypeEnableforCustomersIninvoiceView // Is NOT a cash customer, so check the app setting
+        ? [ // App setting is ON: show all options
+          { value: 1, label: "Cash" },
+          { value: 2, label: "Card" },
+          { value: 4, label: "Bank Transfer" },
+          { value: 7, label: "Credit" },
+        ]
+        : [ // App setting is OFF: show only credit
+          { value: 7, label: "Credit" },
+        ];
+  // --- END OF UPDATED SECTION ---
 
   return (
     <>
@@ -866,7 +890,7 @@ const InvoiceCreate = () => {
                   </Grid>
                 }
 
-                {isPaymentTypeEnableToInvoice ?
+                {paymentTypeEnableforCustomersIninvoiceView ?
                   <Grid
                     item
                     xs={12}
@@ -892,7 +916,8 @@ const InvoiceCreate = () => {
                       onChange={(e) => setPaymentType(e.target.value)}
                       sx={{ width: "60%" }}
                       size="small"
-                      disabled={!customer || isCreditCustomer}
+                      // --- UPDATED THIS LINE ---
+                      disabled={!customer || (isCreditCustomer && !paymentTypeEnableforCustomersIninvoiceView)}
                     >
                       {paymentOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
@@ -1051,23 +1076,23 @@ const InvoiceCreate = () => {
                       ></TableCell>
                       <TableCell sx={{ color: "#fff" }}>#</TableCell>
                       <TableCell sx={{ color: "#fff" }}>
-                        Product&nbsp;Name
+                        Product Name
                       </TableCell>
                       {IsBatchNumberAvailable && (
                         <TableCell sx={{ color: "#fff" }}>Batch</TableCell>
                       )}
                       {IsExpireDateAvailable && (
-                        <TableCell sx={{ color: "#fff" }}>Exp&nbsp;Date</TableCell>
+                        <TableCell sx={{ color: "#fff" }}>Exp Date</TableCell>
                       )}
                       <TableCell sx={{ color: "#fff" }}>Qty</TableCell>
                       {IsCostPriceVisible && (<TableCell sx={{ color: "#fff" }}>
-                        Cost&nbsp;Price
+                        Cost Price
                       </TableCell>)}
                       <TableCell sx={{ color: "#fff" }}>
-                        Selling&nbsp;Price
+                        Selling Price
                       </TableCell>
                       <TableCell align="right" sx={{ color: "#fff" }}>
-                        Total&nbsp;Price
+                        Total Price
                       </TableCell>
                     </TableRow>
                   </TableHead>

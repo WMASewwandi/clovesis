@@ -48,7 +48,7 @@ const validationSchema = Yup.object().shape({
   Name: Yup.string().required("Category Name is required"),
 });
 
-export default function EditCategory({ fetchItems, category }) {
+export default function EditCategory({ fetchItems, category, IsEcommerceWebSiteAvailable }) {
   const [open, setOpen] = React.useState(false);
   const [image, setImage] = useState("");
   const [file, setFile] = useState(null);
@@ -69,6 +69,7 @@ export default function EditCategory({ fetchItems, category }) {
     formData.append("Id", values.Id);
     formData.append("Name", values.Name);
     formData.append("IsActive", values.IsActive);
+    formData.append("IsWebView", values.IsWebView);
     formData.append("File", file ? file : null);
 
     fetch(`${BASE_URL}/Category/UpdateCategory`, {
@@ -111,6 +112,7 @@ export default function EditCategory({ fetchItems, category }) {
               Id: category.id,
               Name: category.name || "",
               IsActive: category.isActive ?? true,
+              IsWebView: category.isWebView
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -174,21 +176,42 @@ export default function EditCategory({ fetchItems, category }) {
                         </Box>
                       </Grid>
                       : ""}
-                    <Grid item xs={12} mt={1}>
-                      <FormControlLabel
-                        control={
-                          <Field
-                            as={Checkbox}
-                            name="IsActive"
-                            checked={values.IsActive}
-                            onChange={() =>
-                              setFieldValue("IsActive", !values.IsActive)
+                    <Grid item xs={12}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <FormControlLabel
+                            control={
+                              <Field
+                                as={Checkbox}
+                                name="IsActive"
+                                checked={values.IsActive}
+                                onChange={() =>
+                                  setFieldValue("IsActive", !values.IsActive)
+                                }
+                              />
                             }
+                            label="Active"
                           />
-                        }
-                        label="Active"
-                      />
+                        </Grid>
+
+                        {IsEcommerceWebSiteAvailable && (
+                          <Grid item xs={12} lg={6} mt={1}>
+                            <FormControlLabel
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="IsWebView"
+                                  checked={values.IsWebView}
+                                  onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                />
+                              }
+                              label="Show in web"
+                            />
+                          </Grid>
+                        )}
+                      </Grid>
                     </Grid>
+
                   </Grid>
                 </Box>
                 <Box display="flex" justifyContent="space-between">

@@ -23,12 +23,6 @@ const SubMenu = ({ item, allItems,onCheckPermission }) => {
   };
 
 
-  const handleSubNavClick = (subItem) => {
-    sessionStorage.setItem("moduleid", item.ModuleId);
-    sessionStorage.setItem("category", subItem.categoryId);
-    router.push(subItem.path);
-  };
-
   const fetchPermission = async (cId) => {
     try {
       const response = await fetch(`${BASE_URL}/User/GetModuleCategoryNavigationPermissions?roleId=${role}&categoryId=${cId}`, {
@@ -86,20 +80,19 @@ const SubMenu = ({ item, allItems,onCheckPermission }) => {
   }
 
   const handleMainClick = (e) => {
-    e.preventDefault();
-
     if (item.subNav) {
+      e.preventDefault();
       showSubnav();
-    } else {
-      sessionStorage.setItem("moduleid", item.ModuleId);
-      router.push(item.path);
+      return;
     }
+
+    sessionStorage.setItem("moduleid", item.ModuleId);
   };
 
   return (
     <>
       <Link
-        href="#"
+        href={item.subNav ? "#" : item.path || "#"}
         onClick={handleMainClick}
         className={`${styles.sidebarLink} ${isActive ? "sidebarLinkActive" : ""}`}
       >
@@ -119,19 +112,21 @@ const SubMenu = ({ item, allItems,onCheckPermission }) => {
       {subnav &&
         availableSubNav.map((subItem, index) => (
           <div key={index} className={styles.subMenu}>
-            <div
-              onClick={(e) => {
-                e.preventDefault();
-                handleSubNavClick(subItem);
-              }}
+            <Link
+              href={subItem.path}
               className={styles.sidebarLink}
-              style={{ cursor: "pointer" }}
+              onClick={() => {
+                sessionStorage.setItem("moduleid", item.ModuleId);
+                sessionStorage.setItem("category", subItem.categoryId);
+              }}
             >
               <div>
                 {subItem.icon}
-                <SidebarLabel className="ml-1">{subItem.title} {subItem.categoryId === 60 ? "(POS)" : ""}</SidebarLabel>
+                <SidebarLabel className="ml-1">
+                  {subItem.title} {subItem.categoryId === 60 ? "(POS)" : ""}
+                </SidebarLabel>
               </div>
-            </div>
+            </Link>
           </div>
         ))}
     </>

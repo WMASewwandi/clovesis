@@ -36,7 +36,7 @@ const validationSchema = Yup.object().shape({
   CategoryId: Yup.number().required("Category is required"),
 });
 
-export default function AddSubCategory({ fetchItems }) {
+export default function AddSubCategory({ fetchItems, IsEcommerceWebSiteAvailable }) {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
 
@@ -72,7 +72,7 @@ export default function AddSubCategory({ fetchItems }) {
         if (inputRef.current) {
           inputRef.current.focus();
         }
-      }, 100); 
+      }, 100);
     }
   }, [open]);
 
@@ -121,6 +121,7 @@ export default function AddSubCategory({ fetchItems }) {
               Name: "",
               CategoryId: "",
               IsActive: true,
+              IsWebView: false,
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -129,7 +130,7 @@ export default function AddSubCategory({ fetchItems }) {
               <Form>
                 <Box mt={2}>
                   <Grid container>
-                   
+
                     <Grid item xs={12} mt={1}>
                       <Typography
                         as="h5"
@@ -209,7 +210,7 @@ export default function AddSubCategory({ fetchItems }) {
                         helperText={touched.Name && errors.Name}
                       />
                     </Grid>
-                    <Grid item xs={12} mt={1}>
+                    <Grid item xs={12} lg={6} mt={1}>
                       <FormControlLabel
                         control={
                           <Field
@@ -224,6 +225,21 @@ export default function AddSubCategory({ fetchItems }) {
                         label="Active"
                       />
                     </Grid>
+                    {IsEcommerceWebSiteAvailable && (
+                      <Grid item xs={12} lg={6} mt={1}>
+                        <FormControlLabel
+                          control={
+                            <Field
+                              as={Checkbox}
+                              name="IsWebView"
+                              checked={values.IsWebView}
+                              onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                            />
+                          }
+                          label="Show in web"
+                        />
+                      </Grid>
+                    )}
                   </Grid>
                 </Box>
                 <Box display="flex" justifyContent="space-between">

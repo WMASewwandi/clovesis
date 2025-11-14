@@ -39,7 +39,7 @@ const validationSchema = Yup.object().shape({
   Name: Yup.string().required("Category Name is required"),
 });
 
-export default function AddCategory({ fetchItems }) {
+export default function AddCategory({ fetchItems, IsEcommerceWebSiteAvailable }) {
   const [open, setOpen] = React.useState(false);
   const [image, setImage] = useState("");
   const [file, setFile] = useState(null);
@@ -68,6 +68,7 @@ export default function AddCategory({ fetchItems }) {
 
     formData.append("Name", values.Name);
     formData.append("IsActive", values.IsActive);
+    formData.append("IsWebView", values.IsWebView);
     formData.append("File", file ? file : null);
 
     fetch(`${BASE_URL}/Category/CreateCategory`, {
@@ -111,6 +112,7 @@ export default function AddCategory({ fetchItems }) {
             initialValues={{
               Name: "",
               IsActive: true,
+              IsWebView: false,
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -181,25 +183,45 @@ export default function AddCategory({ fetchItems }) {
                       </Button>
                     </Grid>
                     {image != "" ?
-                    <Grid item xs={12} lg={6} my={1} display="flex" justifyContent="center">
-                      <Box sx={{ p: 2, border: '1px solid #e5e5e5', borderRadius: '10px' }}>                        
+                      <Grid item xs={12} lg={6} my={1} display="flex" justifyContent="center">
+                        <Box sx={{ p: 2, border: '1px solid #e5e5e5', borderRadius: '10px' }}>
                           <Box sx={{ width: 150, height: 150, backgroundSize: 'cover', backgroundImage: `url(${image})` }}></Box>
-                      </Box>
-                    </Grid>
-                    : ""}
+                        </Box>
+                      </Grid>
+                      : ""}
 
-                    <Grid item xs={12} mt={1}>
-                      <FormControlLabel
-                        control={
-                          <Field
-                            as={Checkbox}
-                            name="IsActive"
-                            checked={values.IsActive}
-                            onChange={() => setFieldValue("IsActive", !values.IsActive)}
+                    <Grid item xs={12}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} lg={6} mt={1}>
+                          <FormControlLabel
+                            control={
+                              <Field
+                                as={Checkbox}
+                                name="IsActive"
+                                checked={values.IsActive}
+                                onChange={() => setFieldValue("IsActive", !values.IsActive)}
+                              />
+                            }
+                            label="Active"
                           />
-                        }
-                        label="Active"
-                      />
+                        </Grid>
+
+                        {IsEcommerceWebSiteAvailable && (
+                          <Grid item xs={12} lg={6} mt={1}>
+                            <FormControlLabel
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="IsWebView"
+                                  checked={values.IsWebView}
+                                  onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                />
+                              }
+                              label="Show in web"
+                            />
+                          </Grid>
+                        )}
+                      </Grid>
                     </Grid>
                   </Grid>
                 </Box>

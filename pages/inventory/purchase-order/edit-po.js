@@ -70,33 +70,44 @@ const POEdit = () => {
           acc[key] = {
             productId: item.productId,
             purchaseOrderNo: item.purchaseOrderNo,
-            totalUnitPrice: 0,
-            totalFreightCost: 0,
-            totalAdditionalCost: 0,
-            itemCount: 0,
-            averageUnitPrice: 0,
-            averageFreightDutyCost: 0,
-            poReceivedQty: 0,
+            weightedUnitPriceTotal: 0,
+            weightedAdditionalCostTotal: 0,
+            totalFreightDutyDisplay: 0,
+            totalAdditionalDisplay: 0,
+            totalReceivedQty: 0,
           };
         }
 
-        acc[key].totalUnitPrice += item.shipmentUnitPrice;
-        acc[key].totalFreightCost += item.shipmentFreightDutyCost;
-        acc[key].totalAdditionalCost += item.shipmentAdditionalCost;
-        acc[key].poReceivedQty += item.poReceivedQty;
-        acc[key].itemCount += 1;
+        const receivedQty = Number(item.poReceivedQty) || 0;
+        const shipmentUnitPrice = Number(item.shipmentUnitPrice) || 0;
+        const shipmentAdditionalCost = Number(item.shipmentAdditionalCost) || 0;
+        const shipmentFreightDutyCost = Number(item.shipmentFreightDutyCost) || 0;
+
+        if (receivedQty > 0) {
+          acc[key].weightedUnitPriceTotal += shipmentUnitPrice * receivedQty;
+          acc[key].weightedAdditionalCostTotal +=
+            (shipmentAdditionalCost + shipmentFreightDutyCost) * receivedQty;
+          acc[key].totalReceivedQty += receivedQty;
+        }
+
+        acc[key].totalFreightDutyDisplay += shipmentFreightDutyCost;
+        acc[key].totalAdditionalDisplay += shipmentAdditionalCost;
 
         return acc;
       }, {});
       const summaryArray = Object.values(summary).map((item) => ({
         ...item,
         averageUnitPrice:
-          item.itemCount > 0 ? item.totalUnitPrice / item.itemCount : 0,
-        averageFreightDutyCost:
-          item.itemCount > 0
-            ? (item.totalFreightCost + item.totalAdditionalCost) /
-            item.poReceivedQty
+          item.totalReceivedQty > 0
+            ? item.weightedUnitPriceTotal / item.totalReceivedQty
             : 0,
+        averageFreightDutyCost:
+          item.totalReceivedQty > 0
+            ? item.weightedAdditionalCostTotal / item.totalReceivedQty
+            : 0,
+        poReceivedQty: item.totalReceivedQty,
+        totalFreightDutyCost: item.totalFreightDutyDisplay,
+        totalAdditionalCost: item.totalAdditionalDisplay,
       }));
       setPOTallyList(summaryArray);
     } catch (error) {

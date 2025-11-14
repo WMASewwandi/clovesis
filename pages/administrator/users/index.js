@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import Link from "next/link";
 import styles from "@/styles/PageTitle.module.css";
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
+import { FormControl, InputLabel, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow } from "@mui/material";
 import AddUserDialog from "pages/administrator/users/AddUserDialog";
 import BASE_URL from "Base/api";
 import GetAllWarehouse from "@/components/utils/GetAllWarehouse";
@@ -24,6 +24,7 @@ export default function Users() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedUserType, setSelectedUserType] = useState("all");
 
   const fetchUsers = async () => {
     try {
@@ -94,11 +95,41 @@ export default function Users() {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
+    setPage(0);
   };
 
-  const filteredData = usersList.filter((item) =>
-    item.userName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const userTypeOptions = useMemo(() => {
+    const byId = new Map();
+    usersList.forEach((user) => {
+      if (user?.userType !== null && user?.userType !== undefined) {
+        const key = String(user.userType);
+        if (!byId.has(key)) {
+          byId.set(key, user.userTypeName || "Unknown");
+        }
+      }
+    });
+    return Array.from(byId, ([value, label]) => ({ value, label }));
+  }, [usersList]);
+
+  const handleUserTypeFilterChange = (event) => {
+    setSelectedUserType(event.target.value);
+    setPage(0);
+  };
+
+  const filteredData = usersList.filter((item) => {
+    const username = item?.userName || "";
+    const firstName = item?.firstName || "";
+    const lastName = item?.lastName || "";
+    const matchesSearch =
+      username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${firstName} ${lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesUserType =
+      selectedUserType === "all"
+        ? true
+        : String(item?.userType) === selectedUserType;
+
+    return matchesSearch && matchesUserType;
+  });
 
   const paginatedData = filteredData.slice(
     page * rowsPerPage,
@@ -138,13 +169,39 @@ export default function Users() {
         <Grid
           item
           xs={12}
-          lg={8}
+          lg={4}
           mb={1}
           display="flex"
           justifyContent="end"
-          order={{ xs: 1, lg: 2 }}
+          order={{ xs: 1, lg: 3 }}
         >
           {create ? <AddUserDialog fetchItems={fetchUsers} warehouses={warehouseList} roles={roles} /> : ""}
+        </Grid>
+        <Grid
+          item
+          xs={12}
+          lg={4}
+          order={{ xs: 3, lg: 2 }}
+          display="flex"
+          justifyContent={{ xs: "flex-start", lg: "center" }}
+        >
+          <FormControl fullWidth sx={{ minWidth: 200 }}>
+            <InputLabel id="user-type-filter-label">User Type</InputLabel>
+            <Select
+              labelId="user-type-filter-label"
+              id="user-type-filter"
+              label="User Type"
+              value={selectedUserType}
+              onChange={handleUserTypeFilterChange}
+            >
+              <MenuItem value="all">All User Types</MenuItem>
+              {userTypeOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -180,7 +237,7 @@ export default function Users() {
                       sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                     >
                       <TableCell component="th" scope="row">
-                        {index + 1}
+                        {page * rowsPerPage + index + 1}
                       </TableCell>
                       <TableCell>{user.firstName} {user.lastName}</TableCell>
                       <TableCell>{user.userName}</TableCell>
@@ -217,7 +274,7 @@ export default function Users() {
             <TablePagination
               rowsPerPageOptions={[5, 10, 25]}
               component="div"
-              count={paginatedData.length}
+              count={filteredData.length}
               rowsPerPage={rowsPerPage}
               page={page}
               onPageChange={handleChangePage}

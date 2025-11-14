@@ -170,7 +170,7 @@ export default function Chat() {
               <Box display="flex" justifyContent="space-between">
                 <Box display="flex" sx={{ gap: "5px" }} alignItems="center">
                   <Avatar src="/images/quotation/logo.jpg" />
-                  <Typography>ApexFlow</Typography>
+                  <Typography>CBASS-AI</Typography>
                 </Box>
                 <AvatarGroup total={4}>
                   <Avatar alt="Remy Sharp" src="/static/images/avatar/1.jpg" />

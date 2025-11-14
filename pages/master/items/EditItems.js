@@ -6,6 +6,8 @@ import {
   IconButton,
   Tooltip,
   Typography,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -19,6 +21,8 @@ import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const style = {
   position: "absolute",
@@ -40,7 +44,7 @@ const validationSchema = Yup.object().shape({
   UOM: Yup.number().required("Unit of Measure is required"),
 });
 
-export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled }) {
+export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled, IsEcommerceWebSiteAvailable }) {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -49,6 +53,9 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
   const [subCategoryList, setSubCategoryList] = useState([]);
   const [supplierList, setSupplierList] = useState([]);
   const [catId, setCatId] = useState(item.categoryId);
+  const [tabValue, setTabValue] = useState(0);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const fetchSupplierList = async () => {
     try {
@@ -122,7 +129,8 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     fetchCategoryList();
     fetchSupplierList();
     fetchSubCategoryList();
-  }, []);
+    setSelectedImage(item.productImage != "" ? item.productImage : null);
+  }, [item]);
 
   const handleCategorySelect = (event) => {
     setSelectedCat(event.target.value);
@@ -130,12 +138,60 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     fetchSubCategoryList();
   };
 
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setSelectedImage(imageUrl);
+      setSelectedFile(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setSelectedFile(null);
+  };
+
   const handleSubmit = (values) => {
+    if (values.IsWebView && values.AveragePrice === "") {
+      toast.warning("Please enter the average price for web view.");
+      return;
+    }
+
+    
+
+    const formData = new FormData();
+
+    formData.append("Id", values.Id);
+    formData.append("Name", values.Name);
+    formData.append("Code", values.Code);
+    formData.append("AveragePrice", values.AveragePrice);
+    formData.append("ShipmentTarget", values.ShipmentTarget ? values.ShipmentTarget : "");
+    formData.append("ReorderLevel", values.ReorderLevel ?values.ReorderLevel : "");
+    formData.append("CategoryId", values.CategoryId);
+    formData.append("SubCategoryId", values.SubCategoryId);
+    formData.append("Supplier", values.Supplier);
+    formData.append("UOM", values.UOM);
+    if (values.Barcode !== undefined && values.Barcode !== null && values.Barcode !== "") {
+      formData.append("Barcode", values.Barcode);
+    }
+    formData.append("CostAccount", values.CostAccount ? values.CostAccount : "");
+    formData.append("AssetsAccount", values.AssetsAccount ? values.AssetsAccount : "");
+    formData.append("IncomeAccount", values.IncomeAccount ? values.IncomeAccount : "");
+    formData.append("IsActive", values.IsActive);
+    formData.append("IsNonInventoryItem", values.IsNonInventoryItem);
+    formData.append("HasSerialNumbers", values.HasSerialNumbers);
+    formData.append("IsWebView", values.IsWebView);
+    formData.append("ProductImage", selectedFile ? selectedFile : null);
+
     fetch(`${BASE_URL}/Items/UpdateItems`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: formData,
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
     })
@@ -179,13 +235,14 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
               ReorderLevel: item.reorderLevel || null,
               Supplier: item.supplier || "",
               UOM: item.uom || "",
-              Barcode: item.barcode || "",
+              Barcode: item.barcode || null,
               CostAccount: item.costAccount || null,
               AssetsAccount: item.assetsAccount || null,
               IncomeAccount: item.incomeAccount || null,
-              IsActive: item.isActive ?? true,
-              IsNonInventoryItem: item.isNonInventoryItem ?? false,
-              HasSerialNumbers: item.hasSerialNumbers ?? false,
+              IsActive: item.isActive,
+              IsNonInventoryItem: item.isNonInventoryItem,
+              HasSerialNumbers: item.hasSerialNumbers,
+              IsWebView: item.isWebView
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -193,18 +250,26 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
             {({ errors, touched, values, setFieldValue }) => (
               <Form>
                 <Grid container>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} mb={2}>
                     <Typography
                       variant="h5"
                       sx={{
                         fontWeight: "500",
-                        mb: "12px",
+                        mb: "5px",
                       }}
                     >
                       Edit Item
                     </Typography>
                   </Grid>
-                  <Box sx={{ height: "50vh", overflowY: "scroll" }}>
+                  <Grid item xs={12} mb={2}>
+                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="item tabs">
+                      <Tab label="Item Details" />
+                      <Tab label="Image" />
+                    </Tabs>
+                  </Grid>
+                  
+                  {tabValue === 0 && (
+                  <Box sx={{ height: "50vh", overflowY: "scroll", width: "100%" }}>
                     <Grid container>
                       <Grid item xs={12} lg={6} p={1}>
                         <Typography
@@ -454,7 +519,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                             name="UOM"
                             size="small"
                           >
-                           {uoms.filter(uom => uom.isActive).length === 0 ? (
+                            {uoms.filter(uom => uom.isActive).length === 0 ? (
                               <MenuItem disabled>No Active UOM Available</MenuItem>
                             ) : (
                               uoms
@@ -593,48 +658,174 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                         </Grid>
                       )}
                       <Grid item xs={12} mt={1} p={1}>
-                        <FormControlLabel
-                          control={
-                            <Field
-                              as={Checkbox}
-                              name="IsActive"
-                              checked={values.IsActive}
-                              onChange={() =>
-                                setFieldValue("IsActive", !values.IsActive)
+                        <Grid container spacing={1}>
+                          <Grid item xs={12} lg={6}>
+                            <FormControlLabel
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="IsActive"
+                                  checked={values.IsActive}
+                                  onChange={() =>
+                                    setFieldValue("IsActive", !values.IsActive)
+                                  }
+                                />
                               }
+                              label="Active"
                             />
-                          }
-                          label="Active"
-                        />
-                        <FormControlLabel
-                          control={
-                            <Field
-                              as={Checkbox}
-                              name="IsNonInventoryItem"
-                              checked={values.IsNonInventoryItem}
-                              onChange={() =>
-                                setFieldValue("IsNonInventoryItem", !values.IsNonInventoryItem)
+                          </Grid>
+                          <Grid item xs={12} lg={6}>
+                            <FormControlLabel
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="IsNonInventoryItem"
+                                  checked={values.IsNonInventoryItem}
+                                  onChange={() =>
+                                    setFieldValue("IsNonInventoryItem", !values.IsNonInventoryItem)
+                                  }
+                                />
                               }
+                              label="Non Inventory Item"
                             />
-                          }
-                          label="Non Inventory Item"
-                        />
-                        <FormControlLabel
-                          control={
-                            <Field
-                              as={Checkbox}
-                              name="HasSerialNumbers"
-                              checked={values.HasSerialNumbers}
-                              onChange={() =>
-                                setFieldValue("HasSerialNumbers", !values.HasSerialNumbers)
+                          </Grid>
+                          <Grid item xs={12} lg={6}>
+                            <FormControlLabel
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="HasSerialNumbers"
+                                  checked={values.HasSerialNumbers}
+                                  onChange={() =>
+                                    setFieldValue("HasSerialNumbers", !values.HasSerialNumbers)
+                                  }
+                                />
                               }
+                              label="Serial Numbers Available"
                             />
-                          }
-                          label="Serial Numbers Available"
-                        />
+                          </Grid>
+
+                          {IsEcommerceWebSiteAvailable && (
+                            <Grid item xs={12} lg={6} mt={1}>
+                              <FormControlLabel
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsWebView"
+                                    checked={values.IsWebView}
+                                    onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                  />
+                                }
+                                label="Show in web"
+                              />
+                            </Grid>
+                          )}
+                        </Grid>
                       </Grid>
                     </Grid>
                   </Box>
+                  )}
+
+                  {tabValue === 1 && (
+                  <Box sx={{ height: "50vh", overflowY: "scroll", width: "100%", p: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>
+                          Upload Item Image
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          component="label"
+                          startIcon={<CloudUploadIcon />}
+                          sx={{ mb: 3 }}
+                        >
+                          Choose Image
+                          <input
+                            type="file"
+                            hidden
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                          />
+                        </Button>
+                      </Grid>
+                      
+                      {selectedImage && (
+                        <Grid item xs={12}>
+                          <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                            Selected Image
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6} md={4}>
+                              <Box
+                                sx={{
+                                  position: "relative",
+                                  border: "2px solid #e0e0e0",
+                                  borderRadius: "8px",
+                                  overflow: "hidden",
+                                  height: "250px",
+                                  "&:hover .delete-icon": {
+                                    opacity: 1,
+                                  },
+                                }}
+                              >
+                                <img
+                                  src={selectedImage}
+                                  alt="Preview"
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                                <IconButton
+                                  className="delete-icon"
+                                  onClick={handleRemoveImage}
+                                  sx={{
+                                    position: "absolute",
+                                    top: 5,
+                                    right: 5,
+                                    backgroundColor: "rgba(255, 255, 255, 0.9)",
+                                    opacity: 0,
+                                    transition: "opacity 0.3s",
+                                    "&:hover": {
+                                      backgroundColor: "rgba(255, 255, 255, 1)",
+                                    },
+                                  }}
+                                  size="small"
+                                >
+                                  <DeleteIcon fontSize="small" color="error" />
+                                </IconButton>
+                              </Box>
+                            </Grid>
+                          </Grid>
+                        </Grid>
+                      )}
+                      
+                      {!selectedImage && (
+                        <Grid item xs={12}>
+                          <Box
+                            sx={{
+                              border: "2px dashed #ccc",
+                              borderRadius: "8px",
+                              p: 4,
+                              textAlign: "center",
+                              backgroundColor: "#f9f9f9",
+                            }}
+                          >
+                            <CloudUploadIcon sx={{ fontSize: 60, color: "#999", mb: 2 }} />
+                            <Typography variant="body1" color="textSecondary">
+                              No image uploaded yet
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              Click "Choose Image" button to upload
+                            </Typography>
+                          </Box>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Box>
+                  )}
+
                   <Grid
                     display="flex"
                     justifyContent="space-between"

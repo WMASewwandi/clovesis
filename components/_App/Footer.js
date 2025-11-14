@@ -16,7 +16,7 @@ const Footer = () => {
       >
         <Box>
           <Typography>
-            <strong>ApexFlow</strong> &copy; All Rights Reserved
+            <strong>CBASS-AI</strong> &copy; All Rights Reserved
           </Typography>
         </Box>
       </Stack>

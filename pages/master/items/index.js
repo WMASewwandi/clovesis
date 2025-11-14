@@ -33,6 +33,7 @@ export default function Items() {
   const { data: isPOSSystem } = IsAppSettingEnabled(`IsPosSystem`);
   const { data: isGarmentSystem } = IsAppSettingEnabled(`IsGarmentSystem`);
   const { data: isBarcodeEnabled } = IsAppSettingEnabled(`IsBarcodeEnabled`);
+  const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled(`IsEcommerceWebSiteAvailable`);
   const [searchTerm, setSearchTerm] = useState("");
   const { data: supplierList } = GetAllSuppliers();
   const { categories, subCategories, uoms } = GetAllItemDetails();
@@ -160,7 +161,7 @@ export default function Items() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddItems fetchItems={fetchItemsList} isPOSSystem={isPOSSystem} uoms={uoms} isGarmentSystem={isGarmentSystem} chartOfAccounts={chartOfAccounts} barcodeEnabled={isBarcodeEnabled} /> : ""}
+          {create ? <AddItems fetchItems={fetchItemsList} isPOSSystem={isPOSSystem} uoms={uoms} isGarmentSystem={isGarmentSystem} chartOfAccounts={chartOfAccounts} barcodeEnabled={isBarcodeEnabled} IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -184,6 +185,7 @@ export default function Items() {
                   {isBarcodeEnabled && <TableCell>Barcode</TableCell>}
                   <TableCell>Inventory Item</TableCell>
                   <TableCell>Serial No. Available</TableCell>
+                  {IsEcommerceWebSiteAvailable && (<TableCell>Show In Web</TableCell>)}
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
@@ -213,6 +215,7 @@ export default function Items() {
                       <TableCell>{chartOfAccInfo[item.incomeAccount]?.code || "-"} - {chartOfAccInfo[item.incomeAccount]?.description || "-"}</TableCell>
                       <TableCell>{chartOfAccInfo[item.assetsAccount]?.code || "-"} - {chartOfAccInfo[item.assetsAccount]?.description || "-"}</TableCell>
                       {isBarcodeEnabled && <TableCell>{item.barcode}</TableCell>}
+
                       <TableCell align="right">
                         {item.isNonInventoryItem ? (
                           <span className="dangerBadge">No</span>
@@ -227,6 +230,15 @@ export default function Items() {
                           <span className="dangerBadge">No</span>
                         )}
                       </TableCell>
+                      {IsEcommerceWebSiteAvailable && (
+                        <TableCell>
+                          {item.isWebView == true ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell align="right">
                         {item.isActive ? (
                           <span className="successBadge">Active</span>
@@ -235,7 +247,7 @@ export default function Items() {
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        {update ? <EditItems fetchItems={fetchItemsList} item={item} isPOSSystem={isPOSSystem} uoms={uoms} isGarmentSystem={isGarmentSystem} chartOfAccounts={chartOfAccounts} barcodeEnabled={isBarcodeEnabled} /> : ""}
+                        {update ? <EditItems fetchItems={fetchItemsList} item={item} isPOSSystem={isPOSSystem} uoms={uoms} isGarmentSystem={isGarmentSystem} chartOfAccounts={chartOfAccounts} barcodeEnabled={isBarcodeEnabled} IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable} /> : ""}
                         {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchItemsList} /> : ""}
                       </TableCell>
                     </TableRow>
