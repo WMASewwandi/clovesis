@@ -157,12 +157,10 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
   };
 
   const handleSubmit = (values) => {
-    if (values.IsWebView && values.AveragePrice === "") {
+    if (values.IsWebView && values.AveragePrice === null) {
       toast.warning("Please enter the average price for web view.");
       return;
-    }
-
-    
+    }   
 
     const formData = new FormData();
 
@@ -228,7 +226,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
               Id: item.id,
               Name: item.name || "",
               Code: item.code || "",
-              AveragePrice: item.averagePrice || "",
+              AveragePrice: item.averagePrice || null,
               CategoryId: item.categoryId || "",
               SubCategoryId: item.subCategoryId || "",
               ShipmentTarget: item.shipmentTarget || null,

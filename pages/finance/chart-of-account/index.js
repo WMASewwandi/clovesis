@@ -88,7 +88,7 @@ export default function ChartOfAccounts() {
         <h1>Chart of Accounts</h1>
         <ul>
           <li>
-            <Link href="/master/chart-of-account/">Chart of Accounts</Link>
+            <Link href="/finance/chart-of-account/">Chart of Accounts</Link>
           </li>
         </ul>
       </div>
@@ -112,38 +112,72 @@ export default function ChartOfAccounts() {
               <TableHead>
                 <TableRow>
                   <TableCell>Code</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Bank Involved</TableCell>
+                  <TableCell>Name</TableCell>                  
                   <TableCell>Account Type</TableCell>
+                  <TableCell>Parent Account</TableCell>
+                  <TableCell>Bank Involved</TableCell>
+                  <TableCell>Active</TableCell>
+                  <TableCell>Group</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {chartOfAccounts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5}>
+                    <TableCell colSpan={8}>
                       <Typography color="error">No Chart of Accounts Available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  chartOfAccounts.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{item.code}</TableCell>
-                      <TableCell>{item.description}</TableCell>
-                      <TableCell>
-                        {item.isBankInvolved ? (
-                          <span className="successBadge">Yes</span>
-                        ) : (
-                          <span className="dangerBadge">No</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{ChartOfAccountType(item.accountType)}</TableCell>
-                      <TableCell align="right">
-                        {update ? <EditChartOfAccounts fetchItems={fetchChartOfAccounts} item={item} /> : ""}
-                        {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchChartOfAccounts} /> : ""}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  chartOfAccounts.map((item, index) => {
+                    const parentAccountDisplay = (() => {
+                      if (!item.parentAccountName && !item.parentAccountCode) {
+                        return "-";
+                      }
+                      const parts = [];
+                      if (item.parentAccountCode) {
+                        parts.push(item.parentAccountCode);
+                      }
+                      if (item.parentAccountName) {
+                        parts.push(item.parentAccountName);
+                      }
+                      return parts.join(" - ");
+                    })();
+
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>{item.code}</TableCell>
+                        <TableCell>{item.name}</TableCell>                      
+                        <TableCell>{ChartOfAccountType(item.accountType)}</TableCell>
+                        <TableCell>{parentAccountDisplay}</TableCell>
+                        <TableCell>
+                          {item.isBankInvolved ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.isActive ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.isGroup ? (
+                            <span className="successBadge">Yes</span>
+                          ) : (
+                            <span className="dangerBadge">No</span>
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          {update ? <EditChartOfAccounts fetchItems={fetchChartOfAccounts} item={item} /> : ""}
+                          {remove ? <DeleteConfirmationById id={item.id} controller={controller} fetchItems={fetchChartOfAccounts} /> : ""}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

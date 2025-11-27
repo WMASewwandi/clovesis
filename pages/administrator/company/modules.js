@@ -67,6 +67,16 @@ export default function Modules({ handleClose,item }) {
         return checked ? checked.isActive : false;
     };
 
+    const handleSelectAllChange = (checked) => {
+        setCheckedModules(
+            modules.map((module) => ({
+                CompanyId: item,
+                ModuleId: module.id,
+                isActive: checked,
+            }))
+        );
+    };
+
     const handleCheckboxChange = (moduleId, checked) => {
         setCheckedModules((prev) => {
             const filtered = prev.filter((item) => item.ModuleId !== moduleId);
@@ -113,9 +123,26 @@ export default function Modules({ handleClose,item }) {
             });
     };
 
+    const allSelected =
+        modules.length > 0 && modules.every((module) => isModuleChecked(module.id));
+    const partiallySelected =
+        !allSelected && modules.some((module) => isModuleChecked(module.id));
+
     return (
         <Box sx={{ maxHeight: "55vh", overflowY: "auto", my: 2 }}>
             <Grid container spacing={2}>
+                <Grid item xs={12}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={allSelected}
+                                indeterminate={partiallySelected}
+                                onChange={(event) => handleSelectAllChange(event.target.checked)}
+                            />
+                        }
+                        label="Select All"
+                    />
+                </Grid>
                 {modules.map((module) => (
                     <Grid key={module.id} item xs={12} lg={6}>
                         <FormControlLabel

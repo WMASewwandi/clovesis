@@ -60,7 +60,8 @@ export default function CreateBankHistory({ banks, fetchItems }) {
       IsCheque: false,
       DocumentNo: "",
       WarehouseId: null,
-      BankId : bankId
+      BankId : bankId,
+      Status : 2,
     }
     fetch(`${BASE_URL}/BankHistory/CreateBankHistory`, {
       method: "POST",

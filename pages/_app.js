@@ -108,7 +108,7 @@
 // export default MyApp;
 
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import "../styles/remixicon.css";
 import "react-tabs/style/react-tabs.css";
 import "swiper/css";
@@ -126,6 +126,10 @@ import Layout from "@/components/_App/Layout";
 import { useRouter } from "next/router";
 import { ProjectNo } from "Base/catelogue";
 import Calendar from "./reservation/calendar";
+import getSettingValueByName from "@/components/utils/getSettingValueByName";
+
+
+const DEFAULT_INACTIVITY_TIMEOUT_MINUTES = 12 * 60;
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
@@ -134,6 +138,35 @@ function MyApp({ Component, pageProps }) {
   const [hydrated, setHydrated] = useState(false);
   const [landingVisible, setLandingVisible] = useState(true);
   const [landingSlideUp, setLandingSlideUp] = useState(false);
+  const inactivityTimerRef = useRef(null);
+  const hasLoggedOutRef = useRef(false);
+  const { data: autoLogoutTimeMinutes } = getSettingValueByName("AutoLogoutTimeMinutes");
+  const parsedAutoLogoutMinutes = Number.parseInt(`${autoLogoutTimeMinutes ?? ""}`, 10);
+  const INACTIVITY_TIMEOUT_MS =
+    !Number.isNaN(parsedAutoLogoutMinutes) && parsedAutoLogoutMinutes > 0
+      ? parsedAutoLogoutMinutes * 60 * 1000
+      : DEFAULT_INACTIVITY_TIMEOUT_MINUTES * 60 * 1000;
+  
+
+  const markActivity = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    localStorage.setItem("lastActivityTime", Date.now().toString());
+  }, []);
+
+  const handleForceLogout = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (hasLoggedOutRef.current) {
+      return;
+    }
+    hasLoggedOutRef.current = true;
+    localStorage.clear();
+    setToken(null);
+    router.replace("/authentication/sign-in/");
+  }, [router]);
 
 
   useEffect(() => {
@@ -184,6 +217,116 @@ function MyApp({ Component, pageProps }) {
     }
   }, [token]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleStorageChange = (event) => {
+      if (event.key === "token" && !event.newValue) {
+        handleForceLogout();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [handleForceLogout]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !token) {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      return;
+    }
+
+    hasLoggedOutRef.current = false;
+
+    const storedInitial = localStorage.getItem("lastActivityTime");
+    if (storedInitial) {
+      const lastActiveInitial = parseInt(storedInitial, 10);
+      if (!Number.isNaN(lastActiveInitial) && Date.now() - lastActiveInitial >= INACTIVITY_TIMEOUT_MS) {
+        handleForceLogout();
+        return;
+      }
+    }
+
+    const startInactivityTimer = () => {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+      }
+      inactivityTimerRef.current = window.setTimeout(() => {
+        const stored = localStorage.getItem("lastActivityTime");
+        const lastActive = stored ? parseInt(stored, 10) : 0;
+        if (!lastActive || Number.isNaN(lastActive) || Date.now() - lastActive >= INACTIVITY_TIMEOUT_MS) {
+          handleForceLogout();
+        }
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const handleUserActivity = () => {
+      markActivity();
+      startInactivityTimer();
+    };
+
+    const validateSession = () => {
+      const stored = localStorage.getItem("lastActivityTime");
+      const lastActive = stored ? parseInt(stored, 10) : 0;
+      if (!lastActive || Number.isNaN(lastActive)) {
+        handleUserActivity();
+        return;
+      }
+
+      if (Date.now() - lastActive < INACTIVITY_TIMEOUT_MS) {
+        handleUserActivity();
+        return;
+      }
+
+      handleForceLogout();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        validateSession();
+      } else {
+        markActivity();
+      }
+    };
+
+    const handleWindowFocus = () => validateSession();
+    const handleUnload = () => markActivity();
+
+    const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll"];
+
+    activityEvents.forEach((event) =>
+      window.addEventListener(event, handleUserActivity, true)
+    );
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleWindowFocus);
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+
+    // Initialize last activity and timer on mount
+    handleUserActivity();
+
+    return () => {
+      activityEvents.forEach((event) =>
+        window.removeEventListener(event, handleUserActivity, true)
+      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleWindowFocus);
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+    };
+  }, [handleForceLogout, markActivity, token, INACTIVITY_TIMEOUT_MS]);
+
 
   function clearLocalStorageDaily() {
     var now = new Date();
@@ -216,7 +359,7 @@ function MyApp({ Component, pageProps }) {
     return (
       <div className={`landing-page ${landingSlideUp ? "slide-up" : ""}`}>
         <div className="landing-content">
-          {ProjectNo === 1 ? <img src="/images/4c.png" alt="Logo" className="landing-logo" /> : <img src="/images/DBlogo.png" alt="Logo" className="landing-logo" />}
+          {ProjectNo === 1 ? <img src="/images/cbass-2.png" alt="Logo" className="landing-logo" /> : <img src="/images/DBlogo.png" alt="Logo" className="landing-logo" />}
 
         </div>
       </div>

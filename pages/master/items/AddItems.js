@@ -179,7 +179,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
   };
 
   const handleSubmit = (values) => {
-    if (values.IsWebView && values.AveragePrice === "") {
+    if (values.IsWebView && values.AveragePrice === null) {
       toast.warning("Please enter the average price for web view.");
       return;
     }
@@ -243,7 +243,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
             initialValues={{
               Name: "",
               Code: itemCode,
-              AveragePrice: "",
+              AveragePrice: null,
               ShipmentTarget: null,
               ReorderLevel: null,
               CategoryId: "",

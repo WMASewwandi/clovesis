@@ -12,6 +12,8 @@ import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
+import useChartOfAccountTypes from "hooks/useChartOfAccountTypes";
+import useChartOfAccountParents from "hooks/useChartOfAccountParents";
 
 const style = {
   position: "absolute",
@@ -26,12 +28,14 @@ const style = {
 
 const validationSchema = Yup.object().shape({
   Code: Yup.string().required("Code is required"),
-  Description: Yup.string().required("Description is required"),
+  Name: Yup.string().required("Name is required"),
   AccountType: Yup.string().required("Account Type is required"),
 });
 
-export default function EditChartOfAccounts({ fetchItems ,item}) {
+export default function EditChartOfAccounts({ fetchItems, item }) {
   const [open, setOpen] = React.useState(false);
+  const { accountTypes, isLoading: isAccountTypesLoading } = useChartOfAccountTypes();
+  const { parentAccounts, isLoading: isParentAccountsLoading } = useChartOfAccountParents();
   const handleClose = () => setOpen(false);
   const handleOpen = () => setOpen(true);
   const inputRef = useRef(null);
@@ -47,9 +51,15 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
   }, [open]);
 
   const handleSubmit = (values) => {
+    const payload = {
+      ...values,
+      AccountType: Number(values.AccountType),
+      ParentAccountId: values.ParentAccountId ? Number(values.ParentAccountId) : null,
+    };
+
     fetch(`${BASE_URL}/ChartOfAccount/UpdateChartOfAccount`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -73,10 +83,10 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
   return (
     <>
       <Tooltip title="Edit" placement="top">
-              <IconButton onClick={handleOpen} aria-label="edit" size="small">
-                <BorderColorIcon color="primary" fontSize="inherit" />
-              </IconButton>
-            </Tooltip>
+        <IconButton onClick={handleOpen} aria-label="edit" size="small">
+          <BorderColorIcon color="primary" fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
       <Modal
         open={open}
         onClose={handleClose}
@@ -87,11 +97,21 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
           <Formik
             initialValues={{
               Id: item.id,
-              Description: item.description || "",
+              Name: item.name || "",
               Code: item.code || "",
               IsBankInvolved: item.isBankInvolved || false,
-              AccountType: item.accountType || 1
+              AccountType:
+                item?.accountType !== undefined && item?.accountType !== null
+                  ? String(item.accountType)
+                  : accountTypes[0]?.id ?? "",
+              ParentAccountId:
+                item?.parentAccountId !== undefined && item?.parentAccountId !== null
+                  ? String(item.parentAccountId)
+                  : "",
+              IsActive: item.isActive,
+              IsGroup: item.isGroup,
             }}
+            enableReinitialize
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
@@ -136,15 +156,15 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
                         mb: "5px",
                       }}
                     >
-                      Description
+                      Name
                     </Typography>
                     <Field
                       as={TextField}
                       size="small"
                       fullWidth
-                      name="Description"
-                      error={touched.Description && Boolean(errors.Description)}
-                      helperText={touched.Description && errors.Description}
+                      name="Name"
+                      error={touched.Name && Boolean(errors.Name)}
+                      helperText={touched.Name && errors.Name}
                     />
                   </Grid>
                   <Grid item xs={12} mt={1}>
@@ -167,14 +187,18 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
                         onChange={(e) => {
                           setFieldValue("AccountType", e.target.value);
                         }}
+                        disabled={isAccountTypesLoading || accountTypes.length === 0}
                       >
-                        <MenuItem value={1}> Income </MenuItem>
-                        <MenuItem value={2}> Payment </MenuItem>
-                        <MenuItem value={3}> Fixed Assets </MenuItem>
-                        <MenuItem value={4}> Bank </MenuItem>
-                        <MenuItem value={5}> Loan </MenuItem>
-                        <MenuItem value={6}> Credit Card </MenuItem>
-                        <MenuItem value={7}> Equity </MenuItem>
+                        {accountTypes.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                        {!isAccountTypesLoading && accountTypes.length === 0 && (
+                          <MenuItem disabled value="">
+                            No account types found
+                          </MenuItem>
+                        )}
                       </Field>
                       {touched.AccountType && Boolean(errors.AccountType) && (
                         <Typography variant="caption" color="error">
@@ -183,7 +207,60 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
                       )}
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} mt={1} p={1}>
+                  <Grid item xs={12} mt={1}>
+                    <Typography
+                      sx={{
+                        fontWeight: "500",
+                        fontSize: "14px",
+                        mb: "5px",
+                      }}
+                    >
+                      Parent Account
+                    </Typography>
+                    <FormControl fullWidth>
+                      <Field
+                        as={TextField}
+                        select
+                        fullWidth
+                        name="ParentAccountId"
+                        size="small"
+                        onChange={(e) => {
+                          setFieldValue("ParentAccountId", e.target.value);
+                        }}
+                        disabled={isParentAccountsLoading}
+                      >
+                        <MenuItem value="">
+                          None
+                        </MenuItem>
+                        {parentAccounts.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                        {!isParentAccountsLoading && parentAccounts.length === 0 && (
+                          <MenuItem disabled value="__no_parent_accounts__">
+                            No parent accounts found
+                          </MenuItem>
+                        )}
+                      </Field>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} lg={6} mt={1} p={1}>
+                    <FormControlLabel
+                      control={
+                        <Field
+                          as={Checkbox}
+                          name="IsActive"
+                          checked={values.IsActive}
+                          onChange={() =>
+                            setFieldValue("IsActive", !values.IsActive)
+                          }
+                        />
+                      }
+                      label="Active"
+                    />
+                  </Grid>
+                  <Grid item xs={12} lg={6} mt={1} p={1}>
                     <FormControlLabel
                       control={
                         <Field
@@ -196,6 +273,22 @@ export default function EditChartOfAccounts({ fetchItems ,item}) {
                         />
                       }
                       label="Bank Involved"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} lg={6} mt={1} p={1}>
+                    <FormControlLabel
+                      control={
+                        <Field
+                          as={Checkbox}
+                          name="IsGroup"
+                          checked={values.IsGroup}
+                          onChange={() =>
+                            setFieldValue("IsGroup", !values.IsGroup)
+                          }
+                        />
+                      }
+                      label="Group"
                     />
                   </Grid>
                   <Grid

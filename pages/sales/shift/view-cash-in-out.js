@@ -24,6 +24,7 @@ import { formatCurrency } from "@/components/utils/formatHelper";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import useApi from "@/components/utils/useApi";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 const style = {
   position: "absolute",
@@ -48,6 +49,7 @@ export default function ViewCashInOut({ shift }) {
   const controller = "Shift/DeleteCashInOut";
   const { data: flowList } = useApi("/CashFlowType/GetCashFlowTypes");
   const [flowInfo, setFlowInfo] = useState({});
+  const { data: IsCashInOutApprovalMandatory } = IsAppSettingEnabled("IsCashInOutApprovalMandatory");
 
   useEffect(() => {
     if (flowList) {
@@ -116,6 +118,7 @@ export default function ViewCashInOut({ shift }) {
   const renderTables = (type) => {
     const list = cashIOList.filter((i) => i.cashType == type);
     const total = list.reduce((sum, i) => sum + i.amount, 0);
+    const showActions = shift.isActive && !IsCashInOutApprovalMandatory;
 
     return (
       <Grid item xs={12}>
@@ -125,8 +128,9 @@ export default function ViewCashInOut({ shift }) {
               <TableRow>
                 <TableCell>Description</TableCell>
                 <TableCell>Cash Flow Type</TableCell>
+                {IsCashInOutApprovalMandatory && (<TableCell>Status</TableCell>)}
                 <TableCell>Amount</TableCell>
-                {shift.isActive && (<TableCell align="right">Action</TableCell>)}
+                {showActions && (<TableCell align="right">Action</TableCell>)}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -141,6 +145,9 @@ export default function ViewCashInOut({ shift }) {
                   <TableRow key={index}>
                     <TableCell>{item.description}</TableCell>
                     <TableCell>{flowInfo[item.cashFlowType]?.name || ""}</TableCell>
+                    {IsCashInOutApprovalMandatory && (<TableCell>
+                      {item.status === 2 ? <span className="successBadge">Approved</span> : (item.status === 3 ? <span className="dangerBadge">Rejected</span> : "Pending")}
+                    </TableCell>)}
                     <TableCell>
                       {editItemId === item.id ? (
                         <TextField
@@ -154,7 +161,8 @@ export default function ViewCashInOut({ shift }) {
                         formatCurrency(item.amount)
                       )}
                     </TableCell>
-                    {shift.isActive && (
+
+                    {showActions && (
                       <>
                         <TableCell align="right">
                           <Tooltip title={editItemId === item.id ? "Save" : "Edit"} placement="top">
@@ -190,8 +198,8 @@ export default function ViewCashInOut({ shift }) {
             </TableBody>
             <TableHead>
               <TableRow>
-                <TableCell colSpan={2}>Total</TableCell>
-                <TableCell colSpan={shift.isActive ? 2 : ""}>{formatCurrency(total)}</TableCell>
+                <TableCell colSpan={IsCashInOutApprovalMandatory ? 4 : 3}>Total</TableCell>
+                <TableCell colSpan={showActions ? 2 : ""}>{formatCurrency(total)}</TableCell>
               </TableRow>
             </TableHead>
           </Table>

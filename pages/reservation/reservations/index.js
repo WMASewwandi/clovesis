@@ -63,11 +63,17 @@ export default function Reservation() {
     fetchResList(1, searchTerm, newSize, tabIndex);
   };
 
+  const getReservationTypeByTab = (tab) => {
+    if (tab === 2) return 11;
+    if (tab === 3) return 4;
+    return 5;
+  };
+
   const fetchResList = async (page = 1, search = "", size = pageSize, tab = tabIndex) => {
     try {
       const token = localStorage.getItem("token");
       const skip = (page - 1) * size;
-      const reservationType = tab === 2 ? 11 : 5;
+      const reservationType = getReservationTypeByTab(tab);
       const query = `${BASE_URL}/Reservation/GetAllReservationSkipAndTake?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&reservationType=${reservationType}`;
 
       const response = await fetch(query, {
@@ -100,8 +106,12 @@ export default function Reservation() {
     (item) =>
       (tabIndex === 0 && (item.status === 1 || item.status === 2)) ||
       (tabIndex === 1 && item.status === 3) ||
-      (tabIndex === 2 && item.status === 4)
+      (tabIndex === 2 && item.status === 4) ||
+      (tabIndex === 3)
   );
+
+  const defaultColSpan = 14;
+  const tableColSpan = defaultColSpan + (tabIndex === 1 ? 1 : 0) - (tabIndex === 3 ? 3 : 0);
 
   
   return (
@@ -119,6 +129,7 @@ export default function Reservation() {
         <Tab label="Ongoing" />
         <Tab label="Canceled" />
         <Tab label="Completed" />
+        <Tab label="Pending Reservations" />
       </Tabs>
       <Grid container rowSpacing={1} columnSpacing={{ xs: 1, sm: 1, md: 1, lg: 1, xl: 2 }}>
         <Grid item xs={12} lg={4} order={{ xs: 2, lg: 1 }}>
@@ -148,9 +159,9 @@ export default function Reservation() {
                   <TableCell>Phone&nbsp;Number</TableCell>
                   <TableCell>Preferd&nbsp;Time</TableCell>
                   <TableCell>Bridal&nbsp;Type</TableCell>
-                  <TableCell>Total&nbsp;Maids</TableCell>
-                  <TableCell>Next&nbsp;Appointment</TableCell>
-                  <TableCell>Status</TableCell>
+                  {tabIndex !== 3 ? <TableCell>Total&nbsp;Maids</TableCell> : null}
+                  {tabIndex !== 3 ? <TableCell>Next&nbsp;Appointment</TableCell> : null}
+                  {tabIndex !== 3 ? <TableCell>Status</TableCell> : null}
                   <TableCell>Remark</TableCell>
                   {tabIndex === 1 ? <TableCell>Canceled&nbsp;Reason</TableCell> : ""}
                   <TableCell>Action</TableCell>
@@ -159,7 +170,7 @@ export default function Reservation() {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} align="center">
+                    <TableCell colSpan={tableColSpan} align="center">
                       <Typography color="error">No Reservations Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -178,21 +189,27 @@ export default function Reservation() {
                       </TableCell>
                       <TableCell>{getPreferedTime(reservation.preferdTime)}</TableCell>
                       <TableCell>{getBridal(reservation.bridleType)}</TableCell>
-                      <TableCell>{reservation.reservationDetails.maids || 0}</TableCell>
-                      <TableCell>
-                        <Chip size="small" sx={{ background: getAppointmentColor(reservation.nextAppointmentType) }} label={getAppointment(reservation.nextAppointmentType)} />
-                      </TableCell>
-                      <TableCell>
-                        {reservation.status === 2 ? (
-                          <>
-                            <Chip size="small" label="Postponed" />
-                            {formatDate(reservation.lastModifiedReservationDate)} <Typography color="error" component="span">to</Typography> {formatDate(reservation.reservationDate)}
-                          </>
-                        ) : (reservation.status === 3 ?
-                          <Chip size="small" label="Canceled" color="error" /> : (reservation.status === 4 ? <Chip size="small" label="Complete" color="success" /> : <Chip size="small" label="Ongoing" color="primary" />)
-
-                        )}
-                      </TableCell>
+                      {tabIndex !== 3 ? (
+                        <TableCell>{reservation.reservationDetails.maids || 0}</TableCell>
+                      ) : null}
+                      {tabIndex !== 3 ? (
+                        <TableCell>
+                          <Chip size="small" sx={{ background: getAppointmentColor(reservation.nextAppointmentType) }} label={getAppointment(reservation.nextAppointmentType)} />
+                        </TableCell>
+                      ) : null}
+                      {tabIndex !== 3 ? (
+                        <TableCell>
+                          {reservation.status === 2 ? (
+                            <>
+                              <Chip size="small" label="Postponed" />
+                              {formatDate(reservation.lastModifiedReservationDate)} <Typography color="error" component="span">to</Typography> {formatDate(reservation.reservationDate)}
+                            </>
+                          ) : (reservation.status === 3 ?
+                            <Chip size="small" label="Canceled" color="error" /> : (reservation.status === 4 ? <Chip size="small" label="Complete" color="success" /> : <Chip size="small" label="Ongoing" color="primary" />)
+  
+                          )}
+                        </TableCell>
+                      ) : null}
                       <TableCell>{reservation.reservationDetails.remark}</TableCell>
                       {tabIndex === 1 ? <TableCell>{reservation.canceledReason}</TableCell> : ""}
                       <TableCell>

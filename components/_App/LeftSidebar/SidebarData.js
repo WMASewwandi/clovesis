@@ -52,7 +52,11 @@ export const getSidebarData = (IsGarmentSystem) => {
             IsAvailable: true,
             subNav: [
                 { title: "Chart Of Account", path: "/finance/chart-of-account/", categoryId: 41, isAvailable: true },
-                { title: "Payments", path: "/finance/payments/", categoryId: 42, isAvailable: true },
+                { title: "Journal Entry", path: "/finance/journal/", categoryId: 119, isAvailable: true },
+                { title: "Period Closing", path: "/finance/period-closing/", categoryId: 120, isAvailable: true },
+                { title: "Opening Balances", path: "/finance/opening-balances/", categoryId: 121, isAvailable: true },
+                { title: "Vendor Invoice", path: "/finance/vendor-invoice/", categoryId: 122, isAvailable: true },
+                { title: "Supplier Payments", path: "/finance/supplier-payments/", categoryId: 42, isAvailable: true },
                 { title: "Tax", path: "/finance/tax/", categoryId: 58, isAvailable: true },
                 { title: "Bank History", path: "/finance/bank-history/", categoryId: 97, isAvailable: true },
                 { title: "Cheque Payments", path: "/finance/cheque-payments/", categoryId: 98, isAvailable: true },
@@ -193,6 +197,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "POS Shift", path: "/sales/pos-shift/", categoryId: 95, isAvailable: true },
                 { title: "POS Day End", path: "/sales/pos-dayend/", categoryId: 96, isAvailable: true },
                 { title: "Shift Summary", path: "/sales/summary/", categoryId: 104, isAvailable: true },
+                { title: "Cash In/Out", path: "/sales/cash-in-out/", categoryId: 117, isAvailable: true },
+                { title: "Bank Payments", path: "/sales/bank-payments/", categoryId: 118, isAvailable: true },
             ],
         },
         {

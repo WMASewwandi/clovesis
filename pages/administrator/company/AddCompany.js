@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Grid, Typography } from "@mui/material";
+import { Grid, Typography, MenuItem } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
@@ -76,6 +76,7 @@ export default function AddCompany({ fetchItems }) {
     formData.append("ContactPerson", values.ContactPerson);
     formData.append("ContactNumber", values.ContactNumber);
     formData.append("CompanyLogo", logo ? logo : null);
+    formData.append("LandingPage", values.LandingPage);
 
     const token = localStorage.getItem("token");
 
@@ -120,6 +121,7 @@ export default function AddCompany({ fetchItems }) {
               ContactPerson: "",
               ContactNumber: "",
               Description: "",
+              LandingPage: "1",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -224,6 +226,27 @@ export default function AddCompany({ fetchItems }) {
                         }
                       />
                     </Grid>
+                    <Grid item xs={12} mt={1}>
+                      <Typography
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "5px",
+                        }}
+                      >
+                        Landing Page
+                      </Typography>
+                      <Field
+                        as={TextField}
+                        select
+                        fullWidth
+                        name="LandingPage"
+                        size="small"
+                      >
+                        <MenuItem value="1">Default</MenuItem>
+                        <MenuItem value="2">Quick Access</MenuItem>
+                      </Field>
+                    </Grid>
                     <Grid item xs={12} mb={3} mt={1}>
                       <Typography
                         sx={{
@@ -241,6 +264,7 @@ export default function AddCompany({ fetchItems }) {
                         size="small"
                       />
                     </Grid>
+                    
                   </Grid>
                   <Grid item xs={12} my={1}>
                     <Typography>Logo Upload</Typography>

@@ -153,7 +153,6 @@ const ReceiptCreate = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(data.result);
         setCustomerInvoices(data.result);
       }
     } catch (error) {
@@ -295,7 +294,7 @@ const ReceiptCreate = () => {
       if (response.ok) {
         const jsonResponse = await response.json();
 
-        if (jsonResponse.message != "") {
+        if (jsonResponse.message != "" && jsonResponse.statusCode === 200) {
           setIsDisable(true);
           toast.success(jsonResponse.message);
           setTimeout(() => {

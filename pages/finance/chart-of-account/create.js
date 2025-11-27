@@ -11,6 +11,8 @@ import * as Yup from "yup";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import useChartOfAccountTypes from "hooks/useChartOfAccountTypes";
+import useChartOfAccountParents from "hooks/useChartOfAccountParents";
 
 const style = {
   position: "absolute",
@@ -25,40 +27,42 @@ const style = {
 
 const validationSchema = Yup.object().shape({
   Code: Yup.string().required("Code is required"),
-  Description: Yup.string().required("Description is required"),
+  Name: Yup.string().required("Name is required"),
   AccountType: Yup.string().required("Account Type is required"),
 });
 
 export default function AddChartOfAccounts({ fetchItems }) {
   const [open, setOpen] = React.useState(false);
   const [code, setCode] = React.useState(false);
+  const { accountTypes, isLoading: isAccountTypesLoading } = useChartOfAccountTypes();
+  const { parentAccounts, isLoading: isParentAccountsLoading } = useChartOfAccountParents();
   const handleClose = () => setOpen(false);
   const inputRef = useRef(null);
 
   const handleOpen = async () => {
-      try {
-        const response = await fetch(
-          `${BASE_URL}/DocumentSequence/GetNextDocumentNumber?documentType=23`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-  
-        if (!response.ok) {
-          throw new Error("Failed to fetch");
+    try {
+      const response = await fetch(
+        `${BASE_URL}/DocumentSequence/GetNextDocumentNumber?documentType=23`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
         }
-  
-        const result = await response.json();
-        setCode(result.result);
-      } catch (err) {
-        //
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch");
       }
-      setOpen(true);
-    };
+
+      const result = await response.json();
+      setCode(result.result);
+    } catch (err) {
+      //
+    }
+    setOpen(true);
+  };
 
   useEffect(() => {
     if (open) {
@@ -71,9 +75,15 @@ export default function AddChartOfAccounts({ fetchItems }) {
   }, [open]);
 
   const handleSubmit = (values) => {
+    const payload = {
+      ...values,
+      AccountType: Number(values.AccountType),
+      ParentAccountId: values.ParentAccountId ? Number(values.ParentAccountId) : null,
+    };
+
     fetch(`${BASE_URL}/ChartOfAccount/CreateChartOfAccount`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -108,11 +118,15 @@ export default function AddChartOfAccounts({ fetchItems }) {
         <Box sx={style} className="bg-black">
           <Formik
             initialValues={{
-              Description: "",
-              Code: code,
+              Name: "",
+              Code: code || "",
               IsBankInvolved: false,
-              AccountType: 1
+              AccountType: accountTypes[0]?.id ?? "",
+              ParentAccountId: "",
+              IsActive: true,
+              IsGroup: false,
             }}
+            enableReinitialize
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
           >
@@ -143,7 +157,7 @@ export default function AddChartOfAccounts({ fetchItems }) {
                       as={TextField}
                       fullWidth
                       name="Code"
-                      size="small"                      
+                      size="small"
                       error={touched.Code && Boolean(errors.Code)}
                       helperText={touched.Code && errors.Code}
                       disabled
@@ -157,16 +171,16 @@ export default function AddChartOfAccounts({ fetchItems }) {
                         mb: "5px",
                       }}
                     >
-                      Description
+                      Name
                     </Typography>
                     <Field
                       as={TextField}
                       size="small"
                       fullWidth
                       inputRef={inputRef}
-                      name="Description"
-                      error={touched.Description && Boolean(errors.Description)}
-                      helperText={touched.Description && errors.Description}
+                      name="Name"
+                      error={touched.Name && Boolean(errors.Name)}
+                      helperText={touched.Name && errors.Name}
                     />
                   </Grid>
                   <Grid item xs={12} mt={1}>
@@ -189,14 +203,18 @@ export default function AddChartOfAccounts({ fetchItems }) {
                         onChange={(e) => {
                           setFieldValue("AccountType", e.target.value);
                         }}
+                        disabled={isAccountTypesLoading || accountTypes.length === 0}
                       >
-                        <MenuItem value={1}> Income </MenuItem>
-                        <MenuItem value={2}> Payment </MenuItem>
-                        <MenuItem value={3}> Fixed Assets </MenuItem>
-                        <MenuItem value={4}> Bank </MenuItem>
-                        <MenuItem value={5}> Loan </MenuItem>
-                        <MenuItem value={6}> Credit Card </MenuItem>
-                        <MenuItem value={7}> Equity </MenuItem>
+                        {accountTypes.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                        {!isAccountTypesLoading && accountTypes.length === 0 && (
+                          <MenuItem disabled value="">
+                            No account types found
+                          </MenuItem>
+                        )}
                       </Field>
                       {touched.AccountType && Boolean(errors.AccountType) && (
                         <Typography variant="caption" color="error">
@@ -205,7 +223,60 @@ export default function AddChartOfAccounts({ fetchItems }) {
                       )}
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} mt={1} p={1}>
+                  <Grid item xs={12} mt={1}>
+                    <Typography
+                      sx={{
+                        fontWeight: "500",
+                        fontSize: "14px",
+                        mb: "5px",
+                      }}
+                    >
+                      Parent Account
+                    </Typography>
+                    <FormControl fullWidth>
+                      <Field
+                        as={TextField}
+                        select
+                        fullWidth
+                        name="ParentAccountId"
+                        size="small"
+                        onChange={(e) => {
+                          setFieldValue("ParentAccountId", e.target.value);
+                        }}
+                        disabled={isParentAccountsLoading}
+                      >
+                        <MenuItem value="">
+                          None
+                        </MenuItem>
+                        {parentAccounts.map((option) => (
+                          <MenuItem key={option.id} value={option.id}>
+                            {option.label}
+                          </MenuItem>
+                        ))}
+                        {!isParentAccountsLoading && parentAccounts.length === 0 && (
+                          <MenuItem disabled value="__no_parent_accounts__">
+                            No parent accounts found
+                          </MenuItem>
+                        )}
+                      </Field>
+                    </FormControl>
+                  </Grid>
+                   <Grid item xs={12} lg={6} p={1}>
+                    <FormControlLabel
+                      control={
+                        <Field
+                          as={Checkbox}
+                          name="IsActive"
+                          checked={values.IsActive}
+                          onChange={() =>
+                            setFieldValue("IsActive", !values.IsActive)
+                          }
+                        />
+                      }
+                      label="Active"
+                    />
+                  </Grid>
+                  <Grid item xs={12} lg={6} p={1}>
                     <FormControlLabel
                       control={
                         <Field
@@ -218,6 +289,22 @@ export default function AddChartOfAccounts({ fetchItems }) {
                         />
                       }
                       label="Bank Involved"
+                    />
+                  </Grid>                
+
+                  <Grid item xs={12} lg={6} p={1}>
+                    <FormControlLabel
+                      control={
+                        <Field
+                          as={Checkbox}
+                          name="IsGroup"
+                          checked={values.IsGroup}
+                          onChange={() =>
+                            setFieldValue("IsGroup", !values.IsGroup)
+                          }
+                        />
+                      }
+                      label="Group"
                     />
                   </Grid>
                   <Grid

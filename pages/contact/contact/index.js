@@ -2,6 +2,7 @@ import React from "react";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
@@ -10,6 +11,7 @@ import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { ToastContainer } from "react-toastify";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
@@ -86,6 +88,22 @@ export default function Contacts() {
           {create ? <AddContact fetchItems={fetchContacts} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
+          <Box display="flex" justifyContent="start" alignItems="center" mb={1} gap={1}>
+            <Box
+              component="span"
+              sx={(theme) => ({
+                width: 16,
+                height: 16,
+                backgroundColor: alpha(theme.palette.warning.main, 0.15),
+                border: `0.5px solid ${theme.palette.warning.main,0.1}`,
+              })}
+            />
+            <Typography variant="body2" color="text.secondary">
+              Feedback
+            </Typography>
+          </Box>
+        </Grid>
+        <Grid item xs={12} order={{ xs: 4, lg: 4 }}>
           <TableContainer component={Paper}>
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
@@ -112,7 +130,20 @@ export default function Contacts() {
                   contacts.map((item, index) => {
                     const createdDate = item.createdOn ? new Date(item.createdOn) : null;
                     return (
-                      <TableRow key={index}>
+                      <TableRow
+                        key={index}
+                        hover
+                        sx={(theme) =>
+                          item.isFeedback
+                            ? {
+                                backgroundColor: alpha(theme.palette.warning.main, 0.15),
+                                "&:hover": {
+                                  backgroundColor: alpha(theme.palette.warning.main, 0.3),
+                                },
+                              }
+                            : {}
+                        }
+                      >
                         <TableCell>{item.name}</TableCell>
                         <TableCell>{item.email}</TableCell>
                         <TableCell>{item.phoneNumber}</TableCell>

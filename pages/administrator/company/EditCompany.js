@@ -102,6 +102,7 @@ export default function EditCompany({ item, fetchItems }) {
     formData.append("ContactPerson", values.ContactPerson);
     formData.append("ContactNumber", values.ContactNumber);
     formData.append("CompanyLogo", logo ? logo : null);
+    formData.append("LandingPage", values.LandingPage);
     // append fields
     try {
       const token = localStorage.getItem("token");
@@ -147,6 +148,10 @@ export default function EditCompany({ item, fetchItems }) {
               ContactPerson: item.contactPerson || "",
               ContactNumber: item.contactNumber || "",
               Description: item.description || "",
+              LandingPage:
+                item.landingPage === null || item.landingPage === undefined
+                  ? "1"
+                  : String(item.landingPage),
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -215,6 +220,19 @@ export default function EditCompany({ item, fetchItems }) {
                           name="Description"
                           size="small"
                         />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography>Landing Page</Typography>
+                        <Field
+                          as={TextField}
+                          select
+                          fullWidth
+                          name="LandingPage"
+                          size="small"
+                        >
+                          <MenuItem value="1">Default</MenuItem>
+                          <MenuItem value="2">Quick Access</MenuItem>
+                        </Field>
                       </Grid>
                     </Grid>
                     <Grid item xs={12} my={1}> 

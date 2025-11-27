@@ -22,9 +22,16 @@ export default function EditSetting({ item, fetchItems }) {
 
   const handleSubmit = async (values) => {
     const token = localStorage.getItem("token");
+    const payload = {
+      ...values,
+      Value:
+        item.settingName === "AutoLogoutTimeMinutes" && values.Value !== undefined && values.Value !== null
+          ? String(values.Value)
+          : values.Value,
+    };
     fetch(`${BASE_URL}/AppSetting/UpdateAppSetting`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -119,7 +126,18 @@ export default function EditSetting({ item, fetchItems }) {
                         fullWidth
                         size="small"
                         name="Value"
-                        type={item.settingName === "IsBackDateEnabled" ? "datetime-local" : "text"}
+                        type={
+                          item.settingName === "IsBackDateEnabled"
+                            ? "datetime-local"
+                            : item.settingName === "AutoLogoutTimeMinutes"
+                            ? "number"
+                            : "text"
+                        }
+                        inputProps={
+                          item.settingName === "AutoLogoutTimeMinutes"
+                            ? { inputMode: "numeric", pattern: "\\d*", min: 0 }
+                            : undefined
+                        }
                       />
                     </Grid>
                   </Grid>

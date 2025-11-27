@@ -169,7 +169,7 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                 {ProjectNo === 1 ? (
                   <>
                     <img
-                      src={companyLogo !== "" ? companyLogo : "/images/logo(1).png"}
+                      src={companyLogo !== "" ? companyLogo : "/images/cbass.png"}
                       alt="Logo"
                       className="black-logo"
                       style={{
@@ -179,7 +179,7 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                       }}
                     />
                     <img
-                      src={companyLogo !== "" ? companyLogo : "/images/logo(1).png"}
+                      src={companyLogo !== "" ? companyLogo : "/images/cbass.png"}
                       alt="Logo"
                       className="white-logo"
                       style={{

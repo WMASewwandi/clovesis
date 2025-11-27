@@ -73,8 +73,8 @@ export default function Receipt() {
   };
 
   if (!navigate) {
-      return <AccessDenied />;
-    }
+    return <AccessDenied />;
+  }
 
   return (
     <>
@@ -113,7 +113,7 @@ export default function Receipt() {
                   <TableCell>Receipt No</TableCell>
                   <TableCell>Customer</TableCell>
                   <TableCell>Payment Method</TableCell>
-                  <TableCell>Net Total (Rs)</TableCell>              
+                  <TableCell>Net Total (Rs)</TableCell>
                   <TableCell>SalesPerson</TableCell>
                   <TableCell>Remark</TableCell>
                   <TableCell align="right">Action</TableCell>
@@ -138,10 +138,17 @@ export default function Receipt() {
                         <TableCell>{formatDate(item.receiptDate)}</TableCell>
                         <TableCell>{item.receiptNumber}</TableCell>
                         <TableCell>{item.customerName}</TableCell>
-                        <TableCell>{getPaymentMethods(item.paymentType)}</TableCell>
+                        <TableCell>
+                          <Box display="flex" gap={1} alignItems="center">
+                            {getPaymentMethods(item.paymentType)}
+                            {item.chequeRejected ?
+                              <span className="dangerBadge">Rejected</span>
+                              : ""}
+                          </Box>
+                        </TableCell>
                         <TableCell>
                           {formatCurrency(item.totalPaidAmount)}
-                        </TableCell>  
+                        </TableCell>
                         <TableCell>{item.salesPersonName}</TableCell>
                         <TableCell>{item.remark}</TableCell>
                         <TableCell align="right">
