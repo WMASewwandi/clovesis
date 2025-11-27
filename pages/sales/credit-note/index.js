@@ -159,14 +159,16 @@ const CNN = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  paginatedData.map((item, index) => (
+                  paginatedData.map((item, index) => {
+                    const sign = item.noteType === "Credit" ? "+" : "-";
+                    const formattedAmount = formatCurrency(item.amount);
+                    return (
                     <TableRow key={item.id}>
                       <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                       <TableCell>{item.documentNo}</TableCell>
                       <TableCell>{item.noteType}</TableCell>
                       <TableCell>{item.customerName}</TableCell>
-                      {/* THIS IS THE KEY FIX: Changed item.creditAmount to item.amount */}
-                      <TableCell>{formatCurrency(item.amount)}</TableCell>
+                      <TableCell>{sign}{formattedAmount}</TableCell>
                       <TableCell>{formatDate(item.date)}</TableCell>
                       <TableCell>{item.salesPersonName}</TableCell>
                       <TableCell>{item.remark || "-"}</TableCell>
@@ -186,7 +188,8 @@ const CNN = () => {
                           : ""}
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

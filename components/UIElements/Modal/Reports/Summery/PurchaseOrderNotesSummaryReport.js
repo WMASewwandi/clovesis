@@ -45,6 +45,7 @@ export default function PurchaseOrderNotesSummaryReport({ docName, reportName })
   const [subCategoryId, setSubCategoryId] = useState(0);
   const [suppliers, setSuppliers] = useState([]);
   const [supplierId, setSupplierId] = useState(0);
+  const [status, setStatus] = useState(0);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -240,11 +241,28 @@ export default function PurchaseOrderNotesSummaryReport({ docName, reportName })
                     )))}
                 </Select>
               </Grid>
+              <Grid item xs={12}>
+                <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
+                  Status
+                </Typography>
+                <Select
+                  fullWidth
+                  size="small"
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value);
+                  }}
+                >
+                  <MenuItem value={0}>All</MenuItem>
+                  <MenuItem value={1}>Pending</MenuItem>
+                  <MenuItem value={2}>GRN Completed</MenuItem>
+                </Select>
+              </Grid>
               <Grid item xs={12} display="flex" justifyContent="space-between" mt={2}>
                 <Button onClick={handleClose} variant="contained" color="error">
                   Close
                 </Button>
-                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${purchaseOrderNotesSummaryReport}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&item=${itemId}&supplier=${supplierId}&category=${categoryId}&subCategory=${subCategoryId}`} target="_blank">
+                <a href={`${Report}/${docName}?InitialCatalog=${Catelogue}&reportName=${purchaseOrderNotesSummaryReport}&fromDate=${fromDate}&toDate=${toDate}&warehouseId=${warehouseId}&currentUser=${name}&item=${itemId}&supplier=${supplierId}&category=${categoryId}&subCategory=${subCategoryId}&status=${status}`} target="_blank">
                    <Button variant="contained" disabled={!isFormValid} aria-label="print" size="small">
                     Submit
                   </Button>

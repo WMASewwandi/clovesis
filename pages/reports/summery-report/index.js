@@ -13,42 +13,32 @@ import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import BASE_URL from "Base/api";
 
+import UnifiedSummaryReportModal from "@/components/UIElements/Modal/Reports/Summery/UnifiedSummaryReportModal";
 import CompanyWiseProfit from "@/components/UIElements/Modal/Reports/Summery/CompanyWiseProfit";
-import DailyDepositSummary from "@/components/UIElements/Modal/Reports/Summery/DailyDepositSummary";
 import ProfitabilityReport from "@/components/UIElements/Modal/Reports/Summery/ProfitabilityReport";
 import OutstandingReport from "@/components/UIElements/Modal/Reports/Summery/OutstandingReport";
 import StockBalance from "@/components/UIElements/Modal/Reports/Summery/StockBalance";
-import SalesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/SalesSummaryReport";
-import ReservationAppointmentTypeReport from "@/components/UIElements/Modal/Reports/Summery/ReservationAppointmentTypeReport";
-import ReservationTypeReport from "@/components/UIElements/Modal/Reports/Summery/ReservationTypeReport";
-import ReservationSalesReport from "@/components/UIElements/Modal/Reports/Summery/ReservationSalesReport";
-import FiscalPeriodReport from "@/components/UIElements/Modal/Reports/Summery/FiscalPeriodReport";
-import CashFlowSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashFlowSummaryReport";
-import CustomerPaymentSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CustomerPaymentSummaryReport";
-import DoctorWiseSalesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/DoctorWiseSalesSummaryReport";
-import CashBookSummaryReport from "@/components/UIElements/Modal/Reports/Summery/CashBookSummaryReport";
-import ShipmentSummaryReport from "@/components/UIElements/Modal/Reports/Summery/ShipmentSummaryReport";
-import GoodsReceivedNotesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/GoodsReceivedNotesSummaryReport";
-import PurchaseOrderNotesSummaryReport from "@/components/UIElements/Modal/Reports/Summery/PurchaseOrderNotesSummaryReport";
 
 const componentMap = {
   CompanyWiseProfit,
   StockBalance,
-  DailyDepositSummary,
   ProfitabilityReport,
   OutstandingReport,
-  SalesSummaryReport,
-  ReservationAppointmentTypeReport,
-  ReservationTypeReport,
-  ReservationSalesReport,
-  FiscalPeriodReport,
-  CashFlowSummaryReport,
-  CustomerPaymentSummaryReport,
-  DoctorWiseSalesSummaryReport,
-  CashBookSummaryReport,
-  ShipmentSummaryReport,
-  GoodsReceivedNotesSummaryReport,
-  PurchaseOrderNotesSummaryReport
+  SalesSummaryReport: UnifiedSummaryReportModal,
+  ReservationAppointmentTypeReport: UnifiedSummaryReportModal,
+  ReservationTypeReport: UnifiedSummaryReportModal,
+  ReservationSalesReport: UnifiedSummaryReportModal,
+  FiscalPeriodReport: UnifiedSummaryReportModal,
+  CashFlowSummaryReport: UnifiedSummaryReportModal,
+  CustomerPaymentSummaryReport: UnifiedSummaryReportModal,
+  DoctorWiseSalesSummaryReport: UnifiedSummaryReportModal,
+  CashBookSummaryReport: UnifiedSummaryReportModal,
+  ShipmentSummaryReport: UnifiedSummaryReportModal,
+  GoodsReceivedNotesSummaryReport: UnifiedSummaryReportModal,
+  PurchaseOrderNotesSummaryReport: UnifiedSummaryReportModal,
+  DailyDepositSummary: UnifiedSummaryReportModal,
+  BankHistoryReport: UnifiedSummaryReportModal,
+  ShiftSummaryReport: UnifiedSummaryReportModal,
 };
 
 const SummeryReports = () => {
@@ -92,6 +82,7 @@ const SummeryReports = () => {
   useEffect(() => {
     if (role) fetchReports(role);
   }, [role]);
+
 
   return (
     <>

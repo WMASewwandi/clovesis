@@ -160,7 +160,9 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     if (values.IsWebView && values.AveragePrice === null) {
       toast.warning("Please enter the average price for web view.");
       return;
-    }   
+    }
+
+    
 
     const formData = new FormData();
 
@@ -185,6 +187,9 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     formData.append("HasSerialNumbers", values.HasSerialNumbers);
     formData.append("IsWebView", values.IsWebView);
     formData.append("ProductImage", selectedFile ? selectedFile : null);
+    if (values.Description && values.Description.trim() !== "") {
+      formData.append("Description", values.Description);
+    }
 
     fetch(`${BASE_URL}/Items/UpdateItems`, {
       method: "POST",
@@ -240,7 +245,8 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
               IsActive: item.isActive,
               IsNonInventoryItem: item.isNonInventoryItem,
               HasSerialNumbers: item.hasSerialNumbers,
-              IsWebView: item.isWebView
+              IsWebView: item.isWebView,
+              Description: item.description
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -655,6 +661,25 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                           />
                         </Grid>
                       )}
+                      <Grid item xs={12} mt={1} p={1}>
+                        <Typography
+                          sx={{
+                            fontWeight: "500",
+                            fontSize: "14px",
+                            mb: "5px",
+                          }}
+                        >
+                          Description
+                        </Typography>
+                        <Field
+                          as={TextField}
+                          fullWidth
+                          name="Description"
+                          size="small"
+                          multiline
+                          rows={4}
+                        />
+                      </Grid>
                       <Grid item xs={12} mt={1} p={1}>
                         <Grid container spacing={1}>
                           <Grid item xs={12} lg={6}>

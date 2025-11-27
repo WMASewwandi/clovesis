@@ -274,7 +274,7 @@ const QuickAccessContent = ({ header = null }) => {
                       categoryIcons[module.title];
 
                     return (
-                      <Grid item xs={6} sm={4} md={2} lg={2} key={module.title}>
+                      <Grid item xs={4} sm={4} md={2} lg={2} key={module.title}>
                         <ButtonBase
                           onClick={() => {
                             if (disabledModule) {

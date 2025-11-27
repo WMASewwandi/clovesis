@@ -205,6 +205,9 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
     formData.append("HasSerialNumbers", values.HasSerialNumbers);
     formData.append("IsWebView", values.IsWebView);
     formData.append("ProductImage", selectedFile ? selectedFile : null);
+    if (values.Description && values.Description.trim() !== "") {
+      formData.append("Description", values.Description);
+    }
 
     fetch(`${BASE_URL}/Items/CreateItems`, {
       method: "POST",
@@ -257,7 +260,8 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
               IsActive: true,
               IsNonInventoryItem: false,
               HasSerialNumbers: false,
-              IsWebView: false
+              IsWebView: false,
+              Description: ""
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -681,6 +685,25 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                             />
                           </Grid>
                         )}
+                        <Grid item xs={12} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Description
+                          </Typography>
+                          <Field
+                            as={TextField}
+                            fullWidth
+                            name="Description"
+                            size="small"
+                            multiline
+                            rows={4}
+                          />
+                        </Grid>
                         <Grid item xs={12} p={1}>
                           <Grid container>
                             <Grid item xs={12} lg={6}>

@@ -34,7 +34,7 @@ import CreateProjectModal from "./create";
 
 const Index = () => {
   useEffect(() => {
-    sessionStorage.setItem("category", "107"); // Projects (Master Data)
+    sessionStorage.setItem("category", "53"); // Projects (Master Data)
   }, []);
 
   const cId = sessionStorage.getItem("category");

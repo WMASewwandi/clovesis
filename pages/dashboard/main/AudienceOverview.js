@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Card, Typography, InputLabel, MenuItem, FormControl, Select } from "@mui/material";
+import { Box, Card, Typography, InputLabel, MenuItem, FormControl, Select, TextField } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import Chart from "chart.js/auto";
 import BASE_URL from "Base/api";
@@ -14,19 +14,58 @@ const options = {
   },
 };
 
+const getFirstDayOfMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return new Date(year, month, 1);
+};
+
+const getLastDayOfMonth = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  return new Date(year, month + 1, 0);
+};
+
+const formatDateForAPI = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatDateForInput = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const AudienceOverview = () => {
-  const [select, setSelect] = useState(1);
+  const [fromDate, setFromDate] = useState(formatDateForInput(getFirstDayOfMonth()));
+  const [toDate, setToDate] = useState(formatDateForInput(getLastDayOfMonth()));
+  const [dateRange, setDateRange] = useState(6);
   const [chartData, setChartData] = useState(null);
 
-  const handleChange = (event) => {
-    setSelect(event.target.value);
-    fetchSalesSummary(event.target.value);
+  const handleDateRangeChange = (event) => {
+    setDateRange(event.target.value);
   };
 
-  const fetchSalesSummary = async (range) => {
+  const handleFromDateChange = (event) => {
+    setFromDate(event.target.value);
+  };
+
+  const handleToDateChange = (event) => {
+    setToDate(event.target.value);
+  };
+
+  const fetchSalesSummary = async () => {
     try {
       const token = localStorage.getItem("token");
-      const query = `${BASE_URL}/Dashboard/GetSalesSummary?dateRange=${range}`;
+      const fromDateFormatted = formatDateForAPI(new Date(fromDate));
+      const toDateFormatted = formatDateForAPI(new Date(toDate));
+      const query = `${BASE_URL}/Dashboard/GetSalesSummary?fromDate=${fromDateFormatted}&toDate=${toDateFormatted}&dateRange=${dateRange}`;
 
       const response = await fetch(query, {
         method: "GET",
@@ -41,12 +80,10 @@ const AudienceOverview = () => {
       const res = await response.json();
       const result = res.result;
 
-      const labels = result.map((item) =>
-        new Date(item.date).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-        })
-      );
+      const labels = result.map((item) => item.name || new Date(item.date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+      }));
 
       const sales = result.map((item) => item.sales);
       const cost = result.map((item) => item.cost);
@@ -81,8 +118,8 @@ const AudienceOverview = () => {
   };
 
   useEffect(() => {
-    fetchSalesSummary(select);
-  }, [select]);
+    fetchSalesSummary();
+  }, [fromDate, toDate, dateRange]);
 
   return (
     <Card
@@ -113,39 +150,69 @@ const AudienceOverview = () => {
         >
           Sales Summary
         </Typography>
-        <Box>
-          <FormControl sx={{ minWidth: 120 }} size="small">
-            <InputLabel id="demo-select-small" sx={{ fontSize: "14px" }}>
-              Select
-            </InputLabel>
-            <Select
-              labelId="demo-select-small"
-              id="demo-select-small"
-              value={select}
-              label="Select"
-              onChange={handleChange}
-              sx={{ fontSize: "14px" }}
-            >
-              <MenuItem value={1} sx={{ fontSize: "14px" }}>
-                Last 7 Days
-              </MenuItem>
-              <MenuItem value={2} sx={{ fontSize: "14px" }}>
-                Last Month
-              </MenuItem>
-              <MenuItem value={3} sx={{ fontSize: "14px" }}>
-                Last 12 Months
-              </MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
       </Box>
-      {/* {chartData && <Line data={chartData} options={options} height={100} />} */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 2,
+          justifyContent: 'space-between'
+        }}
+      >
+        <Box display="flex" gap={2}>
+          <TextField
+            label="From Date"
+            type="date"
+            size="small"
+            value={fromDate}
+            onChange={handleFromDateChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ minWidth: 150 }}
+          />
+          <TextField
+            label="To Date"
+            type="date"
+            size="small"
+            value={toDate}
+            onChange={handleToDateChange}
+            InputLabelProps={{
+              shrink: true,
+            }}
+            sx={{ minWidth: 150 }}
+          />
 
+        </Box>
+        <FormControl sx={{ minWidth: 120 }} size="small">
+          <InputLabel id="date-range-select" sx={{ fontSize: "14px" }}>
+            Type
+          </InputLabel>
+          <Select
+            labelId="date-range-select"
+            id="date-range-select"
+            value={dateRange}
+            label="Type"
+            onChange={handleDateRangeChange}
+            sx={{ fontSize: "14px" }}
+          >
+            <MenuItem value={6} sx={{ fontSize: "14px" }}>
+              Daily
+            </MenuItem>
+            <MenuItem value={7} sx={{ fontSize: "14px" }}>
+              Monthly
+            </MenuItem>
+            <MenuItem value={8} sx={{ fontSize: "14px" }}>
+              Yearly
+            </MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
       {chartData && (
-  <Box sx={{ height: 350 }}>
-    <Line data={chartData} options={options} />
-  </Box>
-)}
+        <Box sx={{ height: 350 }}>
+          <Line data={chartData} options={options} />
+        </Box>
+      )}
 
     </Card>
   );

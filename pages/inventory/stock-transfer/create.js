@@ -67,7 +67,7 @@ const StockTransferCreate = () => {
   const handleClose = () => setOpen(false);
   const { data: warehouseList } = useApi("/Warehouse/GetAllWarehouse");
   const router = useRouter();
-  const { data: transferNum } = getNext(`26`);
+  const { data: transferNum } = getNext(`27`);
   const [selectedRows, setSelectedRows] = useState([]);
   const { data: IsExpireDateAvailable } = IsAppSettingEnabled(
     "IsExpireDateAvailable"
@@ -153,7 +153,7 @@ const StockTransferCreate = () => {
           setIsDisable(true);
           toast.success(jsonResponse.result.message);
           setTimeout(() => {
-            window.location.href = "/inventory/grn";
+            window.location.href = "/inventory/stock-transfer";
           }, 1500);
         } else {
           toast.error(jsonResponse.result.message);
@@ -452,6 +452,7 @@ const StockTransferCreate = () => {
                         </TableCell>
                         <TableCell align="right" sx={{ p: 1 }} component="th" scope="row">
                           <TextField
+                            sx={{ width: '150px' }}
                             size="small"
                             type="number"
                             value={row.quantity}

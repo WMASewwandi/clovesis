@@ -17,6 +17,7 @@ import CreateDayEnd from "./create";
 import { formatCurrency, formatDate, formatDateWithTime } from "@/components/utils/formatHelper";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 export default function DayEnd() {
   const cId = sessionStorage.getItem("category")
@@ -26,6 +27,7 @@ export default function DayEnd() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const { data: showCashInvoiceTotalsInShiftAndDayend } = IsAppSettingEnabled("ShowCashInvoiceTotalsInShiftAndDayend");
 
   const handleSearchChange = (event) => {
     const value = event.target.value;
@@ -110,11 +112,16 @@ export default function DayEnd() {
                 <TableRow>
                   <TableCell>Date</TableCell>
                   <TableCell>Code</TableCell>
-                  <TableCell>Invoice Total</TableCell>
-                  <TableCell>Cash Return Inv. Total</TableCell>
+                  <TableCell>Total Invoice</TableCell>
+                  <TableCell>Total Return</TableCell>
+                  {showCashInvoiceTotalsInShiftAndDayend && <TableCell>Cash Inv. Total</TableCell>}
+                  {showCashInvoiceTotalsInShiftAndDayend && <TableCell>Cash Return Inv. Total</TableCell>}
+                  <TableCell>Canceled Inv.</TableCell>
                   <TableCell>Total Outstanding</TableCell>
                   <TableCell>Total Receipt</TableCell>
                   <TableCell>Cash Variance</TableCell>
+                  <TableCell>Warehouse</TableCell>
+                  <TableCell>User</TableCell>
                   <TableCell>Remark</TableCell>
                 </TableRow>
               </TableHead>
@@ -132,6 +139,9 @@ export default function DayEnd() {
                       <TableCell>{item.documentNo}</TableCell>
                       <TableCell>{formatCurrency(item.totalInvoice)}</TableCell>
                       <TableCell>{formatCurrency(item.totalSalesReturnAmount)}</TableCell>
+                      {showCashInvoiceTotalsInShiftAndDayend && <TableCell>{formatCurrency(item.totalCashInvoice)}</TableCell>}
+                      {showCashInvoiceTotalsInShiftAndDayend && <TableCell>{formatCurrency(item.totalCashReturnInvoice)}</TableCell>}
+                      <TableCell>{formatCurrency(item.canceledInvoice)}</TableCell>
                       <TableCell>{formatCurrency(item.totalOutstanding)}</TableCell>
                       <TableCell>{formatCurrency(item.totalReceipt)}</TableCell>
                       <TableCell>{item.cashVariance < 0 ? (
@@ -141,6 +151,8 @@ export default function DayEnd() {
                       ) : (
                         ""
                       )}</TableCell>
+                      <TableCell>{item.warehouseName}</TableCell>
+                      <TableCell>{item.userName}</TableCell>
                       <TableCell>{item.remark}</TableCell>
                     </TableRow>
                   ))

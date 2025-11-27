@@ -279,6 +279,8 @@ const InvoiceCreate = () => {
     }
   }
 
+  console.log(stock);
+
   const handleClose = () => setOpen(false);
 
   const handleSubmit = async () => {

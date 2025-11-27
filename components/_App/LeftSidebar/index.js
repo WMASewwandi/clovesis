@@ -14,7 +14,7 @@ const SidebarNav = styled("nav")(({ theme }) => ({
   background: "#fff",
   boxShadow: "0px 4px 20px rgba(47, 143, 232, 0.07)",
   width: "300px",
-  padding: "30px 10px",
+  padding: "0 10px",
   height: "100vh",
   display: "flex",
   justifyContent: "center",
@@ -155,7 +155,7 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                 display: "flex",
                 alignItems: "center",
                 height: "100px",
-                justifyContent: {xs:"space-between",lg:"center"},
+                justifyContent: "space-between",
               }}
             >
               <Link
@@ -217,6 +217,7 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                 )}
               </Link>
 
+              {/* Mobile Close Button */}
               <IconButton
                 onClick={toogleActive}
                 size="small"
@@ -224,6 +225,22 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
                   background: "rgb(253, 237, 237)",
                   display: { lg: "none" },
                 }}
+              >
+                <ClearIcon />
+              </IconButton>
+
+              {/* Desktop Close Button */}
+              <IconButton
+                onClick={toogleActive}
+                size="small"
+                sx={{
+                  background: "rgb(253, 237, 237)",
+                  display: { xs: "none", lg: "flex" },
+                  "&:hover": {
+                    background: "rgb(250, 220, 220)",
+                  },
+                }}
+                aria-label="Close sidebar"
               >
                 <ClearIcon />
               </IconButton>

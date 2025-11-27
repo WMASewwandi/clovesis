@@ -9,6 +9,7 @@ import {
     Folder as FolderIcon,
     DesignServices as DesignIcon,
     AttachMoney,
+    AssignmentTurnedIn as ProjectIcon,
 } from "@mui/icons-material";
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -43,6 +44,24 @@ export const getSidebarData = (IsGarmentSystem) => {
             ],
         },
         {
+            title: "Project Management",
+            path: "/pmo/dashboard",
+            icon: <ProjectIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 21,
+            IsAvailable: true,
+            subNav: [
+                { title: "Dashboard", path: "/pmo/dashboard", categoryId: 119, isAvailable: true },
+                { title: "Projects", path: "/pmo/projects", categoryId: 120, isAvailable: true },
+                { title: "Tasks", path: "/pmo/tasks", categoryId: 121, isAvailable: true },
+                { title: "Team", path: "/pmo/team", categoryId: 122, isAvailable: true },
+                { title: "Timeline", path: "/pmo/timeline", categoryId: 123, isAvailable: true },
+                { title: "Financials", path: "/pmo/financials", categoryId: 124, isAvailable: true },
+                { title: "Reports", path: "/pmo/reports", categoryId: 125, isAvailable: true },
+            ],
+        },
+        {
             title: "Finance",
             path: "/finance/finance/",
             icon: <AttachMoney />,
@@ -52,11 +71,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             IsAvailable: true,
             subNav: [
                 { title: "Chart Of Account", path: "/finance/chart-of-account/", categoryId: 41, isAvailable: true },
-                { title: "Journal Entry", path: "/finance/journal/", categoryId: 119, isAvailable: true },
-                { title: "Period Closing", path: "/finance/period-closing/", categoryId: 120, isAvailable: true },
-                { title: "Opening Balances", path: "/finance/opening-balances/", categoryId: 121, isAvailable: true },
-                { title: "Vendor Invoice", path: "/finance/vendor-invoice/", categoryId: 122, isAvailable: true },
-                { title: "Supplier Payments", path: "/finance/supplier-payments/", categoryId: 42, isAvailable: true },
+                { title: "Payments", path: "/finance/payments/", categoryId: 42, isAvailable: true },
                 { title: "Tax", path: "/finance/tax/", categoryId: 58, isAvailable: true },
                 { title: "Bank History", path: "/finance/bank-history/", categoryId: 97, isAvailable: true },
                 { title: "Cheque Payments", path: "/finance/cheque-payments/", categoryId: 98, isAvailable: true },
@@ -107,7 +122,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Employee", path: "/master/Employee/", categoryId: 93, isAvailable: true },
                 { title: "Combo Meal", path: "/master/combo/", categoryId: 94, isAvailable: true },
                 { title: "DBR Machine", path: "/master/dbr-machine/", categoryId: 100, isAvailable: true },
-                { title: "Projects", path: "/master/projects/", categoryId: 107, isAvailable: true },
+                { title: "Projects", path: "/master/projects/", categoryId: 53, isAvailable: true },
             ],
         },
         {

@@ -72,7 +72,7 @@ export default function BankHistory() {
   };
 
   useEffect(() => {
-    fetchBankHistory();
+    //fetchBankHistory();
   }, []);
 
   if (!navigate) {
@@ -123,8 +123,8 @@ export default function BankHistory() {
                   <TableCell>Code</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Cheque Payment</TableCell>
-                  <TableCell>Credit</TableCell>
-                  <TableCell>Debit</TableCell>
+                  <TableCell>Deposit</TableCell>
+                  <TableCell>Withdrawal</TableCell>
                   <TableCell align="right">Remaining Balance</TableCell>
                 </TableRow>
               </TableHead>

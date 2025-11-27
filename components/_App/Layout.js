@@ -20,11 +20,25 @@ const Layout = ({ children }) => {
   const [activeTopbarButton, setActiveTopbarButton] = useState("quick-access");
 
   const showSidebar = useCallback(() => {
-    setActive(false);
+    // In desktop: active = false shows sidebar (no active class = visible)
+    // In mobile: active = true shows sidebar (active class = visible)
+    // Check if we're in mobile view
+    if (typeof window !== "undefined" && window.innerWidth < 1200) {
+      setActive(true); // Mobile: active = true shows sidebar
+    } else {
+      setActive(false); // Desktop: active = false shows sidebar
+    }
   }, []);
 
   const hideSidebar = useCallback(() => {
-    setActive(true);
+    // In desktop: active = true hides sidebar (active class = hidden)
+    // In mobile: active = false hides sidebar (no active class = hidden)
+    // Check if we're in mobile view
+    if (typeof window !== "undefined" && window.innerWidth < 1200) {
+      setActive(false); // Mobile: active = false hides sidebar
+    } else {
+      setActive(true); // Desktop: active = true hides sidebar
+    }
   }, []);
 
   useEffect(() => {
@@ -74,7 +88,13 @@ const Layout = ({ children }) => {
             router.replace("/quick-access");
           }
         } else {
-          showSidebar();
+          // Only auto-show sidebar on desktop, not mobile
+          if (typeof window !== "undefined" && window.innerWidth >= 1200) {
+            showSidebar();
+          } else {
+            // In mobile, keep sidebar hidden initially
+            hideSidebar();
+          }
           setActiveTopbarButton("menu");
           if (router.pathname === "/quick-access") {
             router.replace("/");
@@ -102,6 +122,14 @@ const Layout = ({ children }) => {
 
       if (viewportWidth < 1200) {
         setIsSidebarHidden(!active);
+        // In mobile view, if sidebar is showing (active = true), ensure it can be closed
+        // CSS: .main-wrapper-content.active .LeftSidebarNav { left: 0; } shows sidebar
+        // So active = true shows sidebar, active = false hides it
+        // We want sidebar to start hidden in mobile, so if we're in mobile and active is true, hide it
+        if (active && viewportWidth < 1200) {
+          // Sidebar is showing in mobile, but we want it hidden by default
+          // Don't auto-hide here, let user control it via menu button
+        }
       } else {
         setIsSidebarHidden(active);
       }
@@ -115,6 +143,23 @@ const Layout = ({ children }) => {
       window.removeEventListener("resize", evaluateSidebarVisibility);
     };
   }, [active]);
+
+  // Fix: In mobile view, ensure sidebar starts hidden on initial load
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const viewportWidth = window.innerWidth;
+    if (viewportWidth < 1200) {
+      // In mobile view, sidebar should start hidden
+      // CSS shows: .main-wrapper-content.active .LeftSidebarNav { left: 0; } in mobile
+      // So active = true shows sidebar, active = false hides it
+      // Initial state is active = true, which would show sidebar in mobile
+      // We need to hide it initially in mobile view
+      setActive(false);
+    }
+  }, []);
 
   const handleCheckGranted = (bool) => {
     setIsGranted(bool);

@@ -24,6 +24,7 @@ import ViewCashInOut from "./view-cash-in-out";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import { Catelogue } from "Base/catelogue";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 export default function Shift() {
   const cId = sessionStorage.getItem("category")
@@ -36,6 +37,7 @@ export default function Shift() {
   const [totalCount, setTotalCount] = useState(0);
   const { data: ReportName } = GetReportSettingValueByName("ShiftEndReport");
   const name = localStorage.getItem("name");
+  const { data: showCashInvoiceTotalsInShiftAndDayend } = IsAppSettingEnabled("ShowCashInvoiceTotalsInShiftAndDayend");
 
 
   const handlePageChange = (event, value) => {
@@ -122,8 +124,10 @@ export default function Shift() {
                   <TableCell>End Date</TableCell>
                   <TableCell>Start Amount</TableCell>
                   <TableCell>End Amount</TableCell>
-                  <TableCell>Cash Inv. Total</TableCell>
-                  <TableCell>Cash Return Inv. Total</TableCell>
+                  <TableCell>Total Invoice</TableCell>
+                  <TableCell>Total Return</TableCell>
+                  {showCashInvoiceTotalsInShiftAndDayend &&<TableCell>Cash Inv. Total</TableCell>}
+                  {showCashInvoiceTotalsInShiftAndDayend &&<TableCell>Cash Return Inv. Total</TableCell>}
                   <TableCell>Canceled Inv.</TableCell>
                   <TableCell>Receipt Total</TableCell>
                   <TableCell>Summary</TableCell>
@@ -152,6 +156,8 @@ export default function Shift() {
                       <TableCell>{!item.isActive && formatCurrency(item.totalEndAmount)}</TableCell>
                       <TableCell>{!item.isActive && formatCurrency(item.totalInvoice)}</TableCell>
                       <TableCell>{!item.isActive && formatCurrency(item.totalSalesReturnAmount)}</TableCell>
+                      {showCashInvoiceTotalsInShiftAndDayend && <TableCell>{!item.isActive && formatCurrency(item.totalCashInvoice)}</TableCell>}
+                      {showCashInvoiceTotalsInShiftAndDayend && <TableCell>{!item.isActive && formatCurrency(item.totalCashSalesReturnAmount)}</TableCell>}
                       <TableCell>{!item.isActive && formatCurrency(item.totalCanceledInvoice)}</TableCell>
                       <TableCell>{!item.isActive && formatCurrency(item.totalReceipt)}</TableCell>
                       <TableCell>
