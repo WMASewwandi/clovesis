@@ -6,10 +6,6 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
 import IconButton from "@mui/material/IconButton";
-import FormControl from "@mui/material/FormControl";
-import InputLabel from "@mui/material/InputLabel";
-import Select from "@mui/material/Select";
-import MenuItem from "@mui/material/MenuItem";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import Divider from "@mui/material/Divider";
@@ -21,21 +17,16 @@ import KanbanColumn from "./column";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import BASE_URL from "Base/api";
 import AddLeadModal from "../leads/create";
-import AddOpportunityModal from "../opportunities/create";
+import { toast, ToastContainer } from "react-toastify";
 
 const MODULE_ENDPOINTS = {
   Leads: {
     stages: "/EnumLookup/LeadStatuses",
     data: "/Leads/GetCRMLeads",
   },
-  Opportunities: {
-    stages: "/EnumLookup/OpportunityStages",
-    data: "/CRMOpportunities/GetCRMOpportunities",
-  },
 };
 
 export default function KanbanBoard() {
-  const [module, setModule] = React.useState("Leads");
   const [searchValue, setSearchValue] = React.useState("");
   const [filterDrawer, setFilterDrawer] = React.useState(false);
   const [selectedFilters, setSelectedFilters] = React.useState({
@@ -118,8 +109,8 @@ export default function KanbanBoard() {
   }, []);
 
   const fetchStages = React.useCallback(
-    async (selectedModule) => {
-      const stageEndpoint = MODULE_ENDPOINTS[selectedModule]?.stages;
+    async () => {
+      const stageEndpoint = MODULE_ENDPOINTS.Leads?.stages;
       if (!stageEndpoint) {
         setBoardData([]);
         setFilterOptions((prev) => ({
@@ -164,20 +155,17 @@ export default function KanbanBoard() {
         setStageDefinitions(stageDefs);
         setBoardData(stageDefs.map((stage) => ({ ...stage, items: [] })));
         const stageTitles = stageDefs.map((stage) => stage.title);
-        const isLeadsModule = selectedModule === "Leads";
 
         setFilterOptions((prev) => ({
           ...prev,
-          stages: isLeadsModule ? [] : stageTitles,
-          statuses: isLeadsModule ? stageTitles : [],
+          stages: [],
+          statuses: stageTitles,
         }));
 
         setSelectedFilters((prev) => ({
           ...prev,
-          stages: isLeadsModule ? [] : prev.stages.filter((value) => stageTitles.includes(value)),
-          statuses: isLeadsModule
-            ? prev.statuses.filter((value) => stageTitles.includes(value))
-            : [],
+          stages: [],
+          statuses: prev.statuses.filter((value) => stageTitles.includes(value)),
         }));
       } catch (error) {
         console.error("Error loading stages:", error);
@@ -206,8 +194,8 @@ export default function KanbanBoard() {
   }, [fetchOwners]);
 
   const fetchRecords = React.useCallback(
-    async (selectedModule) => {
-      const dataEndpoint = MODULE_ENDPOINTS[selectedModule]?.data;
+    async () => {
+      const dataEndpoint = MODULE_ENDPOINTS.Leads?.data;
       if (!dataEndpoint) {
         setBoardData([]);
         return;
@@ -233,21 +221,21 @@ export default function KanbanBoard() {
 
         const data = await response.json().catch(() => null);
         const records = Array.isArray(data?.result) ? data.result : Array.isArray(data) ? data : [];
-        const stageKey = selectedModule === "Leads" ? "leadStatus" : "stage";
-        const stageLabelKey = selectedModule === "Leads" ? "leadStatusName" : "stageName";
+        const stageKey = "leadStatus";
+        const stageLabelKey = "leadStatusName";
 
         setOriginalRecords(records);
-    } catch (error) {
-      console.error("Error loading board records:", error);
-      setRecordsError(error.message || "Failed to load records");
-      setOriginalRecords([]);
-      setBoardData((prevStages) =>
-        prevStages.map((stage) => ({
-          ...stage,
-          items: [],
-        }))
-      );
-    } finally {
+      } catch (error) {
+        console.error("Error loading board records:", error);
+        setRecordsError(error.message || "Failed to load records");
+        setOriginalRecords([]);
+        setBoardData((prevStages) =>
+          prevStages.map((stage) => ({
+            ...stage,
+            items: [],
+          }))
+        );
+      } finally {
         setLoadingRecords(false);
       }
     },
@@ -256,16 +244,16 @@ export default function KanbanBoard() {
 
   React.useEffect(() => {
     const loadBoard = async () => {
-      await fetchStages(module);
-      await fetchRecords(module);
+      await fetchStages();
+      await fetchRecords();
     };
 
     loadBoard();
-  }, [module, fetchStages, fetchRecords]);
+  }, [fetchStages, fetchRecords]);
 
   const updateLeadStatus = React.useCallback(async (card, statusValue, statusLabel) => {
     if (!card?.raw) {
-      return;
+      return { success: false, error: "Card data is missing" };
     }
 
     const lead = card.raw;
@@ -280,6 +268,8 @@ export default function KanbanBoard() {
       LeadStatus: Number(statusValue),
       LeadScore: Number(lead.leadScore ?? 0),
       Description: lead.description || "",
+      ContactId: lead.contactId || null,
+      AccountId: lead.accountId || null
     };
 
     try {
@@ -293,9 +283,11 @@ export default function KanbanBoard() {
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || "Failed to update lead status");
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok || response.status !== 200 || (data && data.statusCode !== 200)) {
+        const errorMessage = data?.message || "Failed to update lead status";
+        return { success: false, error: errorMessage };
       }
 
       setOriginalRecords((prevRecords) =>
@@ -309,78 +301,23 @@ export default function KanbanBoard() {
             : record
         )
       );
+
+      return { success: true, data };
     } catch (error) {
       console.error("Error updating lead status:", error);
-      fetchRecords(module);
+      return { success: false, error: error.message || "Failed to update lead status" };
     }
-  }, [fetchRecords, module]);
-
-  const updateOpportunityStage = React.useCallback(
-    async (card, stageValue, stageLabel) => {
-      if (!card?.raw) {
-        return;
-      }
-
-      const opportunity = card.raw;
-
-      const payload = {
-        Id: opportunity.id,
-        OpportunityName: opportunity.opportunityName || opportunity.name || "Untitled Opportunity",
-        AccountId: Number(opportunity.accountId ?? 0),
-        ContactId: Number(opportunity.contactId ?? 0),
-        Stage: Number(stageValue),
-        Value: Number(opportunity.value ?? 0),
-        Probability: Number(opportunity.probability ?? 0),
-        ExpectedCloseDate: opportunity.expectedCloseDate || null,
-        Source: Number(opportunity.source ?? 0),
-        Description: opportunity.description || "",
-        Status: Number(opportunity.status ?? 0),
-      };
-
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const response = await fetch(`${BASE_URL}/CRMOpportunities/UpdateCRMOpportunity`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(errorData?.message || "Failed to update opportunity stage");
-        }
-
-      setOriginalRecords((prevRecords) =>
-        prevRecords.map((record) =>
-          record.id === opportunity.id
-            ? {
-                ...record,
-                stage: Number(stageValue),
-                stageName: stageLabel,
-              }
-            : record
-        )
-      );
-      } catch (error) {
-        console.error("Error updating opportunity stage:", error);
-        fetchRecords(module);
-      }
-    },
-    [fetchRecords, module]
-  );
+  }, []);
 
   const buildBoardData = React.useCallback(
-    (stages, records, selectedModule, filters, searchTerm) => {
+    (stages, records, filters, searchTerm) => {
       if (!Array.isArray(stages) || stages.length === 0) {
         return [];
       }
 
       let filteredRecords = Array.isArray(records) ? [...records] : [];
-      const stageKey = selectedModule === "Leads" ? "leadStatus" : "stage";
-      const stageNameKey = selectedModule === "Leads" ? "leadStatusName" : "stageName";
+      const stageKey = "leadStatus";
+      const stageNameKey = "leadStatusName";
       const stageValueToLabel = {};
 
       stages.forEach((stage) => {
@@ -393,7 +330,7 @@ export default function KanbanBoard() {
         );
       }
 
-      if (selectedModule === "Leads" && filters.statuses.length > 0) {
+      if (filters.statuses.length > 0) {
         filteredRecords = filteredRecords.filter((record) => {
           const stageValue = record[stageKey];
           const stageLabel =
@@ -401,17 +338,6 @@ export default function KanbanBoard() {
             stageValueToLabel[String(stageValue)] ||
             String(stageValue ?? "");
           return filters.statuses.includes(stageLabel);
-        });
-      }
-
-      if (selectedModule === "Opportunities" && filters.stages.length > 0) {
-        filteredRecords = filteredRecords.filter((record) => {
-          const stageValue = record[stageKey];
-          const stageLabel =
-            record[stageNameKey] ||
-            stageValueToLabel[String(stageValue)] ||
-            String(stageValue ?? "");
-          return filters.stages.includes(stageLabel);
         });
       }
 
@@ -442,16 +368,7 @@ export default function KanbanBoard() {
       const trimmedSearch = searchTerm.trim().toLowerCase();
       if (trimmedSearch) {
         filteredRecords = filteredRecords.filter((record) => {
-          const fields =
-            selectedModule === "Leads"
-              ? [record.leadName, record.company, record.email, record.createdByName]
-              : [
-                  record.opportunityName,
-                  record.accountName,
-                  record.contactName,
-                  record.description,
-                  record.createdByName,
-                ];
+          const fields = [record.leadName, record.company, record.email, record.createdByName];
           return fields.some(
             (value) => value && String(value).toLowerCase().includes(trimmedSearch)
           );
@@ -459,30 +376,14 @@ export default function KanbanBoard() {
       }
 
       const toCard = (record, stageTitle) => ({
-        id: `${selectedModule.toLowerCase()}-${record.id}`,
-        name:
-          selectedModule === "Leads"
-            ? record.leadName || record.company || `Lead #${record.id}`
-            : record.opportunityName || record.accountName || `Opportunity #${record.id}`,
-        company:
-          selectedModule === "Leads"
-            ? record.company || "-"
-            : record.accountName || record.company || "-",
-        value:
-          selectedModule === "Leads"
-            ? `Score: ${record.leadScore ?? "-"}`
-            : record.value != null
-            ? `$${Number(record.value).toLocaleString()}`
-            : "-",
+        id: `leads-${record.id}`,
+        name: record.leadName || record.company || `Lead #${record.id}`,
+        company: record.company || "-",
+        value: `Score: ${record.leadScore ?? "-"}`,
         owner: record.createdByName || "-",
         status: stageTitle,
         createdDate: record.createdOn ? new Date(record.createdOn).toLocaleDateString() : "-",
-        dueDate:
-          selectedModule === "Leads"
-            ? "-"
-            : record.expectedCloseDate
-            ? new Date(record.expectedCloseDate).toLocaleDateString()
-            : "-",
+        dueDate: "-",
         raw: record,
       });
 
@@ -504,21 +405,20 @@ export default function KanbanBoard() {
 
   React.useEffect(() => {
     setBoardData(
-      buildBoardData(stageDefinitions, originalRecords, module, selectedFilters, searchValue)
+      buildBoardData(stageDefinitions, originalRecords, selectedFilters, searchValue)
     );
   }, [
     buildBoardData,
     stageDefinitions,
     originalRecords,
-    module,
     selectedFilters,
     searchValue,
   ]);
 
   const handleRefreshAfterCreate = React.useCallback(() => {
-    fetchStages(module);
-    fetchRecords(module);
-  }, [fetchStages, fetchRecords, module]);
+    fetchStages();
+    fetchRecords();
+  }, [fetchStages, fetchRecords]);
 
   const handleFilterToggle = (group, value) => {
     setSelectedFilters((prev) => {
@@ -543,11 +443,14 @@ export default function KanbanBoard() {
     setDraggedItem({ sourceStageId, itemId });
   };
 
-  const handleDropCard = (targetStageId) => {
+  const handleDropCard = async (targetStageId) => {
     if (!draggedItem) return;
 
+    const originalBoardData = boardData;
+    let movedCard = null;
+    let sourceStageId = draggedItem.sourceStageId;
+
     setBoardData((prevStages) => {
-      let movedCard = null;
       const stagesWithoutCard = prevStages.map((stage) => {
         if (stage.id === draggedItem.sourceStageId) {
           const remaining = stage.items.filter((item) => {
@@ -575,11 +478,10 @@ export default function KanbanBoard() {
             status: stageTitle,
             raw: movedCard.raw
               ? {
-                  ...movedCard.raw,
-                  ...(module === "Leads"
-                    ? { leadStatus: Number(stageValue), leadStatusName: stageTitle }
-                    : { stage: Number(stageValue), stageName: stageTitle }),
-                }
+                ...movedCard.raw,
+                leadStatus: Number(stageValue),
+                leadStatusName: stageTitle,
+              }
               : movedCard.raw,
           };
 
@@ -594,23 +496,26 @@ export default function KanbanBoard() {
         return stage;
       });
 
-      const targetStage = prevStages.find((stage) => stage.id === targetStageId);
-      const stageValue = targetStageId.replace("stage-", "");
-      const stageLabel = targetStage?.title || stageValue;
-
-      const recordId = movedCard?.id?.split("-")[1];
-      const targetStatusValue = Number(stageValue);
-
-      if (recordId) {
-        if (module === "Leads") {
-          updateLeadStatus(movedCard, targetStatusValue, stageLabel);
-        } else if (module === "Opportunities") {
-          updateOpportunityStage(movedCard, targetStatusValue, stageLabel);
-        }
-      }
-
       return updatedStages;
     });
+
+    const targetStage = originalBoardData.find((stage) => stage.id === targetStageId);
+    const stageValue = targetStageId.replace("stage-", "");
+    const stageLabel = targetStage?.title || stageValue;
+
+    const recordId = movedCard?.id?.split("-")[1];
+    const targetStatusValue = Number(stageValue);
+
+    if (recordId && movedCard) {
+      const result = await updateLeadStatus(movedCard, targetStatusValue, stageLabel);
+      
+      if (!result || !result.success) {
+        setBoardData(originalBoardData);
+        toast.error(result?.error || "Failed to update lead status");
+        setDraggedItem(null);
+        return;
+      }
+    }
 
     setDraggedItem(null);
   };
@@ -621,6 +526,7 @@ export default function KanbanBoard() {
 
   return (
     <>
+    <ToastContainer/>
       <div className={styles.pageTitle}>
         <h1>CRM Kanban Board</h1>
         <ul>
@@ -633,12 +539,12 @@ export default function KanbanBoard() {
       <Grid container spacing={2} alignItems="center" justifyContent="space-between">
         <Grid item xs={12} md={7}>
           <Typography variant="subtitle1" color="text.secondary">
-            Visual view of all leads/opportunities by stage
+            Visual view of all leads by stage
           </Typography>
         </Grid>
         <Grid item xs={12} md="auto">
           <Typography variant="subtitle2" color="text.secondary">
-            {totalItems} {module} across {totalStages} stages
+            {totalItems} Leads across {totalStages} stages
           </Typography>
         </Grid>
       </Grid>
@@ -651,27 +557,16 @@ export default function KanbanBoard() {
         alignItems={{ xs: "stretch", md: "center" }}
       >
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, flexGrow: 1 }}>
-          <FormControl sx={{ minWidth: 180 }}>
-            <InputLabel>Module</InputLabel>
-            <Select value={module} label="Module" onChange={(event) => setModule(event.target.value)}>
-              <MenuItem value="Leads">Leads</MenuItem>
-              <MenuItem value="Opportunities">Opportunities</MenuItem>
-            </Select>
-          </FormControl>
-          <Search className="search-form" sx={{ flexGrow: 1, minWidth: { xs: "100%", md: 280 } }}>
+          <Search className="search-form" sx={{ flexGrow: 1}}>
             <StyledInputBase
-              placeholder={`Search ${module.toLowerCase()}...`}
+              placeholder="Search leads..."
               value={searchValue}
               onChange={(event) => setSearchValue(event.target.value)}
             />
           </Search>
         </Box>
         <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="flex-end">
-          {module === "Leads" ? (
-            <AddLeadModal onLeadCreated={handleRefreshAfterCreate} />
-          ) : (
-            <AddOpportunityModal onOpportunityCreated={handleRefreshAfterCreate} />
-          )}
+          <AddLeadModal onLeadCreated={handleRefreshAfterCreate} />
           <IconButton color="primary" onClick={() => setFilterDrawer(true)}>
             <FilterAltOutlinedIcon />
           </IconButton>
@@ -746,15 +641,15 @@ export default function KanbanBoard() {
           </Box>
         ) : (
           boardData.map((stage) => (
-          <KanbanColumn
-            key={stage.id}
-            stageId={stage.id}
-            stageTitle={stage.title}
-            items={stage.items}
-            onDragStart={handleDragStart}
-            onDropCard={handleDropCard}
-            onDragEnd={handleDragEnd}
-          />
+            <KanbanColumn
+              key={stage.id}
+              stageId={stage.id}
+              stageTitle={stage.title}
+              items={stage.items}
+              onDragStart={handleDragStart}
+              onDropCard={handleDropCard}
+              onDragEnd={handleDragEnd}
+            />
           ))
         )}
       </Box>
@@ -765,32 +660,10 @@ export default function KanbanBoard() {
             Filters
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={2}>
-            Narrow the board to focus on specific {module.toLowerCase()}.
+            Narrow the board to focus on specific leads.
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
-          {filterOptions.stages.length > 0 && (
-            <>
-          <Typography variant="subtitle2" fontWeight={600} mb={1}>
-            Stage
-          </Typography>
-              <Stack spacing={1} mb={2}>
-            {filterOptions.stages.map((stageName) => (
-              <FormControlLabel
-                key={stageName}
-                control={
-                  <Checkbox
-                    checked={selectedFilters.stages.includes(stageName)}
-                    onChange={() => handleFilterToggle("stages", stageName)}
-                  />
-                }
-                label={stageName}
-              />
-            ))}
-          </Stack>
-              <Divider sx={{ mb: 2 }} />
-            </>
-          )}
 
           <Typography variant="subtitle2" fontWeight={600} mb={1}>
             Owner
@@ -804,16 +677,16 @@ export default function KanbanBoard() {
               <Typography color="text.secondary">No owners available.</Typography>
             ) : (
               filterOptions.owners.map((owner) => (
-              <FormControlLabel
+                <FormControlLabel
                   key={owner.id}
-                control={
-                  <Checkbox
+                  control={
+                    <Checkbox
                       checked={selectedFilters.owners.includes(owner.label)}
                       onChange={() => handleFilterToggle("owners", owner.label)}
-                  />
-                }
+                    />
+                  }
                   label={owner.label}
-              />
+                />
               ))
             )}
           </Stack>
@@ -846,23 +719,23 @@ export default function KanbanBoard() {
 
           {filterOptions.statuses.length > 0 && (
             <>
-          <Typography variant="subtitle2" fontWeight={600} mb={1}>
-            Status
-          </Typography>
-          <Stack spacing={1}>
-            {filterOptions.statuses.map((status) => (
-              <FormControlLabel
-                key={status}
-                control={
-                  <Checkbox
-                    checked={selectedFilters.statuses.includes(status)}
-                    onChange={() => handleFilterToggle("statuses", status)}
+              <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                Status
+              </Typography>
+              <Stack spacing={1}>
+                {filterOptions.statuses.map((status) => (
+                  <FormControlLabel
+                    key={status}
+                    control={
+                      <Checkbox
+                        checked={selectedFilters.statuses.includes(status)}
+                        onChange={() => handleFilterToggle("statuses", status)}
+                      />
+                    }
+                    label={status}
                   />
-                }
-                label={status}
-              />
-            ))}
-          </Stack>
+                ))}
+              </Stack>
             </>
           )}
 

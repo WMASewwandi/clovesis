@@ -24,6 +24,7 @@ import CallIcon from '@mui/icons-material/Call';
 import People from '@mui/icons-material/People';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import WorkIcon from '@mui/icons-material/Work';
 
 
 export const getSidebarData = (IsGarmentSystem) => {
@@ -78,6 +79,25 @@ export const getSidebarData = (IsGarmentSystem) => {
             ],
         },
         {
+            title: "HR",
+            path: "/hr/hr/",
+            icon: <WorkIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 6,
+            IsAvailable: true,
+            subNav: [
+                { title: "Recruitment", path: "/hr/recruitment/", categoryId: 126, isAvailable: true },
+                { title: "Employee Lifecycle", path: "/hr/employee-lifecycle/", categoryId: 127, isAvailable: true },
+                { title: "Shift Attendance", path: "/hr/shifts-attendance/", categoryId: 128, isAvailable: true },
+                { title: "Leave Management", path: "/hr/leave-management/", categoryId: 129, isAvailable: true },
+                { title: "Expense Management", path: "/hr/expense-management/", categoryId: 130, isAvailable: true },
+                { title: "Performance Management", path: "/hr/performance-management/", categoryId: 131, isAvailable: true },
+                { title: "Payroll", path: "/hr/payroll/", categoryId: 132, isAvailable: true },
+                { title: "Payroll Tax", path: "/hr/payroll-tax/", categoryId: 133, isAvailable: true },
+            ],
+        },
+        {
             title: "Master Data",
             path: "/master/master/",
             icon: <FolderIcon />,
@@ -113,6 +133,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Company", path: "/master/company/", categoryId: 82, isAvailable: true },
                 { title: "Classifications", path: "/master/classifications/", categoryId: 83, isAvailable: true },
                 { title: "Job Title", path: "/master/job-title/", categoryId: 84, isAvailable: true },
+                { title: "Department", path: "/master/department/", categoryId: 84, isAvailable: true },
                 { title: "Person Title", path: "/master/person-title/", categoryId: 85, isAvailable: true },
                 { title: "Portion", path: "/master/portion/", categoryId: 86, isAvailable: true },
                 { title: "Kitchen", path: "/master/kitchen/", categoryId: 87, isAvailable: true },
@@ -134,7 +155,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             ModuleId: 20,
             IsAvailable: true,
             subNav: [
-                { title: "Online Orders", path: "/ecom/orders/", categoryId: 108, isAvailable: true },
+                { title: "Online Orders", path: "/ecom/orders/", categoryId: 107, isAvailable: true },
             ],
         },
         {
@@ -331,14 +352,16 @@ export const getSidebarData = (IsGarmentSystem) => {
         ModuleId: 18,
         IsAvailable: true,
         subNav: [
-            { title: "Kanban", path: "/crm/kanban/", categoryId: 115, isAvailable: true },
-            { title: "Leads", path: "/crm/leads/", categoryId: 116, isAvailable: true },            
+            { title: "Dashboard", path: "/crm/dashboard/", categoryId: 136, isAvailable: true },                       
+            { title: "Kanban", path: "/crm/kanban/", categoryId: 115, isAvailable: true },                       
             { title: "Accounts", path: "/crm/accounts/", categoryId: 109, isAvailable: true },  
-            { title: "Contacts", path: "/crm/contacts/", categoryId: 110, isAvailable: true },  
-            { title: "Opportunities", path: "/crm/opportunities/", categoryId: 111, isAvailable: true },                     
+            { title: "Contacts", path: "/crm/contacts/", categoryId: 110, isAvailable: true },
+            { title: "Leads", path: "/crm/leads/", categoryId: 116, isAvailable: true },   
+            // { title: "Opportunities", path: "/crm/opportunities/", categoryId: 111, isAvailable: true },                     
             { title: "Activities", path: "/crm/activities/", categoryId: 112, isAvailable: true },                     
             { title: "Quotes", path: "/crm/quotes/", categoryId: 113, isAvailable: true },                     
-            { title: "Reports", path: "/crm/reports/", categoryId: 114, isAvailable: true },                     
+            { title: "Sales Person", path: "/crm/sales-person/", categoryId: 135, isAvailable: true },                     
+            //{ title: "Reports", path: "/crm/reports/", categoryId: 114, isAvailable: true },                     
         ],
     });
 

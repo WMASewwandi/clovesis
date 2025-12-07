@@ -40,10 +40,42 @@ const incomeCategories = [
 ];
 
 const validationSchema = Yup.object().shape({
-  recordType: Yup.number().required("Select record type"),
-  category: Yup.number().required("Select category"),
-  amount: Yup.number().typeError("Enter numeric amount").min(0).required(),
-  recordDate: Yup.date().required(),
+  recordType: Yup.number()
+    .required("Please select a record type (Income or Expense)")
+    .oneOf([1, 2], "Record type must be either Income (1) or Expense (2)"),
+  category: Yup.number()
+    .required("Please select a category")
+    .test("valid-category", "Please select a valid category for the selected record type", function(value) {
+      const { recordType } = this.parent;
+      if (!value) return false;
+      if (recordType === 1) {
+        // Income categories: 10-15
+        return value >= 10 && value <= 15;
+      } else if (recordType === 2) {
+        // Expense categories: 1-9
+        return value >= 1 && value <= 9;
+      }
+      return false;
+    }),
+  amount: Yup.number()
+    .typeError("Amount must be a number")
+    .required("Amount is required")
+    .min(0.01, "Amount must be greater than 0")
+    .test("max-value", "Amount is too large", (value) => {
+      if (!value) return false;
+      return value <= 999999999.99;
+    }),
+  recordDate: Yup.date()
+    .required("Record date is required")
+    .typeError("Please select a valid date")
+    .max(new Date(), "Record date cannot be in the future"),
+  reference: Yup.string()
+    .nullable()
+    .max(200, "Reference cannot exceed 200 characters"),
+  notes: Yup.string()
+    .nullable()
+    .max(1024, "Notes cannot exceed 1024 characters"),
+  relatedMemberId: Yup.number().nullable(),
 });
 
 const FinancialRecordFormDialog = ({
@@ -61,7 +93,7 @@ const FinancialRecordFormDialog = ({
     recordDate: dayjs().toISOString(),
     reference: "",
     notes: "",
-    relatedMemberId: "",
+    relatedMemberId: null,
     ...(initialValues || {}),
   };
 
@@ -74,7 +106,14 @@ const FinancialRecordFormDialog = ({
         enableReinitialize
         onSubmit={async (values, helpers) => {
           try {
-            await onSubmit(values);
+            // Convert empty string to null for optional fields
+            const payload = {
+              ...values,
+              relatedMemberId: values.relatedMemberId === "" || values.relatedMemberId === null || values.relatedMemberId === undefined 
+                ? null 
+                : Number(values.relatedMemberId),
+            };
+            await onSubmit(payload);
             helpers.setSubmitting(false);
           } catch (error) {
             helpers.setSubmitting(false);
@@ -137,6 +176,7 @@ const FinancialRecordFormDialog = ({
                     label="Amount"
                     type="number"
                     fullWidth
+                    inputProps={{ min: 0.01, step: 0.01 }}
                     value={values.amount}
                     onChange={handleChange}
                     error={touched.amount && Boolean(errors.amount)}
@@ -162,7 +202,7 @@ const FinancialRecordFormDialog = ({
                   <TextField
                     select
                     name="relatedMemberId"
-                    label="Related Member"
+                    label="Related Member (Optional)"
                     fullWidth
                     value={values.relatedMemberId ?? ""}
                     onChange={handleChange}
@@ -184,6 +224,8 @@ const FinancialRecordFormDialog = ({
                     fullWidth
                     value={values.reference}
                     onChange={handleChange}
+                    error={touched.reference && Boolean(errors.reference)}
+                    helperText={touched.reference && errors.reference}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -195,6 +237,8 @@ const FinancialRecordFormDialog = ({
                     minRows={3}
                     value={values.notes}
                     onChange={handleChange}
+                    error={touched.notes && Boolean(errors.notes)}
+                    helperText={touched.notes && errors.notes}
                   />
                 </Grid>
               </Grid>

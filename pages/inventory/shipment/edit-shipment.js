@@ -26,7 +26,8 @@ import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 
 const ShipmentEdit = () => {
   const [shipmentLineDetails, setShipmentLineDetails] = useState([]);
-   const [isDisable, setIsDisable] = useState(false);
+  const [isDisable, setIsDisable] = useState(false);
+  const [userEnteredZeros, setUserEnteredZeros] = useState(new Set());
   const [order, setOrder] = useState({});
   const [referenceNo, setReferenceNo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +74,9 @@ const ShipmentEdit = () => {
       const shipmentDetailsWithLineTotal = result.shipmentNoteLineDetails.map(
         (row) => ({
           ...row,
-          lineTotal: parseFloat(row.receivedQty) * parseFloat(row.unitPrice),
+          receivedQty: row.receivedQty === 0 ? null : row.receivedQty,
+          unitPrice: row.unitPrice === 0 ? null : row.unitPrice,
+          lineTotal: parseFloat(row.receivedQty || 0) * parseFloat(row.unitPrice || 0),
           damagedQty: row.damagedQty || null,
         })
       );
@@ -103,13 +106,43 @@ const ShipmentEdit = () => {
       }
     }
     
-    updatedShipmentLineDetails[index][field] = parseFloat(value) || null;
+    // Allow 0 to be explicitly set, but keep empty fields as null
+    let parsedValue;
+    if (value === "" || value === null || value === undefined) {
+      parsedValue = null;
+      // Remove from userEnteredZeros if field is cleared
+      if (field === "receivedQty" || field === "unitPrice") {
+        setUserEnteredZeros(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(`${index}-${field}`);
+          return newSet;
+        });
+      }
+    } else {
+      parsedValue = parseFloat(value);
+      parsedValue = isNaN(parsedValue) ? null : parsedValue;
+      // Track if user explicitly set 0
+      if (parsedValue === 0 && (field === "receivedQty" || field === "unitPrice")) {
+        setUserEnteredZeros(prev => new Set(prev).add(`${index}-${field}`));
+      } else if (parsedValue !== 0 && (field === "receivedQty" || field === "unitPrice")) {
+        // Remove from tracking if value is no longer 0
+        setUserEnteredZeros(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(`${index}-${field}`);
+          return newSet;
+        });
+      }
+    }
+    updatedShipmentLineDetails[index][field] = parsedValue;
 
-    const cost = updatedShipmentLineDetails[index].unitPrice + updatedShipmentLineDetails[index].additionalCost + updatedShipmentLineDetails[index].freightDutyCost;
+    const unitPrice = updatedShipmentLineDetails[index].unitPrice || 0;
+    const additionalCost = updatedShipmentLineDetails[index].additionalCost || 0;
+    const freightDutyCost = updatedShipmentLineDetails[index].freightDutyCost || 0;
+    const receivedQty = updatedShipmentLineDetails[index].receivedQty || 0;
+    
+    const cost = unitPrice + additionalCost + freightDutyCost;
     updatedShipmentLineDetails[index].costPrice = cost;
-    updatedShipmentLineDetails[index].lineTotal =
-      updatedShipmentLineDetails[index].receivedQty *
-      cost;
+    updatedShipmentLineDetails[index].lineTotal = receivedQty * cost;
 
     setShipmentLineDetails(updatedShipmentLineDetails);
   };
@@ -123,14 +156,14 @@ const ShipmentEdit = () => {
     let hasInvalidValues = false;
 
     shipmentLineDetails.forEach((row) => {
-      if (!row.receivedQty || row.receivedQty <= 0 || !row.unitPrice || row.unitPrice <= 0) {
+      if (row.receivedQty === null || row.receivedQty === undefined || row.receivedQty < 0 || row.unitPrice === null || row.unitPrice === undefined || row.unitPrice < 0) {
         hasInvalidValues = true;
       }
     });
 
     if (hasInvalidValues) {
       toast.info(
-        "Please enter values greater than 0 for Received Quantity and Unit Price."
+        "Please enter valid values (0 or greater) for Received Quantity and Unit Cost."
       );
       return;
     }
@@ -407,7 +440,7 @@ const ShipmentEdit = () => {
                         Product&nbsp;Name{" "}
                       </TableCell>
                       <TableCell sx={{ color: "#fff" }}>Ordered Qty</TableCell>
-                      <TableCell sx={{ color: "#fff" }}>Unit Price</TableCell>
+                      <TableCell sx={{ color: "#fff" }}>Unit Cost</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Received Qty</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Damaged Qty</TableCell>
                       <TableCell sx={{ color: "#fff" }}>
@@ -443,15 +476,15 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.unitPrice === 0 || row.unitPrice === null ? "" : row.unitPrice}
+                            value={row.unitPrice === null || row.unitPrice === undefined ? "" : row.unitPrice}
                             fullWidth
                             size="small"
-                            inputProps={{ min: 0.01, step: "0.01" }}
+                            inputProps={{ min: 0, step: "0.01" }}
                             onChange={(e) =>
                               handleChange(
                                 index,
                                 "unitPrice",
-                                parseFloat(e.target.value)
+                                e.target.value
                               )
                             }
                           />
@@ -459,15 +492,21 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.receivedQty === 0 || row.receivedQty === null ? "" : row.receivedQty}
+                            value={
+                              row.receivedQty === null || row.receivedQty === undefined
+                                ? ""
+                                : row.receivedQty === 0 && !userEnteredZeros.has(`${index}-receivedQty`)
+                                ? ""
+                                : row.receivedQty
+                            }
                             fullWidth
                             size="small"
-                            inputProps={{ min: 0.01, step: "0.01" }}
+                            inputProps={{ min: 0, step: "0.01" }}
                             onChange={(e) =>
                               handleChange(
                                 index,
                                 "receivedQty",
-                                parseFloat(e.target.value)
+                                e.target.value
                               )
                             }
                           />

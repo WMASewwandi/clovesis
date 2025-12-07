@@ -188,8 +188,6 @@ export default function Dashboard() {
     return <AccessDenied />;
   }
 
-  console.log(shiftDetails);
-
   const SidebarContent = (
     <Box
       sx={{
@@ -394,7 +392,8 @@ export default function Dashboard() {
                         billUpdatedItems={cartItems}
                         onChangeSteward={handleSetSteward}
                         onChangeTable={handleSetTable}
-                        onSetPickupType={handleSetPickup} />}
+                        onSetPickupType={handleSetPickup}
+                        pickupType={pickupType} />}
 
                     {activeTab === "orders" && <Orders searchText={searchTerm} onOrderClick={handleClickOrder} />}
                     {activeTab === "dining" && <DineIn />}

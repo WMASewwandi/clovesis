@@ -34,8 +34,23 @@ const ColumnFormDialog = ({
 
   const handleSubmit = async () => {
     const trimmed = name.trim();
+    
+    // Clear previous error
+    setError("");
+    
+    // Validation
     if (!trimmed) {
       setError("Column name is required");
+      return;
+    }
+    
+    if (trimmed.length < 2) {
+      setError("Column name must be at least 2 characters");
+      return;
+    }
+    
+    if (trimmed.length > 100) {
+      setError("Column name cannot exceed 100 characters");
       return;
     }
 
@@ -45,7 +60,7 @@ const ColumnFormDialog = ({
       setSubmitting(true);
       await onSubmit({ name: trimmed });
     } catch (err) {
-      setError(err?.message ?? "Something went wrong");
+      setError(err?.message ?? "Failed to save column. Please try again.");
       setSubmitting(false);
     }
   };

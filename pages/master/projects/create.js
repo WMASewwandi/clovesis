@@ -122,21 +122,33 @@ export default function CreateProjectModal({ open, onClose, fetchItems }) {
           (customer) => toNumericId(customer?.id) === toNumericId(values.customerId)
         ) || null;
       const customerName = getCustomerLabel(selectedCustomer);
+      
+      // Ensure status matches enum name exactly (Open, Closed, InProgress, Completed, Cancelled)
+      const statusValue = values.status || "Open";
+      
+      const payload = {
+        name: (values.name || "").trim(),
+        description: values.description?.trim() || null,
+        status: statusValue,
+        customerId: values.customerId || null,
+        customerName: customerName || null,
+        assignedToUserId: null,
+      };
+      
+      // Remove null/undefined values to avoid issues
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+      
       const response = await fetch(`${BASE_URL}/Project/CreateProject`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: values.name,
-          description: values.description || null,
-          status: values.status || "Open",
-          customerId: values.customerId || null,
-          assignedToCustomerId: values.customerId || null,
-          customerName: customerName || null,
-          assignedToUserId: null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -147,11 +159,13 @@ export default function CreateProjectModal({ open, onClose, fetchItems }) {
         onClose();
         fetchItems();
       } else {
-        toast.error(data.message || "Failed to create project");
+        const errorMessage = data.message || data.error || data.errorMessage || "Failed to create project";
+        console.error("API Error Response:", data);
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error creating project:", error);
-      toast.error("An error occurred while creating the project");
+      toast.error(error.message || "An error occurred while creating the project");
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +231,7 @@ export default function CreateProjectModal({ open, onClose, fetchItems }) {
                       onChange={(e) => setFieldValue("status", e.target.value)}
                     >
                       <MenuItem value="Open">Open</MenuItem>
-                      <MenuItem value="In Progress">In Progress</MenuItem>
+                      <MenuItem value="InProgress">In Progress</MenuItem>
                       <MenuItem value="Completed">Completed</MenuItem>
                       <MenuItem value="Closed">Closed</MenuItem>
                     </Field>

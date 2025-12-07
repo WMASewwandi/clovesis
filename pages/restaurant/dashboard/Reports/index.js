@@ -23,8 +23,15 @@ export default function Reports() {
                 </Typography>
             </Grid>
 
-            <Grid item xs={10} sx={{ mt: 1 }}>
-                hello
+            <Grid item xs={12} sx={{ mt: 2 }}>
+                <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                    <Typography variant="body1" color="text.secondary">
+                        Restaurant reports and analytics will be available here.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        View sales summaries, order statistics, and performance metrics.
+                    </Typography>
+                </Box>
             </Grid>
         </Grid>
     );

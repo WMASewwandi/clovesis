@@ -97,6 +97,9 @@ export default function AddSalesPerson({ fetchItems,isSupplierSalesRef,suppliers
               MobileNumber: "",
               SupplierId: null,
               Remark: "",
+              SalesTarget : null,
+              Range: null,
+              SalesPersonType: 1
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

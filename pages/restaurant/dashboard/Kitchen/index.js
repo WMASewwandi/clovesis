@@ -102,6 +102,7 @@ export default function Kitchen({ searchText }) {
     };
 
     const filteredOrders = orders
+        .filter(order => order.status !== 4)
         .filter(order => filter === "All" || order.kitchenType === filter)
         .filter(order => {
             if (!searchText) return true;

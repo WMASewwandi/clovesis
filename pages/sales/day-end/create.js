@@ -32,7 +32,11 @@ export default function CreateDayEnd({ fetchItems }) {
   const { data: isPOSShiftLinkToBackOffice } = IsAppSettingEnabled("IsPOSShiftLinkToBackOffice");
   const [open, setOpen] = React.useState(false);
   const [date, setDate] = useState(formatDate(today));
-  const handleClose = () => setOpen(false);
+  const [dateError, setDateError] = useState("");
+  const handleClose = () => {
+    setOpen(false);
+    setDateError("");
+  };
 
   const handleOpen = async () => {
     if (isPOSShiftLinkToBackOffice) {
@@ -126,13 +130,25 @@ export default function CreateDayEnd({ fetchItems }) {
                       value={date}
                       name="Date"
                       onChange={(e) => {
+                        const selectedDate = new Date(e.target.value);
+                        const todayDate = new Date();
+                        todayDate.setHours(0, 0, 0, 0);
+                        selectedDate.setHours(0, 0, 0, 0);
+                        
+                        // Allow today or earlier dates
+                        if (selectedDate > todayDate) {
+                          const yesterday = new Date(todayDate);
+                          yesterday.setDate(yesterday.getDate() - 1);
+                          setDateError(`Value must be ${formatDate(yesterday)} or earlier.`);
+                        } else {
+                          setDateError("");
+                        }
                         setDate(e.target.value);
                         setFieldValue("Date", e.target.value);
                       }}
                       type="date"
-                      inputProps={{
-                        max: new Date().toISOString().split("T")[0],
-                      }}
+                      error={!!dateError}
+                      helperText={dateError}
                     />
                   </Grid>
                   <Grid item xs={12} my={2}>

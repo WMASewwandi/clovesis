@@ -9,6 +9,7 @@ import ControlPanelModal from "./ControlPanelModal";
 import HidableButtons from "../Dashboard/eCommerce/HidableButtons";
 import AccessDenied from "../UIElements/Permission/AccessDenied";
 import { TopbarContext } from "./TopbarContext";
+import { CurrencyProvider } from "@/components/HR/CurrencyContext";
 import BASE_URL from "Base/api";
 
 const Layout = ({ children }) => {
@@ -170,7 +171,8 @@ const Layout = ({ children }) => {
   const isWrapperRequired = !noWrapperRoutes.includes(router.pathname);
 
   return (
-    <TopbarContext.Provider value={{ activeButton: activeTopbarButton, setActiveButton: setActiveTopbarButton }}>
+    <CurrencyProvider>
+      <TopbarContext.Provider value={{ activeButton: activeTopbarButton, setActiveButton: setActiveTopbarButton }}>
       <>
         <Head>
           <title>CBASS-AI</title>
@@ -232,7 +234,8 @@ const Layout = ({ children }) => {
         ) && <ControlPanelModal />}
         <HidableButtons />
       </>
-    </TopbarContext.Provider>
+      </TopbarContext.Provider>
+    </CurrencyProvider>
   );
 };
 

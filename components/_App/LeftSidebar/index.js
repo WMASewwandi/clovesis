@@ -46,19 +46,33 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
   }
 
   const fetchCompanyImage = async () => {
-    const response = await fetch(
-      `${BASE_URL}/Company/GetCompanyLogoByWarehouseId?warehouseId=${warehouse}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-          "Content-Type": "application/json",
-        },
+    try {
+      if (!warehouse) {
+        return;
       }
-    );
 
-    const data = await response.json();
-    setCompanyLogo(data.logoUrl);
+      const response = await fetch(
+        `${BASE_URL}/Company/GetCompanyLogoByWarehouseId?warehouseId=${warehouse}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch company logo");
+      }
+
+      const data = await response.json();
+      setCompanyLogo(data.logoUrl || "");
+    } catch (error) {
+      console.error("Error fetching company logo:", error);
+      // Keep default logo on error
+      setCompanyLogo("");
+    }
   };
 
   const fetchModulePermissions = async () => {

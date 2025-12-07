@@ -31,6 +31,7 @@ const TaskChecklistDialog = ({
   onRenameItem,
 }) => {
   const [newItemTitle, setNewItemTitle] = useState("");
+  const [itemError, setItemError] = useState("");
 
   const totalItems = task?.checklist?.length ?? 0;
   const completedItems =
@@ -39,9 +40,31 @@ const TaskChecklistDialog = ({
     totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
   const handleAddItem = async () => {
-    if (!newItemTitle.trim()) return;
-    await onAddItem?.(task.taskId, newItemTitle.trim());
-    setNewItemTitle("");
+    const trimmed = newItemTitle.trim();
+    setItemError("");
+    
+    if (!trimmed) {
+      setItemError("Checklist item title is required");
+      return;
+    }
+    
+    if (trimmed.length < 2) {
+      setItemError("Checklist item must be at least 2 characters");
+      return;
+    }
+    
+    if (trimmed.length > 500) {
+      setItemError("Checklist item cannot exceed 500 characters");
+      return;
+    }
+    
+    try {
+      await onAddItem?.(task.taskId, trimmed);
+      setNewItemTitle("");
+      setItemError("");
+    } catch (err) {
+      setItemError(err?.message ?? "Failed to add checklist item. Please try again.");
+    }
   };
 
   return (
@@ -91,6 +114,7 @@ const TaskChecklistDialog = ({
                       checked={item.isCompleted}
                       onChange={(event) =>
                         onToggleItem?.(item.checklistItemId, {
+                          checklistItemId: parseInt(item.checklistItemId),
                           title: item.title,
                           isCompleted: event.target.checked,
                         })
@@ -133,10 +157,15 @@ const TaskChecklistDialog = ({
           >
             <TextField
               value={newItemTitle}
-              onChange={(event) => setNewItemTitle(event.target.value)}
+              onChange={(event) => {
+                setNewItemTitle(event.target.value);
+                if (itemError) setItemError("");
+              }}
               placeholder="Add checklist item"
               fullWidth
               size="small"
+              error={Boolean(itemError)}
+              helperText={itemError}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();

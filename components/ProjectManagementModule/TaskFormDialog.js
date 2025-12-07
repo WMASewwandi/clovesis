@@ -17,8 +17,37 @@ import dayjs from "dayjs";
 import * as Yup from "yup";
 
 const validationSchema = Yup.object().shape({
-  boardColumnId: Yup.number().required("Select a column"),
-  title: Yup.string().required("Task title is required"),
+  projectId: Yup.number()
+    .required("Project is required")
+    .positive("Invalid project selection"),
+  boardColumnId: Yup.number()
+    .required("Please select a column")
+    .positive("Invalid column selection"),
+  title: Yup.string()
+    .required("Task title is required")
+    .min(2, "Task title must be at least 2 characters")
+    .max(256, "Task title cannot exceed 256 characters")
+    .trim(),
+  description: Yup.string()
+    .nullable()
+    .max(2048, "Description cannot exceed 2048 characters"),
+  startDate: Yup.date()
+    .nullable()
+    .typeError("Please select a valid start date")
+    .test("before-due", "Start date must be before or equal to due date", function(value) {
+      const { dueDate } = this.parent;
+      if (!value || !dueDate) return true;
+      return dayjs(value).isBefore(dayjs(dueDate)) || dayjs(value).isSame(dayjs(dueDate), "day");
+    }),
+  dueDate: Yup.date()
+    .nullable()
+    .typeError("Please select a valid due date")
+    .test("after-start", "Due date must be after or equal to start date", function(value) {
+      const { startDate } = this.parent;
+      if (!value || !startDate) return true;
+      return dayjs(value).isAfter(dayjs(startDate)) || dayjs(value).isSame(dayjs(startDate), "day");
+    }),
+  assignedMemberIds: Yup.array().of(Yup.number()).nullable(),
 });
 
 const TaskFormDialog = ({
@@ -162,6 +191,8 @@ const TaskFormDialog = ({
                       minRows={3}
                       value={values.description}
                       onChange={handleChange}
+                      error={touched.description && Boolean(errors.description)}
+                      helperText={touched.description && errors.description}
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -190,8 +221,14 @@ const TaskFormDialog = ({
                       label="Start Date"
                       value={values.startDate}
                       onChange={(date) => setFieldValue("startDate", date)}
-                      // FIX: Reverted to renderInput for MUI v5 compatibility
-                      renderInput={(params) => <TextField {...params} fullWidth />}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          error={touched.startDate && Boolean(errors.startDate)}
+                          helperText={touched.startDate && errors.startDate}
+                        />
+                      )}
                     />
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -199,8 +236,14 @@ const TaskFormDialog = ({
                       label="Due Date"
                       value={values.dueDate}
                       onChange={(date) => setFieldValue("dueDate", date)}
-                      // FIX: Reverted to renderInput for MUI v5 compatibility
-                      renderInput={(params) => <TextField {...params} fullWidth />}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          fullWidth
+                          error={touched.dueDate && Boolean(errors.dueDate)}
+                          helperText={touched.dueDate && errors.dueDate}
+                        />
+                      )}
                     />
                   </Grid>
                 </Grid>

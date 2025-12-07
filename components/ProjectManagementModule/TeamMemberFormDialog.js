@@ -12,11 +12,25 @@ import {
 import * as Yup from "yup";
 
 const validationSchema = Yup.object().shape({
-  name: Yup.string().required("Member name is required"),
-  email: Yup.string().nullable().email("Enter a valid email"),
+  name: Yup.string()
+    .required("Member name is required")
+    .min(2, "Member name must be at least 2 characters")
+    .max(200, "Member name cannot exceed 200 characters")
+    .trim(),
+  position: Yup.string()
+    .nullable()
+    .max(100, "Position cannot exceed 100 characters"),
+  email: Yup.string()
+    .nullable()
+    .email("Please enter a valid email address (e.g., example@domain.com)")
+    .max(200, "Email address cannot exceed 200 characters"),
   mobileNumber: Yup.string()
     .nullable()
-    .matches(/^[0-9+\-\s()]*$/, "Enter a valid phone number"),
+    .matches(/^[0-9+\-\s()]*$/, "Please enter a valid phone number (digits, +, -, spaces, and parentheses only)")
+    .max(20, "Mobile number cannot exceed 20 characters"),
+  employeeId: Yup.string()
+    .nullable()
+    .max(50, "Employee ID cannot exceed 50 characters"),
 });
 
 const TeamMemberFormDialog = ({
@@ -83,6 +97,8 @@ const TeamMemberFormDialog = ({
                     fullWidth
                     value={values.position}
                     onChange={handleChange}
+                    error={touched.position && Boolean(errors.position)}
+                    helperText={touched.position && errors.position}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -114,6 +130,8 @@ const TeamMemberFormDialog = ({
                     fullWidth
                     value={values.employeeId}
                     onChange={handleChange}
+                    error={touched.employeeId && Boolean(errors.employeeId)}
+                    helperText={touched.employeeId && errors.employeeId}
                   />
                 </Grid>
               </Grid>

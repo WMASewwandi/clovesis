@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   Alert,
   Autocomplete,
@@ -24,6 +25,7 @@ import {
   getTimeline,
   updateTimelineEntry,
 } from "@/Services/projectManagementService";
+import dayjs from "dayjs";
 
 const TimelinePage = () => {
   const [projects, setProjects] = useState([]);
@@ -163,9 +165,27 @@ const TimelinePage = () => {
               Phase Ledger
             </Typography>
             <Stack spacing={2}>
-              {timeline.map((entry) => (
+              {timeline.map((entry) => {
+                // Normalize entry to handle both camelCase and PascalCase
+                const members = entry.members || entry.Members || [];
+                const memberNames = members.length > 0
+                  ? members.map((m) => m.name || m.Name || "").filter(Boolean).join(", ")
+                  : entry.assignedToName || entry.AssignedToName || "Unassigned";
+                
+                const normalizedEntry = {
+                  timelineEntryId: entry.timelineEntryId || entry.TimelineEntryId,
+                  phaseName: entry.phaseName || entry.PhaseName || "",
+                  phaseType: entry.phaseType || entry.PhaseType || "",
+                  startDate: entry.startDate || entry.StartDate,
+                  endDate: entry.endDate || entry.EndDate,
+                  assignedToMemberId: entry.assignedToMemberId || entry.AssignedToMemberId || null,
+                  assignedToName: memberNames,
+                  members: members,
+                  notes: entry.notes || entry.Notes || "",
+                };
+                return (
                 <Box
-                  key={entry.timelineEntryId}
+                  key={normalizedEntry.timelineEntryId}
                   sx={{
                     p: 2,
                     borderRadius: 2,
@@ -179,25 +199,25 @@ const TimelinePage = () => {
                 >
                   <Box>
                     <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                      {entry.phaseName}
+                      {normalizedEntry.phaseName}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      {new Date(entry.startDate).toLocaleDateString()} →{" "}
-                      {new Date(entry.endDate).toLocaleDateString()}
+                      {normalizedEntry.startDate ? new Date(normalizedEntry.startDate).toLocaleDateString() : "N/A"} →{" "}
+                      {normalizedEntry.endDate ? new Date(normalizedEntry.endDate).toLocaleDateString() : "N/A"}
                     </Typography>
                     <Typography variant="body2">
-                      {entry.assignedToName ?? "Unassigned"}
+                      {normalizedEntry.assignedToName ?? "Unassigned"}
                     </Typography>
-                    {entry.notes ? (
+                    {normalizedEntry.notes ? (
                       <Typography variant="body2" color="text.secondary">
-                        {entry.notes}
+                        {normalizedEntry.notes}
                       </Typography>
                     ) : null}
                   </Box>
                   <Stack direction="row" spacing={1}>
                     <IconButton
                       onClick={() => {
-                        setEditEntry(entry);
+                        setEditEntry(normalizedEntry);
                         setDialogOpen(true);
                       }}
                     >
@@ -205,13 +225,14 @@ const TimelinePage = () => {
                     </IconButton>
                     <IconButton
                       color="error"
-                      onClick={() => handleDeleteEntry(entry.timelineEntryId)}
+                      onClick={() => handleDeleteEntry(normalizedEntry.timelineEntryId)}
                     >
                       <DeleteIcon />
                     </IconButton>
                   </Stack>
                 </Box>
-              ))}
+              );
+              })}
               {!timeline.length ? (
                 <Box
                   sx={{
@@ -253,10 +274,17 @@ const TimelinePage = () => {
         initialValues={
           editEntry
             ? {
-                ...editEntry,
-                startDate: editEntry.startDate,
-                endDate: editEntry.endDate,
-                assignedToMemberId: editEntry.assignedToMemberId ?? "",
+                phaseName: editEntry.phaseName || "",
+                phaseType: editEntry.phaseType || "Planning",
+                startDate: editEntry.startDate ? dayjs(editEntry.startDate) : dayjs(),
+                endDate: editEntry.endDate ? dayjs(editEntry.endDate) : dayjs().add(3, "day"),
+                assignedToMemberId: editEntry.assignedToMemberId || null,
+                memberIds: editEntry.members && editEntry.members.length > 0
+                  ? editEntry.members.map((m) => m.memberId)
+                  : editEntry.assignedToMemberId
+                  ? [editEntry.assignedToMemberId]
+                  : [],
+                notes: editEntry.notes || "",
               }
             : undefined
         }
@@ -267,5 +295,8 @@ const TimelinePage = () => {
   );
 };
 
-export default TimelinePage;
+// Disable SSR for this page to prevent fetch errors during build
+export default dynamic(() => Promise.resolve(TimelinePage), {
+  ssr: false,
+});
 

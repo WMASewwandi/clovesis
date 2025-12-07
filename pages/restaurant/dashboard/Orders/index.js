@@ -1,14 +1,38 @@
-import { Grid, Switch, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import { Grid, Switch, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Modal, Button } from "@mui/material";
 import React, { useState, useEffect } from "react";
 import usePaginatedFetch from "../usePaginatedFetch";
 import PaginationUI from "../pagination";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import Swal from "sweetalert2";
 import BASE_URL from "Base/api";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 
 export default function Orders({ searchText, onOrderClick }) {
     const [isPickup, setIsPickup] = useState(false);
     const [orderType, setOrderType] = useState(2);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportUrl, setReportUrl] = useState("");
+
+    const { data: reportName } = GetReportSettingValueByName("RestaurantGuestCheck");
+    const { data: kotBotReportName } = GetReportSettingValueByName("RestaurantKOT");
+
+    const modalStyle = {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '90%',
+        maxWidth: '900px',
+        maxHeight: '90vh',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 2,
+        p: 2,
+        display: 'flex',
+        flexDirection: 'column',
+    };
 
     const {
         data: orderList,
@@ -45,16 +69,102 @@ export default function Orders({ searchText, onOrderClick }) {
         fetchOrderList(1, searchText, size);
     };
 
+    const openPdfModal = (documentNumber, reportNameToUse) => {
+        if (!documentNumber || !reportNameToUse) {
+            Swal.fire("Error", "Unable to print. Missing information.", "error");
+            return;
+        }
+
+        const warehouseId = localStorage.getItem("warehouse");
+        const currentUser = localStorage.getItem("name");
+        
+        if (!warehouseId) {
+            Swal.fire("Error", "Warehouse information not found.", "error");
+            return;
+        }
+
+        const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${reportNameToUse}&warehouseId=${warehouseId}&currentUser=${currentUser || ""}`;
+        const fullUrl = `${Report}${reportLink}`;
+        
+        setReportUrl(fullUrl);
+        setReportModalOpen(true);
+    };
+
+    const printGuestCheck = (documentNumber) => {
+        openPdfModal(documentNumber, reportName);
+    };
+
+    const printKotBot = (documentNumber) => {
+        openPdfModal(documentNumber, kotBotReportName);
+    };
+
+    const handleCloseReportModal = () => {
+        setReportModalOpen(false);
+        setReportUrl("");
+    };
+
     const handleRowClick = (item) => {
+        const orderInfo = {
+            orderId: item.orderId,
+            orderNo: item.orderNo,
+            orderType: item.orderType,
+            orderTypeName: item.orderTypeName,
+            status: item.status,
+            orderStatus: item.orderStatus,
+            totalAmount: item.totalAmount,
+            serviceCharge: item.serviceCharge,
+            lineAmount: item.lineAmount || (item.totalAmount - (item.serviceCharge || 0)),
+            stewardDetails: item.stewardDetails,
+            tableDetails: item.tableDetails,
+            pickUpType: item.pickUpType || item.pickupType,
+            pickupTypeName: item.pickupTypeName,
+            orderItems: item.orderItems || [],
+            isOffer: item.isOffer || false,
+            subTotal: item.subTotal,
+            sellingPrice: item.sellingPrice,
+            createdOn: item.createdOn,
+            shiftId: item.shiftId
+        };
+
         if (item.status != 4) {
             Swal.fire({
                 title: "Choose Action",
-                text: "What do you want to do with this order?",
+                html: `
+                    <p style="margin-bottom: 20px;">What do you want to do with this order?</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="btnPrintKOT" class="swal2-confirm swal2-styled" style="background: #3085d6;">Print KOT/BOT</button>
+                        <button id="btnPrintGuest" class="swal2-deny swal2-styled" style="background: #fe6564;">Print Guest Check</button>
+                    </div>
+                `,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonText: "Pay Order",
                 denyButtonText: "Update Order",
                 showDenyButton: true,
+                showCloseButton: true,
+                didOpen: () => {
+                    const popup = Swal.getPopup();
+                    const btnPrintKOT = popup.querySelector("#btnPrintKOT");
+                    const btnPrintGuest = popup.querySelector("#btnPrintGuest");
+                    
+                    if (btnPrintKOT) {
+                        btnPrintKOT.addEventListener("click", () => {
+                            Swal.close();
+                            setTimeout(() => {
+                                printKotBot(orderInfo.orderNo);
+                            }, 300);
+                        });
+                    }
+                    
+                    if (btnPrintGuest) {
+                        btnPrintGuest.addEventListener("click", () => {
+                            Swal.close();
+                            setTimeout(() => {
+                                printGuestCheck(orderInfo.orderNo);
+                            }, 300);
+                        });
+                    }
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
                     Swal.fire({
@@ -109,23 +219,50 @@ export default function Orders({ searchText, onOrderClick }) {
 
                 } else if (result.isDenied) {
                     if (onOrderClick) {
-                        onOrderClick(item);
+                        onOrderClick(orderInfo);
                     }
                 }
             });
         } else {
             Swal.fire({
                 title: 'Print Bill?',
-                text: 'Do you want to print the bill?',
+                html: `
+                    <p style="margin-bottom: 20px;">Do you want to print the bill?</p>
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button id="btnPrintKOT" class="swal2-confirm swal2-styled" style="background: #3085d6;">Print KOT/BOT</button>
+                        <button id="btnPrintGuest" class="swal2-deny swal2-styled" style="background: #fe6564;">Print Guest Check</button>
+                    </div>
+                `,
                 icon: 'info',
                 showCancelButton: true,
-                confirmButtonText: 'Print Bill',
+                confirmButtonText: 'Close',
                 cancelButtonText: 'Close',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // printBill();
+                reverseButtons: true,
+                didOpen: () => {
+                    const popup = Swal.getPopup();
+                    const btnPrintKOT = popup.querySelector("#btnPrintKOT");
+                    const btnPrintGuest = popup.querySelector("#btnPrintGuest");
+                    
+                    if (btnPrintKOT) {
+                        btnPrintKOT.addEventListener("click", () => {
+                            Swal.close();
+                            setTimeout(() => {
+                                printKotBot(orderInfo.orderNo);
+                            }, 300);
+                        });
+                    }
+                    
+                    if (btnPrintGuest) {
+                        btnPrintGuest.addEventListener("click", () => {
+                            Swal.close();
+                            setTimeout(() => {
+                                printGuestCheck(orderInfo.orderNo);
+                            }, 300);
+                        });
+                    }
                 }
+            }).then((result) => {
+                // Modal closed
             });
         }
     };
@@ -186,7 +323,7 @@ export default function Orders({ searchText, onOrderClick }) {
                     component={Paper}
                     sx={{ flex: 1, overflowY: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    <Table size="small" stickyHeader>
+                    <Table stickyHeader>
                         <TableHead>
                             <TableRow>
                                 <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Bill No</TableCell>
@@ -240,6 +377,45 @@ export default function Orders({ searchText, onOrderClick }) {
                     <PaginationUI totalCount={totalCount} pageSize={pageSize} page={page} onPageChange={handlePageChange} onPageSizeChange={handlePageSizeChange} />
                 </Box>
             </Grid>
+
+            <Modal
+                open={reportModalOpen}
+                onClose={handleCloseReportModal}
+                aria-labelledby="report-modal-title"
+                aria-describedby="report-modal-description"
+            >
+                <Box sx={modalStyle}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography id="report-modal-title" variant="h6" component="h2">
+                            Report
+                        </Typography>
+                        <Button onClick={handleCloseReportModal} variant="outlined" size="small">
+                            Close
+                        </Button>
+                    </Box>
+                    <Box
+                        id="report-modal-description"
+                        sx={{
+                            flex: 1,
+                            overflow: 'hidden',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 1,
+                            bgcolor: '#fff'
+                        }}
+                    >
+                        <iframe
+                            src={reportUrl}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                minHeight: '600px',
+                                border: 'none'
+                            }}
+                            title="Report Viewer"
+                        />
+                    </Box>
+                </Box>
+            </Modal>
         </Grid>
     );
 }

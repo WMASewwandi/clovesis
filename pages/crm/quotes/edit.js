@@ -24,7 +24,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import useAccounts from "../../../hooks/useAccounts";
 import useContactsByAccount from "../../../hooks/useContactsByAccount";
-import useOpportunities from "../../../hooks/useOpportunities";
+import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
@@ -99,7 +99,7 @@ export default function EditQuote() {
   const { accounts } = useAccounts();
   const [accountId, setAccountId] = React.useState("");
   const [contactId, setContactId] = React.useState("");
-  const [opportunityId, setOpportunityId] = React.useState("");
+  const [leadId, setLeadId] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [validUntil, setValidUntil] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -109,7 +109,7 @@ export default function EditQuote() {
   const [loadingQuote, setLoadingQuote] = React.useState(false);
   const [fetchError, setFetchError] = React.useState(null);
   const { contacts } = useContactsByAccount(accountId);
-  const { opportunities, isLoading: opportunitiesLoading } = useOpportunities();
+  const { leads, isLoading: leadsLoading } = useLeads();
   const { statuses: quoteStatuses, isLoading: statusesLoading } = useQuoteStatuses();
 
   const quoteId = React.useMemo(() => {
@@ -157,8 +157,8 @@ export default function EditQuote() {
           quote.contact?.name ||
           [quote.contact?.firstName, quote.contact?.lastName].filter(Boolean).join(" ") ||
           "",
-        opportunityId: quote.opportunityId,
-        opportunityName: quote.opportunityName || quote.opportunity?.opportunityName || "",
+        leadId: quote.leadId || quote.opportunityId,
+        leadName: quote.leadName || quote.lead?.leadName || quote.opportunityName || quote.opportunity?.opportunityName || "",
         validUntil: quote.validUntil || quote.validUntilOn || quote.validUntilDate || null,
         status: quote.status ?? quote.statusId ?? "",
         statusName: quote.statusName || "",
@@ -169,8 +169,8 @@ export default function EditQuote() {
       setQuoteDetails(normalizedQuote);
       setAccountId(normalizedQuote.accountId != null ? String(normalizedQuote.accountId) : "");
       setContactId(normalizedQuote.contactId != null ? String(normalizedQuote.contactId) : "");
-      setOpportunityId(
-        normalizedQuote.opportunityId != null ? String(normalizedQuote.opportunityId) : ""
+      setLeadId(
+        normalizedQuote.leadId != null ? String(normalizedQuote.leadId) : ""
       );
       setValidUntil(toDateInputValue(normalizedQuote.validUntil));
       setDescription(normalizedQuote.description || "");
@@ -257,16 +257,28 @@ export default function EditQuote() {
     );
   }, [lineItems]);
 
-  const handleOpportunityChange = (event) => {
+  const handleLeadChange = (event) => {
     const value = event.target.value;
-    setOpportunityId(value);
+    setLeadId(value);
 
-    const selectedOpportunity = opportunities.find((opportunity) => String(opportunity.id) === String(value));
+    const selectedLead = leads.find((lead) => String(lead.id) === String(value));
 
-    if (selectedOpportunity?.meta) {
-      const { accountId: opportunityAccountId, contactId: opportunityContactId } = selectedOpportunity.meta;
-      setAccountId(opportunityAccountId != null ? String(opportunityAccountId) : "");
-      setContactId(opportunityContactId != null ? String(opportunityContactId) : "");
+    if (selectedLead?.meta) {
+      const leadData = selectedLead.meta;
+      const leadAccountId = leadData.accountId ?? leadData.AccountId ?? null;
+      const leadContactId = leadData.contactId ?? leadData.ContactId ?? null;
+      
+      if (leadAccountId != null) {
+        setAccountId(String(leadAccountId));
+      } else {
+        setAccountId("");
+      }
+      
+      if (leadContactId != null) {
+        setContactId(String(leadContactId));
+      } else {
+        setContactId("");
+      }
     } else {
       setAccountId("");
       setContactId("");
@@ -305,8 +317,8 @@ export default function EditQuote() {
       return false;
     }
 
-    if (!opportunityId) {
-      toast.error("Please select an opportunity to continue.");
+    if (!leadId) {
+      toast.error("Please select a lead to continue.");
       return false;
     }
 
@@ -391,7 +403,7 @@ export default function EditQuote() {
       Id: Number(quoteId),
       AccountId: Number(accountId),
       ContactId: Number(contactId),
-      OpportunityId: opportunityId ? Number(opportunityId) : 0,
+      LeadId: leadId ? Number(leadId) : 0,
       ValidUntil: validUntil ? new Date(validUntil).toISOString() : null,
       Description: description.trim() || null,
       Status: Number(status),
@@ -460,16 +472,16 @@ export default function EditQuote() {
 
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Opportunity</InputLabel>
+                <InputLabel>Lead</InputLabel>
                 <Select
-                  value={opportunityId}
-                  label="Opportunity"
-                  onChange={handleOpportunityChange}
-                  disabled={opportunitiesLoading}
+                  value={leadId}
+                  label="Lead"
+                  onChange={handleLeadChange}
+                  disabled={leadsLoading}
                 >
-                  {opportunities.map((opportunity) => (
-                    <MenuItem key={opportunity.id} value={String(opportunity.id)}>
-                      {opportunity.name}
+                  {leads.map((lead) => (
+                    <MenuItem key={lead.id} value={String(lead.id)}>
+                      {lead.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -479,7 +491,12 @@ export default function EditQuote() {
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
                 <InputLabel>Account</InputLabel>
-                <Select value={accountId} label="Account" onChange={() => {}} disabled>
+                <Select 
+                  value={accountId} 
+                  label="Account" 
+                  onChange={() => {}}
+                  disabled
+                >
                   {accountOptions.map((account) => (
                     <MenuItem key={account.value} value={account.value}>
                       {account.label}
@@ -492,7 +509,12 @@ export default function EditQuote() {
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
                 <InputLabel>Contact</InputLabel>
-                <Select value={contactId} label="Contact" onChange={() => {}} disabled>
+                <Select 
+                  value={contactId} 
+                  label="Contact" 
+                  onChange={() => {}}
+                  disabled
+                >
                   {contactOptions.map((contact) => (
                     <MenuItem key={contact.value} value={contact.value}>
                       {contact.label}

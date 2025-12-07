@@ -109,6 +109,17 @@ const reportConfigs = {
       category: { enabled: true, required: false, label: "Select Category", paramName: "category", allowAll: true },
       subCategory: { enabled: true, required: false, label: "Select Sub Category", paramName: "subCategory", allowAll: true },
       item: { enabled: true, required: false, label: "Select Item", paramName: "item", allowAll: true },
+      status: {
+        enabled: true,
+        required: false,
+        label: "Select Status",
+        paramName: "status",
+        allowAll: true,
+        options: [
+          { value: 1, label: "Pending" },
+          { value: 2, label: "GRN Completed" },
+        ],
+      },
     },
   },
   CashFlowSummaryReport: {
@@ -207,6 +218,7 @@ const reportConfigs = {
     title: "Shift Summary Report",
     fields: {
       user: { enabled: true, required: false, label: "Select User", paramName: "userId", allowAll: true },
+      terminal: { enabled: true, required: false, label: "Select Terminal", paramName: "terminalId", allowAll: true },
     },
   },
 };
@@ -247,6 +259,8 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
   const [cashFlowTypes, setCashFlowTypes] = useState([]);
   const [cashFlowTypeId, setCashFlowTypeId] = useState(config.fields.cashFlowType?.defaultValue || 0);
   const [cashType, setCashType] = useState(config.fields.cashType?.defaultValue || 0);
+  const [terminals, setTerminals] = useState([]);
+  const [terminalId, setTerminalId] = useState(config.fields.terminal?.defaultValue || 0);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -269,6 +283,7 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     setUserId(config.fields.user?.defaultValue || 0);
     setCashFlowTypeId(config.fields.cashFlowType?.defaultValue || 0);
     setCashType(config.fields.cashType?.defaultValue || 0);
+    setTerminalId(config.fields.terminal?.defaultValue || 0);
   };
 
   const { data: customerList } = useApi("/Customer/GetAllCustomer");
@@ -280,6 +295,7 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
   const { data: fiscalPeriodList } = useApi("/Fiscal/GetAllFiscalPeriods");
   const { data: userList } = useApi("/User/GetAllUser");
   const { data: cashFlowTypeList } = useApi("/CashFlowType/GetCashFlowTypes");
+  const { data: terminalList } = useApi("/Terminal/GetAllShiftNotEnabledTerminals");
 
   useEffect(() => {
     if (customerList && config.fields.customer?.enabled) {
@@ -313,7 +329,10 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     if (cashFlowTypeList && config.fields.cashFlowType?.enabled) {
       setCashFlowTypes(Array.isArray(cashFlowTypeList) ? cashFlowTypeList : cashFlowTypeList?.result || []);
     }
-  }, [customerList, itemList, supplierList, categoryList, doctorList, bankList, fiscalPeriodList, userList, cashFlowTypeList, config]);
+    if (terminalList && config.fields.terminal?.enabled) {
+      setTerminals(terminalList);
+    }
+  }, [terminalList, customerList, itemList, supplierList, categoryList, doctorList, bankList, fiscalPeriodList, userList, cashFlowTypeList, config]);
 
   const handleGetSupplierItems = async (id) => {
     setItemId(0);
@@ -451,6 +470,9 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     if (config.fields.cashType?.enabled) {
       params.append(config.fields.cashType.paramName || "cashType", cashType);
     }
+    if (config.fields.terminal?.enabled) {
+      params.append(config.fields.terminal.paramName || "terminalId", terminalId);
+    }
 
     return params.toString();
   };
@@ -473,6 +495,7 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     if (config.fields.user?.enabled && config.fields.user.required && !userId) return false;
     if (config.fields.cashFlowType?.enabled && config.fields.cashFlowType.required && !cashFlowTypeId) return false;
     if (config.fields.cashType?.enabled && config.fields.cashType.required && !cashType) return false;
+    if (config.fields.terminal?.enabled && config.fields.terminal.required && !terminalId) return false;
     return true;
   };
 
@@ -892,6 +915,32 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
                   {option.label}
                 </MenuItem>
               ))}
+            </Select>
+          </Grid>
+        );
+
+      case "terminal":
+        return (
+          <Grid item {...gridSize} key={fieldName}>
+            <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
+              {fieldConfig.label || "Select Terminal"}
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={terminalId}
+              onChange={(e) => setTerminalId(e.target.value)}
+            >
+              {fieldConfig.allowAll !== false && <MenuItem value={0}>All</MenuItem>}
+              {terminals.length === 0 ? (
+                <MenuItem value="">No Terminals Available</MenuItem>
+              ) : (
+                terminals.map((terminal) => (
+                  <MenuItem key={terminal.id} value={terminal.id}>
+                    {terminal.name} ({terminal.code})
+                  </MenuItem>
+                ))
+              )}
             </Select>
           </Grid>
         );

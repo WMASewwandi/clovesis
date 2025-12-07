@@ -13,6 +13,9 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import EditIcon from "@mui/icons-material/Edit";
+import IconButton from "@mui/material/IconButton";
+import Tooltip from "@mui/material/Tooltip";
 import PageHeader from "@/components/ProjectManagementModule/PageHeader";
 import ProjectFormDialog from "@/components/ProjectManagementModule/ProjectFormDialog";
 import ProjectDetailDialog from "@/components/ProjectManagementModule/ProjectDetailDialog";
@@ -47,6 +50,7 @@ const Projects = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const [filters, setFilters] = useState({
     status: "",
     search: "",
@@ -97,6 +101,33 @@ const Projects = () => {
     await createProject(values);
     setProjectDialogOpen(false);
     await loadProjects();
+  };
+
+  const handleEditProject = async (e, project) => {
+    e.stopPropagation(); // Prevent card click
+    try {
+      const details = await getProjectDetails(project.projectId);
+      setEditingProject(details);
+      setProjectDialogOpen(true);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleUpdateProject = async (values) => {
+    if (!editingProject) return;
+    await updateProject(editingProject.projectId, values);
+    setProjectDialogOpen(false);
+    setEditingProject(null);
+    await loadProjects();
+  };
+
+  const handleProjectFormSubmit = async (values) => {
+    if (editingProject) {
+      await handleUpdateProject(values);
+    } else {
+      await handleCreateProject(values);
+    }
   };
 
   const handleProjectClick = async (projectId) => {
@@ -259,7 +290,23 @@ const Projects = () => {
                       <Typography variant="h6" sx={{ fontWeight: 600 }}>
                         {project.name}
                       </Typography>
-                      <StatusPill label={project.statusName} />
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Tooltip title="Edit Project">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => handleEditProject(e, project)}
+                            sx={{
+                              color: "primary.main",
+                              "&:hover": {
+                                bgcolor: "action.hover",
+                              },
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <StatusPill label={project.statusName} />
+                      </Stack>
                     </Stack>
                     <Typography variant="body2" color="text.secondary">
                       {project.clientName}
@@ -311,8 +358,27 @@ const Projects = () => {
 
       <ProjectFormDialog
         open={projectDialogOpen}
-        onClose={() => setProjectDialogOpen(false)}
-        onSubmit={handleCreateProject}
+        onClose={() => {
+          setProjectDialogOpen(false);
+          setEditingProject(null);
+        }}
+        onSubmit={handleProjectFormSubmit}
+        initialValues={editingProject ? {
+          name: editingProject.name || "",
+          clientName: editingProject.clientName || "",
+          clientPhoneNumber: editingProject.clientPhoneNumber || "",
+          clientEmail: editingProject.clientEmail || "",
+          advancedAmount: editingProject.advancedAmount || null,
+          budgetAmount: editingProject.budgetAmount || null,
+          startDate: editingProject.startDate ? dayjs(editingProject.startDate) : dayjs(),
+          endDate: editingProject.endDate ? dayjs(editingProject.endDate) : dayjs().add(7, "day"),
+          primaryOwnerId: editingProject.primaryOwnerId || null,
+          description: editingProject.description || "",
+          notes: editingProject.notes || "",
+          memberIds: editingProject.Members?.map(m => m.teamMemberId) || [],
+          customerId: editingProject.customerId || null,
+        } : undefined}
+        title={editingProject ? "Edit Project" : "New Project"}
         teamMembers={teamMembers}
         customersData={customersData}
         customersLoading={customersLoading}

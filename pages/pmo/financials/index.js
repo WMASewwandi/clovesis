@@ -18,17 +18,46 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/DeleteOutline";
+import EditIcon from "@mui/icons-material/Edit";
 import PageHeader from "@/components/ProjectManagementModule/PageHeader";
 import MetricCard from "@/components/ProjectManagementModule/MetricCard";
 import FinancialRecordFormDialog from "@/components/ProjectManagementModule/FinancialRecordFormDialog";
 import {
   createFinancialRecord,
   deleteFinancialRecord,
+  updateFinancialRecord,
   getFinancialRecords,
   getFinancialSummary,
   getProjects,
   getTeamMembers,
 } from "@/Services/projectManagementService";
+
+// Category mapping for fallback display
+const categoryMap = {
+  1: "General",
+  2: "Salary",
+  3: "Server Cost",
+  4: "Database Cost",
+  5: "Infrastructure",
+  6: "Operational Expense",
+  7: "Travel",
+  8: "Marketing",
+  9: "Other",
+  10: "Project Billing",
+  11: "Change Request",
+  12: "Maintenance",
+  13: "Consulting",
+  14: "Product Sales",
+  15: "Other Income",
+};
+
+const getCategoryName = (record) => {
+  if (record.categoryName) {
+    return record.categoryName;
+  }
+  // Fallback to mapping if categoryName is not available
+  return categoryMap[record.category] || record.category?.toString() || "Unknown";
+};
 
 const FinancialsPage = () => {
   const [projects, setProjects] = useState([]);
@@ -38,6 +67,7 @@ const FinancialsPage = () => {
   const [records, setRecords] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recordDefaults, setRecordDefaults] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [error, setError] = useState(null);
 
   const loadProjects = useCallback(async () => {
@@ -98,7 +128,31 @@ const FinancialsPage = () => {
     });
     setDialogOpen(false);
     setRecordDefaults(null);
+    setEditingRecord(null);
     await loadFinancials(selectedProject.projectId);
+  };
+
+  const handleUpdateRecord = async (values) => {
+    if (!editingRecord) return;
+    await updateFinancialRecord(editingRecord.financialRecordId, values);
+    setDialogOpen(false);
+    setRecordDefaults(null);
+    setEditingRecord(null);
+    await loadFinancials(selectedProject.projectId);
+  };
+
+  const handleEditRecord = (record) => {
+    setEditingRecord(record);
+    setRecordDefaults({
+      recordType: record.recordType,
+      category: record.category,
+      amount: record.amount,
+      recordDate: new Date(record.recordDate).toISOString(),
+      relatedMemberId: record.relatedMemberId || null,
+      reference: record.reference || "",
+      notes: record.notes || "",
+    });
+    setDialogOpen(true);
   };
 
   const handleDeleteRecord = async (recordId) => {
@@ -122,7 +176,7 @@ const FinancialsPage = () => {
       category: 1,
       amount: 0,
       recordDate: new Date().toISOString(),
-      relatedMemberId: "",
+      relatedMemberId: null,
       reference: "",
       notes: "",
     });
@@ -281,7 +335,7 @@ const FinancialsPage = () => {
                         {record.recordType === 1 ? "Income" : "Expense"}
                       </Box>
                     </TableCell>
-                    <TableCell>{record.categoryName}</TableCell>
+                    <TableCell>{getCategoryName(record)}</TableCell>
                     <TableCell>{record.amount.toLocaleString()}</TableCell>
                     <TableCell>
                       {new Date(record.recordDate).toLocaleDateString()}
@@ -290,10 +344,19 @@ const FinancialsPage = () => {
                     <TableCell>{record.relatedMemberName ?? "—"}</TableCell>
                     <TableCell align="right">
                       <IconButton
+                        color="primary"
+                        onClick={() => handleEditRecord(record)}
+                        size="small"
+                        sx={{ mr: 0.5 }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
                         color="error"
                         onClick={() => handleDeleteRecord(record.financialRecordId)}
+                        size="small"
                       >
-                        <DeleteIcon />
+                        <DeleteIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
                   </TableRow>
@@ -347,12 +410,17 @@ const FinancialsPage = () => {
         onClose={() => {
           setDialogOpen(false);
           setRecordDefaults(null);
+          setEditingRecord(null);
         }}
-        onSubmit={handleCreateRecord}
+        onSubmit={editingRecord ? handleUpdateRecord : handleCreateRecord}
         teamMembers={teamMembers}
         initialValues={recordDefaults ?? undefined}
         title={
-          recordDefaults?.recordType === 1
+          editingRecord
+            ? editingRecord.recordType === 1
+              ? "Edit Income"
+              : "Edit Expense"
+            : recordDefaults?.recordType === 1
             ? "Add Income"
             : recordDefaults?.recordType === 2
             ? "Add Expense"

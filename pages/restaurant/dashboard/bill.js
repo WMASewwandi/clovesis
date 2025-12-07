@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Grid, Typography, Box, Button, IconButton, Tooltip } from "@mui/material";
+import { Grid, Typography, Box, Button, IconButton, Tooltip, Modal } from "@mui/material";
 import { formatCurrency } from "@/components/utils/formatHelper";
 import BASE_URL from "Base/api";
 import Swal from "sweetalert2";
 import ReplayIcon from '@mui/icons-material/Replay';
 import getSettingValueByName from "@/components/utils/getSettingValueByName";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 
 export default function Bill({
     billItems,
@@ -20,11 +23,41 @@ export default function Bill({
     offerTotal }) {
     const [items, setItems] = useState([]);
     const audioRef = useRef(null);
+    const [reportModalOpen, setReportModalOpen] = useState(false);
+    const [reportUrl, setReportUrl] = useState("");
+    const [lastOrderNo, setLastOrderNo] = useState(null);
 
     const { data: restaurantServiceChargeValue } = getSettingValueByName("RestaurantServiceCharge");
     const { data: restaurantServiceCharge } = IsAppSettingEnabled("RestaurantServiceCharge");
+    const { data: reportName } = GetReportSettingValueByName("RestaurantGuestCheck");
+    const { data: kotBotReportName } = GetReportSettingValueByName("RestaurantKOT");
 
     const [serveCharge, setServeCharge] = useState(0);
+
+    const getPickupTypeName = (typeId) => {
+        const pickupTypes = {
+            1: "Customer",
+            2: "Uber",
+            3: "Pick Me"
+        };
+        return pickupTypes[typeId] || "-";
+    };
+
+    const modalStyle = {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '90%',
+        maxWidth: '900px',
+        maxHeight: '90vh',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        borderRadius: 2,
+        p: 2,
+        display: 'flex',
+        flexDirection: 'column',
+    };
 
     const handleQtyChange = (id, delta) => {
         setItems(prevItems => {
@@ -79,6 +112,47 @@ export default function Bill({
 
     }, [billItems, restaurantServiceCharge, restaurantServiceChargeValue]);
 
+    const openPdfModal = (documentNumber, reportNameToUse) => {
+        if (!documentNumber) {
+            Swal.fire("Error", "Order number is missing.", "error");
+            return;
+        }
+
+        if (!reportNameToUse) {
+            Swal.fire("Error", "Report setting is not configured.", "error");
+           return;
+        }
+
+        const warehouseId = localStorage.getItem("warehouse");
+        const currentUser = localStorage.getItem("name");
+        
+        if (!warehouseId) {
+            Swal.fire("Error", "Warehouse information not found.", "error");
+            return;
+        }
+
+        const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${reportNameToUse}&warehouseId=${warehouseId}&currentUser=${currentUser || ""}`;
+        const fullUrl = `${Report}${reportLink}`;
+        
+        setReportUrl(fullUrl);
+        setReportModalOpen(true);
+    };
+
+    const printGuestCheck = (documentNumber) => {
+        openPdfModal(documentNumber, reportName);
+    };
+
+    const printKotBot = (documentNumber) => {
+        openPdfModal(documentNumber, kotBotReportName);
+    };
+
+    const handleCloseReportModal = (event) => {
+        if (event) {
+            event.stopPropagation();
+        }
+        setReportModalOpen(false);
+        setReportUrl("");
+    };
 
     const handleSubmit = async () => {
         if (!pickupType) {
@@ -131,27 +205,52 @@ export default function Bill({
 
             if (response.ok) {
                 const jsonResponse = await response.json();
-                if (jsonResponse.result.result !== "") {
+                if (jsonResponse.result && jsonResponse.result.result) {
+                    let orderNo = "";
+                    if (typeof jsonResponse.result.result === 'object') {
+                        orderNo = jsonResponse.result.result.orderNo || jsonResponse.result.result.orderId || "";
+                    } else {
+                        orderNo = jsonResponse.result.result;
+                    }
+                    
+                    setLastOrderNo(orderNo);
                     Swal.fire({
                         title: "Success",
-                        text: jsonResponse.result.message,
+                        html: `
+                            <p style="margin-bottom: 20px;">${jsonResponse.result.message}</p>
+                            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 20px;">
+                                <button id="btnPrintKOT" class="swal2-confirm swal2-styled" style="background: #3085d6; margin: 0;">Print KOT/BOT</button>
+                                <button id="btnPrintGuest" class="swal2-deny swal2-styled" style="background: #fe6564; margin: 0;">Print Guest Check</button>
+                            </div>
+                        `,
                         icon: "success",
-                        showConfirmButton: true,
-                        showDenyButton: true,
                         showCancelButton: true,
-                        confirmButtonText: "Print KOT/BOT",
-                        denyButtonText: "Print Guest Check",
                         cancelButtonText: "Close",
+                        showConfirmButton: false,
+                        showDenyButton: false,
                         allowOutsideClick: false,
                         allowEscapeKey: false,
                         focusCancel: true,
-                        preConfirm: () => {
-                            // printKotBot()
-                            return false
-                        },
-                        preDeny: () => {
-                            // printGuestCheck()
-                            return false
+                        didOpen: () => {
+                            const popup = Swal.getPopup();
+                            const btnPrintKOT = popup.querySelector("#btnPrintKOT");
+                            const btnPrintGuest = popup.querySelector("#btnPrintGuest");
+                            
+                            if (btnPrintKOT) {
+                                btnPrintKOT.addEventListener("click", () => {
+                                    setTimeout(() => {
+                                        printKotBot(orderNo);
+                                    }, 300);
+                                });
+                            }
+                            
+                            if (btnPrintGuest) {
+                                btnPrintGuest.addEventListener("click", () => {
+                                    setTimeout(() => {
+                                        printGuestCheck(orderNo);
+                                    }, 300);
+                                });
+                            }
                         }
                     })
 
@@ -221,18 +320,29 @@ export default function Bill({
                 </Grid>
             </Box>
             <Box mb={2} sx={{ borderBottom: "1px dashed #ccc" }}>
-                <Grid container justifyContent="space-between">
-                    <Typography>Steward</Typography>
-                    <Typography>
-                        {steward ? `${steward.firstName} ${steward.lastName}` : "-"}
-                    </Typography>
-                </Grid>
-                <Grid container justifyContent="space-between">
-                    <Typography>Table</Typography>
-                    <Typography>
-                        {table ? table.code : "-"}
-                    </Typography>
-                </Grid>
+                {pickupType ? (
+                    <Grid container justifyContent="space-between">
+                        <Typography>Pickup Type</Typography>
+                        <Typography>
+                            {getPickupTypeName(pickupType)}
+                        </Typography>
+                    </Grid>
+                ) : (
+                    <>
+                        <Grid container justifyContent="space-between">
+                            <Typography>Steward</Typography>
+                            <Typography>
+                                {steward ? `${steward.firstName} ${steward.lastName}` : "-"}
+                            </Typography>
+                        </Grid>
+                        <Grid container justifyContent="space-between">
+                            <Typography>Table</Typography>
+                            <Typography>
+                                {table ? table.code : "-"}
+                            </Typography>
+                        </Grid>
+                    </>
+                )}
             </Box>
             <Button
                 onClick={() => handleSubmit()}
@@ -246,6 +356,54 @@ export default function Bill({
                 {orderId ? "Update Order" : "Place order"}
             </Button>
             <audio ref={audioRef} src="/images/restaurant/audio/bell.wav" />
+
+            <Modal
+                open={reportModalOpen}
+                onClose={(event, reason) => {
+                    if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
+                        event?.stopPropagation();
+                    }
+                    handleCloseReportModal(event);
+                }}
+                aria-labelledby="report-modal-title"
+                aria-describedby="report-modal-description"
+                disableEscapeKeyDown={false}
+            >
+                <Box sx={modalStyle} onClick={(e) => e.stopPropagation()}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography id="report-modal-title" variant="h6" component="h2">
+                            Report
+                        </Typography>
+                        <Button onClick={(e) => {
+                            e.stopPropagation();
+                            handleCloseReportModal(e);
+                        }} variant="outlined" size="small">
+                            Close
+                        </Button>
+                    </Box>
+                    <Box
+                        id="report-modal-description"
+                        sx={{
+                            flex: 1,
+                            overflow: 'hidden',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 1,
+                            bgcolor: '#fff'
+                        }}
+                    >
+                        <iframe
+                            src={reportUrl}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                minHeight: '600px',
+                                border: 'none'
+                            }}
+                            title="Report Viewer"
+                        />
+                    </Box>
+                </Box>
+            </Modal>
         </Box>
     );
 }

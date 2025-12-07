@@ -9,7 +9,9 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider } from "@mui/material";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider, CircularProgress } from "@mui/material";
 import { toast, ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -18,6 +20,19 @@ import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import DescriptionIcon from "@mui/icons-material/Description";
+import StoreIcon from "@mui/icons-material/Store";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import TrendingDownIcon from "@mui/icons-material/TrendingDown";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import Modal from "@mui/material/Modal";
+import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
 export default function CreateDailyDeposit() {
   const [banks, setBanks] = useState([]);
@@ -26,6 +41,7 @@ export default function CreateDailyDeposit() {
   const [selectedList, setSelectedList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [depositSummary, setDepositSummary] = useState(null);
+  const [summaryTotals, setSummaryTotals] = useState(null);
   const [selectedBank, setSelectedBank] = useState({});
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedItem, setSelectedItem] = useState({
@@ -39,6 +55,13 @@ export default function CreateDailyDeposit() {
     bankUsername: "",
     isHaSBank: false
   });
+  const [invoiceLineDetailsModalOpen, setInvoiceLineDetailsModalOpen] = useState(false);
+  const [invoiceLineDetails, setInvoiceLineDetails] = useState([]);
+  const [loadingInvoiceDetails, setLoadingInvoiceDetails] = useState(false);
+  const [selectedSupplierForDetails, setSelectedSupplierForDetails] = useState(null);
+  const [bankAssignmentModalOpen, setBankAssignmentModalOpen] = useState(false);
+  const [supplierNeedingBank, setSupplierNeedingBank] = useState(null);
+  const [selectedBankForAssignment, setSelectedBankForAssignment] = useState(null);
 
 
   const fetchDepositSummary = async (date) => {
@@ -48,7 +71,7 @@ export default function CreateDailyDeposit() {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
-      const query = `${BASE_URL}/Shift/GetTotalCostAndProfit?date=${formattedDate}`;
+      const query = `${BASE_URL}/DailyDeposit/LoadDailyDepositDataByDate?depositDate=${formattedDate}`;
 
       const response = await fetch(query, {
         method: "GET",
@@ -61,10 +84,87 @@ export default function CreateDailyDeposit() {
       if (!response.ok) throw new Error("Failed to fetch items");
 
       const data = await response.json();
-      setDepositSummary(data.result);
+
+      // Map the new response structure to match existing UI expectations
+      if (data.result) {
+        const mappedData = {
+          supplierDetails: data.result.supplierDetails || [],
+          totalCash: 0,
+          totalCard: 0,
+          totalBankTransfer: 0,
+          totalCheque: 0,
+          cashCustomerNames: data.result.cashCustomerNames || [],
+          isCashCustomerNameEnabled: data.result.isCashCustomerNameEnabled || false,
+          totalCancelledInvoice: data.result.totalCancelledInvoice || 0,
+          totalReceipt: data.result.totalReceipt || 0,
+          totalReceiptCash: data.result.totalReceiptCash || 0,
+          totalReceiptCard: data.result.totalReceiptCard || 0,
+          totalReceiptBankTransfer: data.result.totalReceiptBankTransfer || 0,
+          totalReceiptCheque: data.result.totalReceiptCheque || 0,
+          totalInvoice: data.result.totalInvoice || 0,
+          totalInvoiceCash: data.result.totalInvoiceCash || 0,
+          totalInvoiceCard: data.result.totalInvoiceCard || 0,
+          totalInvoiceCredit: data.result.totalInvoiceCredit || 0
+        };
+        setDepositSummary(mappedData);
+      } else {
+        setDepositSummary(null);
+      }
     } catch (error) {
       console.error("Error:", error);
       setDepositSummary(null);
+    }
+  };
+
+  const fetchSummaryTotals = async (date) => {
+    try {
+      const token = localStorage.getItem("token");
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+      const query = `${BASE_URL}/DailyDeposit/GetDailyDepositSummaryTotals?depositDate=${formattedDate}`;
+
+      const response = await fetch(query, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to fetch summary totals:", response.status, errorText);
+        throw new Error("Failed to fetch summary totals");
+      }
+
+      const data = await response.json();
+      console.log("Summary Totals API Response:", data);
+
+      if (data.result) {
+        console.log("Setting summary totals:", data.result);
+        setSummaryTotals({
+          totalCashIn: data.result.totalCashIn || 0,
+          totalCashOut: data.result.totalCashOut || 0,
+          totalSalesReturn: data.result.totalSalesReturn || 0
+        });
+      } else {
+        console.warn("No result in summary totals response:", data);
+        setSummaryTotals({
+          totalCashIn: 0,
+          totalCashOut: 0,
+          totalSalesReturn: 0
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching summary totals:", error);
+      // Set default values instead of null so cards still display
+      setSummaryTotals({
+        totalCashIn: 0,
+        totalCashOut: 0,
+        totalSalesReturn: 0
+      });
     }
   };
 
@@ -88,8 +188,10 @@ export default function CreateDailyDeposit() {
   useEffect(() => {
     if (selectedDate) {
       fetchDepositSummary(selectedDate);
+      fetchSummaryTotals(selectedDate);
     } else {
       setDepositSummary(null);
+      setSummaryTotals(null);
       setSelectedList([]);
     }
     fetchBanks();
@@ -135,8 +237,71 @@ export default function CreateDailyDeposit() {
   }, [depositSummary]);
 
   const handleRowClick = (item) => {
-    setIsHasBank(item.bankId !== 0);
-    setSelectedItem({ ...item, amount: item.totalCost });
+    setIsHasBank(item.bankId !== 0 && item.bankId !== null);
+    setSelectedItem({
+      ...item,
+      amount: item.totalCost || item.totalProfit || 0,
+      supplierId: item.supplierId,
+      supplierName: item.supplierName,
+      paymentType: item.paymentType || 0,
+      bankId: item.bankId || null,
+      bankName: item.bankName || "",
+      bankAccNo: item.bankAccountNo || "",
+      bankUsername: item.bankAccountUsername || "",
+      isHaSBank: item.bankId !== 0 && item.bankId !== null
+    });
+  };
+
+  const fetchInvoiceLineDetails = async (item) => {
+    if (!selectedDate) {
+      toast.error("Please select a date first");
+      return;
+    }
+
+    setLoadingInvoiceDetails(true);
+    setSelectedSupplierForDetails(item);
+
+    try {
+      const token = localStorage.getItem("token");
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const formattedDate = `${year}-${month}-${day}`;
+
+      const itemType = item.itemType || 1;
+      const receiptNumber = item.isFromReceipt && item.receiptNumber ? `&receiptNumber=${encodeURIComponent(item.receiptNumber)}` : '';
+      const query = `${BASE_URL}/DailyDeposit/GetInvoiceLineDetailsBySupplier?depositDate=${formattedDate}&supplierId=${item.supplierId}&itemType=${itemType}${receiptNumber}`;
+
+      const response = await fetch(query, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch invoice line details");
+
+      const data = await response.json();
+
+      if (data.result) {
+        setInvoiceLineDetails(data.result);
+        setInvoiceLineDetailsModalOpen(true);
+      } else {
+        setInvoiceLineDetails([]);
+        setInvoiceLineDetailsModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to fetch invoice line details");
+      setInvoiceLineDetails([]);
+    } finally {
+      setLoadingInvoiceDetails(false);
+    }
+  };
+
+  const handleRowDoubleClick = (item) => {
+    fetchInvoiceLineDetails(item);
   };
 
   const handleAddSupplier = () => {
@@ -173,40 +338,342 @@ export default function CreateDailyDeposit() {
     setSelectedList(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const totalAmount = selectedList.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  // Add all suppliers at once
+  const handleAddAll = () => {
+    if (!depositSummary?.supplierDetails || depositSummary.supplierDetails.length === 0) {
+      toast.error("No suppliers available to add.");
+      return;
+    }
+
+    const suppliersToAdd = [];
+    const suppliersNeedingBank = [];
+
+    depositSummary.supplierDetails.forEach((supplier) => {
+      // Skip receipt entries and profit account (they're handled separately)
+      if (supplier.isFromReceipt || supplier.isProfitAccount) {
+        return;
+      }
+
+      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0) + (supplier.cashAmount || 0);
+
+      if (total <= 0) {
+        return; // Skip entries with zero or negative amounts
+      }
+
+      // Check if bank is assigned
+      if (!supplier.bankId || supplier.bankId === 0) {
+        suppliersNeedingBank.push(supplier);
+        return;
+      }
+
+      const paymentAmounts = {
+        cashAmount: supplier.cashAmount || 0,
+        cardAmount: supplier.cardAmount || 0,
+        bankTransferAmount: supplier.bankTransferAmount || 0,
+        chequeAmount: supplier.chequeAmount || 0
+      };
+
+      suppliersToAdd.push({
+        supplierId: supplier.supplierId,
+        supplierName: supplier.supplierName,
+        amount: total,
+        paymentType: supplier.paymentType || 0,
+        bankId: supplier.bankId,
+        bank: supplier.bankName || "",
+        accountNo: supplier.bankAccountNo || "",
+        accountUsername: supplier.bankAccountUsername || "",
+        isHaSBank: true,
+        ...paymentAmounts
+      });
+    });
+
+    // Handle suppliers needing bank assignment
+    if (suppliersNeedingBank.length > 0) {
+      setSupplierNeedingBank(suppliersNeedingBank);
+      setBankAssignmentModalOpen(true);
+      // Add suppliers that have banks
+      if (suppliersToAdd.length > 0) {
+        setSelectedList(prev => [...prev, ...suppliersToAdd]);
+        toast.info(`${suppliersToAdd.length} suppliers added. ${suppliersNeedingBank.length} need bank assignment.`);
+      } else {
+        toast.warning(`${suppliersNeedingBank.length} suppliers need bank assignment.`);
+      }
+      return;
+    }
+
+    // Add profit account if exists
+    const profitAccount = depositSummary.supplierDetails.find(item => item.isProfitAccount);
+    if (profitAccount && profitAccount.totalProfit > 0) {
+      suppliersToAdd.push({
+        supplierId: 0,
+        supplierName: profitAccount.supplierName,
+        amount: profitAccount.totalProfit,
+        paymentType: profitAccount.paymentType || 0,
+        bankId: profitAccount.bankId,
+        bank: profitAccount.bankName || "",
+        accountNo: profitAccount.bankAccountNo || "",
+        accountUsername: profitAccount.bankAccountUsername || "",
+        isHaSBank: true,
+        cashAmount: 0,
+        cardAmount: 0,
+        bankTransferAmount: 0,
+        chequeAmount: 0
+      });
+    }
+
+    if (suppliersToAdd.length === 0) {
+      toast.error("No suppliers available to add.");
+      return;
+    }
+
+    setSelectedList(prev => [...prev, ...suppliersToAdd]);
+    toast.success(`${suppliersToAdd.length} suppliers added successfully.`);
+  };
+
+  // Handle bank assignment for suppliers without banks
+  const handleAssignBank = () => {
+    if (!selectedBankForAssignment || !supplierNeedingBank || supplierNeedingBank.length === 0) {
+      toast.error("Please select a bank.");
+      return;
+    }
+
+    const bank = banks.find(b => b.id === selectedBankForAssignment);
+    if (!bank) {
+      toast.error("Selected bank not found.");
+      return;
+    }
+
+    const suppliersToAdd = supplierNeedingBank.map((supplier) => {
+      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0) + (supplier.cashAmount || 0);
+      const paymentAmounts = {
+        cashAmount: supplier.cashAmount || 0,
+        cardAmount: supplier.cardAmount || 0,
+        bankTransferAmount: supplier.bankTransferAmount || 0,
+        chequeAmount: supplier.chequeAmount || 0
+      };
+
+      return {
+        supplierId: supplier.supplierId,
+        supplierName: supplier.supplierName,
+        amount: total,
+        paymentType: supplier.paymentType || 0,
+        bankId: bank.id,
+        bank: bank.name || "",
+        accountNo: bank.accountNo || "",
+        accountUsername: bank.accountUsername || "",
+        isHaSBank: true,
+        ...paymentAmounts
+      };
+    });
+
+    setSelectedList(prev => [...prev, ...suppliersToAdd]);
+    setBankAssignmentModalOpen(false);
+    setSupplierNeedingBank(null);
+    setSelectedBankForAssignment(null);
+    toast.success(`${suppliersToAdd.length} suppliers added with bank assignment.`);
+  };
+
+  const selectedItemsTotalAmount = selectedList.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  // Calculate summary totals from supplier details
+  // Calculate totals including all supplier details (invoices, receipts, and profit account)
+  const supplierSummaryTotals = depositSummary?.supplierDetails?.reduce((acc, supplier) => {
+    acc.totalCost += supplier.totalCost || 0;
+    acc.totalProfit += supplier.totalProfit || 0;
+    acc.totalCashAmount += supplier.cashAmount || 0;
+    // Count all entries including profit account (exclude only receipt entries that are duplicates)
+    // For counting suppliers, include invoices and profit account, but not separate receipt entries
+    // since receipt amounts are aggregated with invoices
+    if (!supplier.isFromReceipt) {
+      acc.totalSuppliers += 1;
+    }
+    return acc;
+  }, { totalCost: 0, totalProfit: 0, totalCashAmount: 0, totalSuppliers: 0 }) || { totalCost: 0, totalProfit: 0, totalCashAmount: 0, totalSuppliers: 0 };
+
+  // Get profit account amount (this is the sum of all profits from invoices and receipts)
+  const profitAccountItem = depositSummary?.supplierDetails?.find(item => item.isProfitAccount);
+  const profitAccountAmount = profitAccountItem?.totalProfit || 0;
+
+  // Calculate total amount from invoice entries only (exclude receipt entries as they are separate)
+  // Total = Cost + Profit + CashAmount (from invoices only, receipts are separate entries)
+  const invoiceEntries = depositSummary?.supplierDetails?.filter(item => !item.isFromReceipt && !item.isProfitAccount) || [];
+  const invoiceTotalAmount = invoiceEntries.reduce((sum, item) => {
+    return sum + (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+  }, 0);
+
+  // Receipt entries total (Cost + Profit only, no cash amount in total)
+  const receiptEntries = depositSummary?.supplierDetails?.filter(item => item.isFromReceipt) || [];
+  const receiptTotalAmount = receiptEntries.reduce((sum, item) => {
+    return sum + (item.totalCost || 0) + (item.totalProfit || 0);
+  }, 0);
+
+  // Profit account amount
+  const profitAccountTotal = profitAccountAmount || 0;
+
+  // Total Amount = Invoice Total + Receipt Total + Profit Account
+  const totalAmount = invoiceTotalAmount + receiptTotalAmount + profitAccountTotal;
+
+  // Prepare pie chart data for Receipts
+  const receiptChartData = [
+    { name: "Cash", value: depositSummary?.totalReceiptCash || 0, color: "#16A34A" },
+    { name: "Card", value: depositSummary?.totalReceiptCard || 0, color: "#2563EB" },
+    { name: "Bank Transfer", value: depositSummary?.totalReceiptBankTransfer || 0, color: "#D97706" },
+    { name: "Cheque", value: depositSummary?.totalReceiptCheque || 0, color: "#DB2777" }
+  ].filter(item => item.value > 0);
+
+  // Prepare pie chart data for Invoices
+  const invoiceChartData = [
+    { name: "Cash", value: depositSummary?.totalInvoiceCash || 0, color: "#16A34A" },
+    { name: "Card", value: depositSummary?.totalInvoiceCard || 0, color: "#2563EB" },
+    { name: "Credit", value: depositSummary?.totalInvoiceCredit || 0, color: "#D97706" }
+  ].filter(item => item.value > 0);
 
   const availableSuppliers = depositSummary?.supplierDetails?.filter(
     (supplier) => !selectedList.some(selected => selected.supplierId === supplier.supplierId && selected.paymentType === supplier.paymentType)
   ) || [];
 
-  // REVERTED and FIXED handleSubmit LOGIC
-  const handleSubmit = async () => {
-    // This validation is now relevant again.
-    if (availableSuppliers.length !== 0) {
-      toast.error("Please add all available entries to the table before submitting.");
-      return;
+  // Submit all suppliers at once
+  // Function to update bank for a supplier in depositSummary
+  const updateSupplierBank = (supplierIndex, bankId, bankName, bankAccountNo, bankAccountUsername) => {
+    if (!depositSummary || !depositSummary.supplierDetails) return;
+
+    const updatedSuppliers = [...depositSummary.supplierDetails];
+    if (updatedSuppliers[supplierIndex]) {
+      updatedSuppliers[supplierIndex] = {
+        ...updatedSuppliers[supplierIndex],
+        bankId: bankId,
+        bankName: bankName || "",
+        bankAccountNo: bankAccountNo || "",
+        bankAccountUsername: bankAccountUsername || ""
+      };
+      setDepositSummary({
+        ...depositSummary,
+        supplierDetails: updatedSuppliers
+      });
+      toast.success(`Bank assigned to ${updatedSuppliers[supplierIndex].supplierName}`);
     }
-    if (selectedList.length === 0) {
-      toast.error("You must have at least one line item to submit.");
+  };
+
+  // Helper function to find supplier index in depositSummary
+  const findSupplierIndex = (item) => {
+    if (!depositSummary || !depositSummary.supplierDetails) return -1;
+    return depositSummary.supplierDetails.findIndex(s =>
+      s.supplierId === item.supplierId &&
+      s.itemType === item.itemType &&
+      s.isFromReceipt === item.isFromReceipt &&
+      s.isProfitAccount === item.isProfitAccount &&
+      s.receiptNumber === item.receiptNumber
+    );
+  };
+
+  // Render bank selection cell
+  const renderBankCell = (item) => {
+    const supplierIndex = findSupplierIndex(item);
+    const hasBank = item.bankId && item.bankId > 0;
+
+    return (
+      <TableCell
+        sx={{ color: "#6B7280", py: 1, fontSize: "0.8125rem" }}
+        onClick={(e) => e.stopPropagation()}
+        onDoubleClick={(e) => e.stopPropagation()}
+      >
+        <Select
+          value={item.bankId || ""}
+          onChange={(e) => {
+            e.stopPropagation();
+            const selectedBankId = e.target.value;
+            const bank = banks.find(b => b.id === selectedBankId);
+            if (bank && supplierIndex >= 0) {
+              updateSupplierBank(
+                supplierIndex,
+                bank.id,
+                bank.name,
+                bank.accountNo || "",
+                bank.accountUsername || ""
+              );
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          displayEmpty
+          size="small"
+          sx={{
+            minWidth: 120,
+            fontSize: "0.8125rem",
+            height: "32px",
+            "& .MuiSelect-select": {
+              py: 0.5,
+              color: hasBank ? "#111827" : "#EF4444",
+              fontWeight: hasBank ? 400 : 500
+            }
+          }}
+        >
+          <MenuItem value="">
+            <em style={{ color: "#EF4444" }}>Select Bank</em>
+          </MenuItem>
+          {banks.map((bank) => (
+            <MenuItem key={bank.id} value={bank.id}>
+              {bank.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </TableCell>
+    );
+  };
+
+  const handleSubmitAllSuppliers = async () => {
+    if (!depositSummary?.supplierDetails || depositSummary.supplierDetails.length === 0) {
+      toast.error("No supplier data available to submit.");
       return;
     }
 
-    // REVERTED: The data payload now sends all line items from the table.
+    // Validate that all entries have a bank assigned
+    const allSuppliers = depositSummary.supplierDetails;
+    const entriesWithoutBank = allSuppliers.filter((item) => {
+      const hasAmount = ((item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0)) > 0;
+      const hasBank = item.bankId && item.bankId > 0;
+      return hasAmount && !hasBank;
+    });
+
+    if (entriesWithoutBank.length > 0) {
+      const entryNames = entriesWithoutBank.map(e => e.supplierName).join(", ");
+      toast.error(`Please assign a bank for: ${entryNames}`);
+      return;
+    }
+
+    // Calculate total amount from all suppliers
+    const calculatedTotalAmount = allSuppliers.reduce((sum, item) => {
+      const itemTotal = (item.totalCost || 0) + (item.totalProfit || 0);
+      // For invoice items, add cash amount (which includes receipt allocations)
+      if (!item.isFromReceipt && !item.isProfitAccount) {
+        return sum + itemTotal + (item.cashAmount || 0);
+      }
+      // For receipt items and profit account, just add cost + profit
+      return sum + itemTotal;
+    }, 0);
+
+  
+
+    // Prepare data for all suppliers
     const data = {
-      DepositDate: selectedDate,
-      TotalAmount: parseFloat(totalAmount),
-      DailyDepositLineDetails: selectedList.map((row) => ({
-        SupplierId: String(row.supplierId).startsWith('SUMMARY_') ? 0 : row.supplierId,
-        Supplier: row.supplierName || "",
-        Amount: row.amount || 0,
-        // FIX: Ensure BankId is sent as null if it's missing, not 0.
-        BankId: row.bankId || null,
-        BankAccountNumber: row.accountNo || "",
-        CashAmount: row.cashAmount || 0,
-        CardAmount: row.cardAmount || 0,
-        BankTransferAmount: row.bankTransferAmount || 0,
-        ChequeAmount: row.chequeAmount || 0,
-      })),
+      DepositDate: formatDate(selectedDate),
+      TotalAmount: parseFloat(calculatedTotalAmount),
+      DailyDepositLineDetails: allSuppliers.map((row) => {
+        // Calculate amount for this row
+        const rowAmount = (row.totalCost || 0) + (row.totalProfit || 0) +
+          ((!row.isFromReceipt && !row.isProfitAccount) ? (row.cashAmount || 0) : 0);
+
+        return {
+          SupplierId: String(row.supplierId || 0).startsWith('SUMMARY_') || row.isProfitAccount ? 0 : (row.supplierId || 0),
+          Supplier: row.supplierName || "",
+          Amount: rowAmount,
+          BankId: (row.bankId && row.bankId > 0) ? row.bankId : null,
+          BankAccountNumber: row.bankAccountNo || "",
+          CashAmount: row.cashAmount || 0,
+          CardAmount: 0,
+          BankTransferAmount: 0,
+          ChequeAmount: 0,
+        };
+      }),
     };
 
     try {
@@ -221,11 +688,10 @@ export default function CreateDailyDeposit() {
 
       const json = await res.json();
       if (res.ok) {
-        toast.success(json.message);
-        setSelectedList([]);
-        setTimeout(() => { window.location.href = "/sales/deposit/"; }, 1000);
+        toast.success(json.message || "All deposits created successfully!");
+        //setTimeout(() => { window.location.href = "/sales/deposit/"; }, 1000);
       } else {
-        toast.error(json.message || "An error occurred.");
+        toast.error(json.message || "An error occurred while creating deposits.");
       }
     } catch (err) {
       console.error("Error:", err);
@@ -235,6 +701,7 @@ export default function CreateDailyDeposit() {
   };
 
   const handleCheckDayEndDone = async (date) => {
+
     try {
       const response = await fetch(`${BASE_URL}/DayEnd/IsDayEndDoneForSelectedDate?date=${formatDate(date)}`, {
         method: 'GET',
@@ -263,6 +730,8 @@ export default function CreateDailyDeposit() {
 
   }
 
+  console.log(selectedDate);
+
   return (
     <>
       <ToastContainer />
@@ -275,160 +744,1881 @@ export default function CreateDailyDeposit() {
       </div>
 
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DatePicker
-          label="Deposit Date" value={selectedDate}
-          onChange={(newDate) => {
-            handleCheckDayEndDone(newDate);
-          }}
-          renderInput={(params) => <TextField {...params} sx={{ mb: 2 }} />}
-        />
+        <Box sx={{ mb: 1 }}>
+          <DatePicker
+            label="Deposit Date"
+            value={selectedDate}
+            onChange={(newDate) => {
+              console.log("Selected Date:", formatDate(newDate));
+              handleCheckDayEndDone(newDate);
+            }}
+            renderInput={(params) => <TextField {...params} sx={{ mb: 2, width: '300px' }} />}
+          />
+        </Box>
       </LocalizationProvider>
 
-      <Grid container spacing={2} sx={{ height: "100%", maxHeight: { lg: "75vh", xs: "150vh" } }}>
-        <Grid item xs={12} lg={8}>
-          <TableContainer component={Paper} sx={{ maxHeight: "100%", overflowY: "auto", height: "70vh" }}>
-            <Table stickyHeader aria-label="available deposits table" className="dark-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>#</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell>Amount</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {!selectedDate ? (
-                  <TableRow><TableCell colSpan={3}><Typography>Please select a deposit date.</Typography></TableCell></TableRow>
-                ) : !depositSummary ? (
-                  <TableRow><TableCell colSpan={3}><Typography>Loading...</Typography></TableCell></TableRow>
-                ) : availableSuppliers.length === 0 ? (
-                  <TableRow><TableCell colSpan={3}><Typography>No more deposit items to add.</Typography></TableCell></TableRow>
-                ) : (
-                  availableSuppliers.map((item, index) => (
-                    <TableRow key={`${item.supplierId}-${item.paymentType}`} onClick={() => handleRowClick(item)} hover sx={{ cursor: "pointer" }}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{item.supplierName}</TableCell>
-                      <TableCell>{formatCurrency(item.totalCost)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Grid>
+      {/* Split Screen Layout: Left Supplier Table, Right Dashboard */}
+      {selectedDate && depositSummary && (
+        <Grid container spacing={2} sx={{ alignItems: "stretch" }}>
+          {/* Left Side - Supplier-wise Totals Table */}
+          <Grid item xs={12} md={7} sx={{ display: "flex" }}>
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 2,
+                border: "1px solid #E5E7EB",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                overflow: "hidden",
+                width: "100%",
+                display: "flex",
+                flexDirection: "column"
+              }}
+            >
+              <CardContent sx={{ p: 0, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderBottom: "1px solid #E5E7EB",
+                    bgcolor: "#FAFBFC",
+                    flexShrink: 0
+                  }}
+                >
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1F2937",
+                      fontSize: "0.9375rem"
+                    }}
+                  >
+                    Supplier-wise Totals
+                  </Typography>
+                </Box>
+                <TableContainer sx={{ flex: 1, overflowY: "auto", minHeight: 0, display: "flex", flexDirection: "column" }}>
+                  <Table stickyHeader sx={{ flex: 1 }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "40px"
+                        }}>
+                          #
+                        </TableCell>
+                        <TableCell sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1
+                        }}>
+                          Supplier Name
+                        </TableCell>
+                        <TableCell align="right" sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "100px"
+                        }}>
+                          Cost
+                        </TableCell>
+                        <TableCell align="right" sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "100px"
+                        }}>
+                          Profit
+                        </TableCell>
+                        <TableCell align="right" sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "120px"
+                        }}>
+                          Total
+                        </TableCell>
+                        <TableCell sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "100px"
+                        }}>
+                          Bank
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {!selectedDate ? (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                            <Typography color="textSecondary">Please select a deposit date.</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : !depositSummary ? (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                            <CircularProgress size={24} sx={{ mr: 1 }} />
+                            <Typography color="textSecondary">Loading...</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : depositSummary.supplierDetails?.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                            <Typography color="textSecondary">No supplier data found for the selected date.</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {(() => {
+                            // Group supplier details by item type
+                            const invoiceItems = depositSummary.supplierDetails?.filter(item => !item.isFromReceipt && !item.isProfitAccount) || [];
+                            const receiptItems = depositSummary.supplierDetails?.filter(item => item.isFromReceipt) || [];
+                            const profitAccountItems = depositSummary.supplierDetails?.filter(item => item.isProfitAccount) || [];
 
-        <Grid item xs={12} lg={4}>
-          <Box component={Paper} p={3} sx={{ height: "70vh", overflowY: 'auto' }}>
-            <Typography variant="h6">Daily Summary</Typography>
-            <Box mt={2} display="flex" justifyContent="space-between">
-              <Typography>Total Cash:</Typography>
-              <Typography fontWeight="bold">{formatCurrency(depositSummary?.totalCash || 0)}</Typography>
-            </Box>
-            <Box mt={1} display="flex" justifyContent="space-between">
-              <Typography>Total Card:</Typography>
-              <Typography fontWeight="bold">{formatCurrency(depositSummary?.totalCard || 0)}</Typography>
-            </Box>
-            <Box mt={1} display="flex" justifyContent="space-between">
-              <Typography>Total Bank Transfer:</Typography>
-              <Typography fontWeight="bold">{formatCurrency(depositSummary?.totalBankTransfer || 0)}</Typography>
-            </Box>
-            <Box mt={1} display="flex" justifyContent="space-between">
-              <Typography>Total Cheque:</Typography>
-              <Typography fontWeight="bold">{formatCurrency(depositSummary?.totalCheque || 0)}</Typography>
-            </Box>
+                            const itemType1 = invoiceItems.filter(item => item.itemType === 1 || !item.itemType);
+                            const itemType2 = invoiceItems.filter(item => item.itemType === 2);
+                            const itemType3 = invoiceItems.filter(item => item.itemType === 3);
 
-            <Divider sx={{ my: 2 }} />
+                            const receiptItemType1 = receiptItems.filter(item => item.itemType === 1 || !item.itemType);
+                            const receiptItemType2 = receiptItems.filter(item => item.itemType === 2);
+                            const receiptItemType3 = receiptItems.filter(item => item.itemType === 3);
 
-            <Grid container spacing={1}>
-              <Grid item xs={12}>
-                <Typography variant="h6">Deposit Details</Typography>
-                <Typography color="error">{message}</Typography>
-              </Grid>
-              <Grid item xs={12}>
-                <Typography my={1}>Supplier Name</Typography>
-                <TextField size="small" fullWidth value={selectedItem.supplierName} InputProps={{ readOnly: true }} />
-              </Grid>
-              <Grid item xs={12}>
-                <Typography my={1}>Amount</Typography>
-                <TextField size="small" type="number" fullWidth value={selectedItem.amount} onChange={(e) => setSelectedItem({ ...selectedItem, amount: e.target.value })} />
-              </Grid>
-              {isHaSBank ? (
-                <Grid item xs={12}><Box my={2}>
-                  <Typography variant="h6">Bank Details</Typography>
-                  <Typography>{selectedItem.bankAccNo}</Typography>
-                  <Typography>{selectedItem.bankName}</Typography>
-                  <Typography>{selectedItem.bankUsername}</Typography>
-                </Box></Grid>
-              ) : (
-                <>
-                  <Grid item xs={12}>
-                    <Typography my={1}>Bank</Typography>
-                    <Select size="small" fullWidth value={selectedBank.id || ''} onChange={(e) => {
-                      const selected = banks.find((bank) => bank.id === e.target.value);
-                      setSelectedBank(selected || {});
-                    }}>
-                      {banks.length === 0 ? (<MenuItem disabled>No Banks Available</MenuItem>) : (
-                        banks.map((bank) => (<MenuItem key={bank.id} value={bank.id}>{bank.name}</MenuItem>))
+                            let rowIndex = 0;
+
+                            return (
+                              <>
+                                {/* Item Type 1 (Item) */}
+                                {itemType1.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#F3F4F6",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Items
+                                      </TableCell>
+                                    </TableRow>
+                                    {itemType1.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`item-${item.supplierId}-${item.paymentType}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#F3F4F6"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Item Type 2 (Outlet) */}
+                                {itemType2.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#F3F4F6",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Outlets
+                                      </TableCell>
+                                    </TableRow>
+                                    {itemType2.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`outlet-${item.supplierId}-${item.paymentType}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#F3F4F6"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Item Type 3 (DBR) */}
+                                {itemType3.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#F3F4F6",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        DBR
+                                      </TableCell>
+                                    </TableRow>
+                                    {itemType3.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`dbr-${item.supplierId}-${item.paymentType}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#F3F4F6"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Receipt Item Type 1 */}
+                                {receiptItemType1.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#FEF3C7",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Receipt Items
+                                      </TableCell>
+                                    </TableRow>
+                                    {receiptItemType1.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`receipt-item-${item.supplierId}-${item.receiptNumber}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#FEF3C7"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Receipt Item Type 2 */}
+                                {receiptItemType2.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#FEF3C7",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Receipt Outlets
+                                      </TableCell>
+                                    </TableRow>
+                                    {receiptItemType2.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`receipt-outlet-${item.supplierId}-${item.receiptNumber}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#FEF3C7"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Receipt Item Type 3 */}
+                                {receiptItemType3.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#FEF3C7",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Receipt DBR
+                                      </TableCell>
+                                    </TableRow>
+                                    {receiptItemType3.map((item) => {
+                                      rowIndex++;
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      return (
+                                        <TableRow
+                                          key={`receipt-dbr-${item.supplierId}-${item.receiptNumber}`}
+                                          onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#FEF3C7"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(total)}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+
+                                {/* Profit Account Items */}
+                                {profitAccountItems.length > 0 && (
+                                  <>
+                                    <TableRow>
+                                      <TableCell
+                                        colSpan={6}
+                                        sx={{
+                                          bgcolor: "#DBEAFE",
+                                          fontWeight: 600,
+                                          color: "#1F2937",
+                                          py: 0.75,
+                                          borderBottom: "2px solid #E5E7EB",
+                                          fontSize: "0.8125rem"
+                                        }}
+                                      >
+                                        Profit Accounts
+                                      </TableCell>
+                                    </TableRow>
+                                    {profitAccountItems.map((item) => {
+                                      rowIndex++;
+                                      return (
+                                        <TableRow
+                                          key={`profit-account-${item.supplierId}`}
+                                          onClick={() => handleRowClick(item)}
+                                          hover
+                                          sx={{
+                                            cursor: "pointer",
+                                            transition: "all 0.2s",
+                                            "&:hover": {
+                                              bgcolor: "#DBEAFE"
+                                            }
+                                          }}
+                                        >
+                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {item.supplierName}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalCost || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency(item.totalProfit || 0)}
+                                          </TableCell>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                            {formatCurrency((item.totalCost || 0) + (item.totalProfit || 0))}
+                                          </TableCell>
+                                          {renderBankCell(item)}
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </>
                       )}
-                    </Select>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography my={1}>Account Username</Typography>
-                    <TextField size="small" fullWidth value={selectedBank?.accountUsername || ''} InputProps={{ readOnly: true }} />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography my={1}>Account Number</Typography>
-                    <TextField size="small" fullWidth value={selectedBank?.accountNo || ''} InputProps={{ readOnly: true }} />
-                  </Grid>
-                </>
-              )}
-              <Grid item xs={12} my={2}><Button onClick={handleAddSupplier} variant="contained" size="small" fullWidth>Add to Deposit</Button></Grid>
-            </Grid>
-          </Box>
-        </Grid>
-      </Grid>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
 
-      <Grid container>
-        <Grid item xs={12} my={2}>
-          <TableContainer component={Paper}>
-            <Table stickyHeader aria-label="final deposit table" className="dark-table">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ width: '50px' }}></TableCell>
-                  <TableCell>#</TableCell>
-                  <TableCell>Supplier</TableCell>
-                  <TableCell>Bank</TableCell>
-                  <TableCell>Account Number</TableCell>
-                  <TableCell>Amount</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {selectedList.map((item, index) => (
-                  <TableRow key={`${item.supplierId}-${item.paymentType}-${index}`}>
-                    <TableCell><IconButton onClick={() => handleDelete(index)}><DeleteIcon color="error" fontSize="inherit" /></IconButton></TableCell>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>{item.supplierName}</TableCell>
-                    <TableCell>{item.bank}</TableCell>
-                    <TableCell>
-                      <Typography variant="body1">{item.accountNo}</Typography>
-                      <Typography variant="body2" color="textSecondary">{item.accountUsername}</Typography>
-                    </TableCell>
-                    <TableCell>{formatCurrency(item.amount)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              <TableHead>
-                <TableRow>
-                  <TableCell colSpan={5} align="right"><strong>Total Amount</strong></TableCell>
-                  <TableCell><strong>{formatCurrency(totalAmount)}</strong></TableCell>
-                </TableRow>
-              </TableHead>
-            </Table>
-          </TableContainer>
+                {/* Submit Button */}
+                <Box sx={{ mt: 2, p: 2, bgcolor: "#FAFBFC", borderRadius: 2, border: "1px solid #E5E7EB" }}>
+                  <Button
+                    onClick={handleSubmitAllSuppliers}
+                    disabled={isSubmitting || !depositSummary?.supplierDetails || depositSummary.supplierDetails.length === 0}
+                    fullWidth
+                    variant="contained"
+                    startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : null}
+                    sx={{
+                      py: 1.5,
+                      fontWeight: 600,
+                      textTransform: "none",
+                      borderRadius: 2,
+                      fontSize: "1rem",
+                      background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                      boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                        boxShadow: "0 6px 16px rgba(16, 185, 129, 0.4)",
+                        transform: "translateY(-1px)",
+                      },
+                      "&:disabled": {
+                        background: "#E5E7EB",
+                        color: "#9CA3AF",
+                      },
+                    }}
+                  >
+                    {isSubmitting ? "Submitting..." : "Submit All Deposits"}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Right Side - Dashboard Components */}
+          <Grid item xs={12} md={5} sx={{ display: "flex" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, width: "100%" }}>
+              {/* Header */}
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: "#1F2937", fontSize: "1.125rem" }}>
+                  Financial Overview
+                </Typography>
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 0.5,
+                    bgcolor: "#F0FDF4",
+                    borderRadius: 1.5,
+                    border: "1px solid #D1FAE5"
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: "#059669", fontWeight: 600, fontSize: "0.7rem" }}>
+                    {formatDate(selectedDate)}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Summary Cards */}
+              <Grid container spacing={1}>
+                <Grid item xs={6}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      bgcolor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 2.5,
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
+                      "&:hover": {
+                        boxShadow: "0 8px 24px rgba(59, 130, 246, 0.15)",
+                        transform: "translateY(-2px)",
+                        borderColor: "#3B82F6",
+                      },
+                      "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 4,
+                        background: "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)",
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#6B7280",
+                              fontSize: "0.8125rem",
+                              fontWeight: 500,
+                              mb: 1,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}
+                          >
+                            Total Suppliers
+                          </Typography>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              fontWeight: 700,
+                              color: "#111827",
+                              fontSize: "1.875rem",
+                              lineHeight: 1.2
+                            }}
+                          >
+                            {supplierSummaryTotals.totalSuppliers}
+                          </Typography>
+                        </Box>
+                        <Box
+                          sx={{
+                            bgcolor: "#EFF6FF",
+                            borderRadius: 2,
+                            p: 1.5,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#3B82F6",
+                            width: 56,
+                            height: 56,
+                            flexShrink: 0,
+                          }}
+                        >
+                          <StoreIcon sx={{ fontSize: 28 }} />
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      bgcolor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 2.5,
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
+                      "&:hover": {
+                        boxShadow: "0 8px 24px rgba(16, 185, 129, 0.15)",
+                        transform: "translateY(-2px)",
+                        borderColor: "#10B981",
+                      },
+                      "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 4,
+                        background: "linear-gradient(90deg, #10B981 0%, #059669 100%)",
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -15,
+                          right: -15,
+                          width: 80,
+                          height: 80,
+                          borderRadius: "50%",
+                          bgcolor: "rgba(16, 185, 129, 0.08)",
+                          zIndex: 0
+                        }}
+                      />
+                      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#6B7280",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              mb: 1,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.8px"
+                            }}
+                          >
+                            Total Cost
+                          </Typography>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              fontWeight: 800,
+                              color: "#111827",
+                              fontSize: "1.5rem",
+                              lineHeight: 1.1,
+                              mb: 0.25,
+                              background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                              backgroundClip: "text",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent"
+                            }}
+                          >
+                            {formatCurrency(supplierSummaryTotals.totalCost)}
+                          </Typography>
+                          {totalAmount > 0 && (
+                            <Box sx={{ mt: 0.75 }}>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <Box
+                                  sx={{
+                                    flex: 1,
+                                    height: 3,
+                                    bgcolor: "#E5E7EB",
+                                    borderRadius: 2,
+                                    overflow: "hidden"
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      height: "100%",
+                                      width: `${Math.min(100, (supplierSummaryTotals.totalCost / totalAmount) * 100)}%`,
+                                      bgcolor: "#10B981",
+                                      borderRadius: 2,
+                                      transition: "width 0.5s ease"
+                                    }}
+                                  />
+                                </Box>
+                                <Typography variant="caption" sx={{ color: "#6B7280", fontSize: "0.65rem", minWidth: "35px", textAlign: "right" }}>
+                                  {totalAmount > 0 ? `${Math.round((supplierSummaryTotals.totalCost / totalAmount) * 100)}%` : "0%"}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                        <Box
+                          sx={{
+                            bgcolor: "rgba(16, 185, 129, 0.1)",
+                            borderRadius: 2,
+                            p: 1.25,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#10B981",
+                            width: 48,
+                            height: 48,
+                            flexShrink: 0,
+                            border: "2px solid rgba(16, 185, 129, 0.2)",
+                            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)"
+                          }}
+                        >
+                          <AttachMoneyIcon sx={{ fontSize: 24 }} />
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      bgcolor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 2.5,
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
+                      "&:hover": {
+                        boxShadow: "0 8px 24px rgba(34, 197, 94, 0.15)",
+                        transform: "translateY(-2px)",
+                        borderColor: "#22C55E",
+                      },
+                      "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 4,
+                        background: "linear-gradient(90deg, #22C55E 0%, #16A34A 100%)",
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -15,
+                          right: -15,
+                          width: 80,
+                          height: 80,
+                          borderRadius: "50%",
+                          bgcolor: "rgba(34, 197, 94, 0.08)",
+                          zIndex: 0
+                        }}
+                      />
+                      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#6B7280",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              mb: 1,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.8px"
+                            }}
+                          >
+                            Total Profit
+                          </Typography>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              fontWeight: 800,
+                              color: "#111827",
+                              fontSize: "1.5rem",
+                              lineHeight: 1.1,
+                              mb: 0.25,
+                              background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
+                              backgroundClip: "text",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent"
+                            }}
+                          >
+                            {formatCurrency(profitAccountAmount)}
+                          </Typography>
+                          {supplierSummaryTotals.totalCost > 0 && (
+                            <Box sx={{ mt: 0.75 }}>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <Box
+                                  sx={{
+                                    flex: 1,
+                                    height: 3,
+                                    bgcolor: "#E5E7EB",
+                                    borderRadius: 2,
+                                    overflow: "hidden"
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      height: "100%",
+                                      width: `${Math.min(100, (profitAccountAmount / (supplierSummaryTotals.totalCost + profitAccountAmount)) * 100)}%`,
+                                      bgcolor: "#22C55E",
+                                      borderRadius: 2,
+                                      transition: "width 0.5s ease"
+                                    }}
+                                  />
+                                </Box>
+                                <Typography variant="caption" sx={{ color: "#6B7280", fontSize: "0.65rem", minWidth: "35px", textAlign: "right" }}>
+                                  {supplierSummaryTotals.totalCost > 0 ? `${Math.round((profitAccountAmount / (supplierSummaryTotals.totalCost + profitAccountAmount)) * 100)}%` : "0%"}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                        <Box
+                          sx={{
+                            bgcolor: "rgba(34, 197, 94, 0.1)",
+                            borderRadius: 2,
+                            p: 1.25,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#22C55E",
+                            width: 48,
+                            height: 48,
+                            flexShrink: 0,
+                            border: "2px solid rgba(34, 197, 94, 0.2)",
+                            boxShadow: "0 2px 8px rgba(34, 197, 94, 0.15)"
+                          }}
+                        >
+                          <AccountBalanceWalletIcon sx={{ fontSize: 24 }} />
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                <Grid item xs={6}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: "100%",
+                      bgcolor: "white",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 2.5,
+                      boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
+                      "&:hover": {
+                        boxShadow: "0 8px 24px rgba(245, 158, 11, 0.15)",
+                        transform: "translateY(-2px)",
+                        borderColor: "#F59E0B",
+                      },
+                      "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: 4,
+                        background: "linear-gradient(90deg, #F59E0B 0%, #D97706 100%)",
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -15,
+                          right: -15,
+                          width: 80,
+                          height: 80,
+                          borderRadius: "50%",
+                          bgcolor: "rgba(245, 158, 11, 0.08)",
+                          zIndex: 0
+                        }}
+                      />
+                      <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#6B7280",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              mb: 1,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.8px"
+                            }}
+                          >
+                            Total Amount
+                          </Typography>
+                          <Typography
+                            variant="h4"
+                            sx={{
+                              fontWeight: 800,
+                              color: "#111827",
+                              fontSize: "1.5rem",
+                              lineHeight: 1.1,
+                              mb: 0.5,
+                              background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+                              backgroundClip: "text",
+                              WebkitBackgroundClip: "text",
+                              WebkitTextFillColor: "transparent"
+                            }}
+                          >
+                            {formatCurrency(totalAmount)}
+                          </Typography>
+                          <Box sx={{ display: "flex", gap: 0.75, mt: 0.75, flexWrap: "wrap" }}>
+                            <Box
+                              sx={{
+                                px: 1,
+                                py: 0.4,
+                                bgcolor: "#FEF3C7",
+                                borderRadius: 1,
+                                border: "1px solid #FDE68A"
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ color: "#D97706", fontWeight: 600, fontSize: "0.65rem" }}>
+                                Cost: {formatCurrency(supplierSummaryTotals.totalCost)}
+                              </Typography>
+                            </Box>
+                            <Box
+                              sx={{
+                                px: 1,
+                                py: 0.4,
+                                bgcolor: "#D1FAE5",
+                                borderRadius: 1,
+                                border: "1px solid #A7F3D0"
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ color: "#059669", fontWeight: 600, fontSize: "0.65rem" }}>
+                                Profit: {formatCurrency(profitAccountAmount)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        <Box
+                          sx={{
+                            bgcolor: "rgba(245, 158, 11, 0.1)",
+                            borderRadius: 2,
+                            p: 1.25,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "#F59E0B",
+                            width: 48,
+                            height: 48,
+                            flexShrink: 0,
+                            border: "2px solid rgba(245, 158, 11, 0.2)",
+                            boxShadow: "0 2px 8px rgba(245, 158, 11, 0.15)"
+                          }}
+                        >
+                          <AccountBalanceWalletIcon sx={{ fontSize: 24 }} />
+                        </Box>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* Total Cash In Card */}
+                {selectedDate && (
+                  <Grid item xs={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(5, 150, 105, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#059669",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #059669 0%, #047857 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: -15,
+                            right: -15,
+                            width: 80,
+                            height: 80,
+                            borderRadius: "50%",
+                            bgcolor: "rgba(5, 150, 105, 0.08)",
+                            zIndex: 0
+                          }}
+                        />
+                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "#6B7280",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                mb: 1,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px"
+                              }}
+                            >
+                              Total Cash In
+                            </Typography>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                fontSize: "1.5rem",
+                                lineHeight: 1.1,
+                                mb: 0.25,
+                                background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                                backgroundClip: "text",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent"
+                              }}
+                            >
+                              {formatCurrency(summaryTotals?.totalCashIn || 0)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "0.65rem" }}>
+                              Incoming funds
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              bgcolor: "rgba(5, 150, 105, 0.1)",
+                              borderRadius: 2,
+                              p: 1.25,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#059669",
+                              width: 48,
+                              height: 48,
+                              flexShrink: 0,
+                              border: "2px solid rgba(5, 150, 105, 0.2)",
+                              boxShadow: "0 2px 8px rgba(5, 150, 105, 0.15)"
+                            }}
+                          >
+                            <TrendingUpIcon sx={{ fontSize: 24 }} />
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Total Cash Out Card */}
+                {selectedDate && (
+                  <Grid item xs={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(220, 38, 38, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#DC2626",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #DC2626 0%, #B91C1C 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: -15,
+                            right: -15,
+                            width: 80,
+                            height: 80,
+                            borderRadius: "50%",
+                            bgcolor: "rgba(220, 38, 38, 0.08)",
+                            zIndex: 0
+                          }}
+                        />
+                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "#6B7280",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                mb: 1,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px"
+                              }}
+                            >
+                              Total Cash Out
+                            </Typography>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                fontSize: "1.5rem",
+                                lineHeight: 1.1,
+                                mb: 0.25,
+                                background: "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)",
+                                backgroundClip: "text",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent"
+                              }}
+                            >
+                              {formatCurrency(summaryTotals?.totalCashOut || 0)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "0.65rem" }}>
+                              Outgoing funds
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              bgcolor: "rgba(220, 38, 38, 0.1)",
+                              borderRadius: 2,
+                              p: 1.25,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#DC2626",
+                              width: 48,
+                              height: 48,
+                              flexShrink: 0,
+                              border: "2px solid rgba(220, 38, 38, 0.2)",
+                              boxShadow: "0 2px 8px rgba(220, 38, 38, 0.15)"
+                            }}
+                          >
+                            <TrendingDownIcon sx={{ fontSize: 24 }} />
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Total Sales Return Card */}
+                {selectedDate && (
+                  <Grid item xs={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(217, 119, 6, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#D97706",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #D97706 0%, #B45309 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: -15,
+                            right: -15,
+                            width: 80,
+                            height: 80,
+                            borderRadius: "50%",
+                            bgcolor: "rgba(217, 119, 6, 0.08)",
+                            zIndex: 0
+                          }}
+                        />
+                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "#6B7280",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                mb: 1,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px"
+                              }}
+                            >
+                              Total Sales Return
+                            </Typography>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                fontSize: "1.5rem",
+                                lineHeight: 1.1,
+                                mb: 0.25,
+                                background: "linear-gradient(135deg, #D97706 0%, #B45309 100%)",
+                                backgroundClip: "text",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent"
+                              }}
+                            >
+                              {formatCurrency(summaryTotals?.totalSalesReturn || 0)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "0.65rem" }}>
+                              Returned items
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              bgcolor: "rgba(217, 119, 6, 0.1)",
+                              borderRadius: 2,
+                              p: 1.25,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#D97706",
+                              width: 48,
+                              height: 48,
+                              flexShrink: 0,
+                              border: "2px solid rgba(217, 119, 6, 0.2)",
+                              boxShadow: "0 2px 8px rgba(217, 119, 6, 0.15)"
+                            }}
+                          >
+                            <SwapHorizIcon sx={{ fontSize: 24 }} />
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Total Cancelled Invoice Card */}
+                {selectedDate && (
+                  <Grid item xs={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(139, 92, 246, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#8B5CF6",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #8B5CF6 0%, #6D28D9 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2, position: "relative", overflow: "hidden" }}>
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: -15,
+                            right: -15,
+                            width: 80,
+                            height: 80,
+                            borderRadius: "50%",
+                            bgcolor: "rgba(139, 92, 246, 0.08)",
+                            zIndex: 0
+                          }}
+                        />
+                        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: "#6B7280",
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                mb: 1,
+                                textTransform: "uppercase",
+                                letterSpacing: "0.8px"
+                              }}
+                            >
+                              Total Cancelled Invoice
+                            </Typography>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                fontSize: "1.5rem",
+                                lineHeight: 1.1,
+                                mb: 0.25,
+                                background: "linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)",
+                                backgroundClip: "text",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent"
+                              }}
+                            >
+                              {formatCurrency(depositSummary?.totalCancelledInvoice || 0)}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: "#9CA3AF", fontSize: "0.65rem" }}>
+                              Cancelled transactions
+                            </Typography>
+                          </Box>
+                          <Box
+                            sx={{
+                              bgcolor: "rgba(139, 92, 246, 0.1)",
+                              borderRadius: 2,
+                              p: 1.25,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#8B5CF6",
+                              width: 48,
+                              height: 48,
+                              flexShrink: 0,
+                              border: "2px solid rgba(139, 92, 246, 0.2)",
+                              boxShadow: "0 2px 8px rgba(139, 92, 246, 0.15)"
+                            }}
+                          >
+                            <DescriptionIcon sx={{ fontSize: 24 }} />
+                          </Box>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Receipt Pie Chart */}
+                {selectedDate && depositSummary && receiptChartData.length > 0 && (
+                  <Grid item xs={12} sm={12} md={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(34, 197, 94, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#22C55E",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #22C55E 0%, #16A34A 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Box
+                              sx={{
+                                bgcolor: "#DCFCE7",
+                                borderRadius: 1,
+                                p: 0.75,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#22C55E",
+                              }}
+                            >
+                              <AccountBalanceWalletIcon sx={{ fontSize: 18 }} />
+                            </Box>
+                            <Box>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#6B7280",
+                                  fontSize: "0.65rem",
+                                  fontWeight: 600,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.5px",
+                                  mb: 0.25
+                                }}
+                              >
+                                Total Receipt
+                              </Typography>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  fontWeight: 700,
+                                  color: "#111827",
+                                  fontSize: "1.125rem",
+                                  lineHeight: 1.2
+                                }}
+                              >
+                                {formatCurrency(depositSummary?.totalReceipt || 0)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        <Box sx={{ height: { xs: 220, sm: 200, md: 180 }, width: "100%" }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={receiptChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ percent }) => {
+                                  const percentage = (percent * 100).toFixed(0);
+                                  return `${percentage}%`;
+                                }}
+                                outerRadius="60%"
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {receiptChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value, name) => {
+                                  const total = receiptChartData.reduce((sum, item) => sum + item.value, 0);
+                                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                  return [`${formatCurrency(value)} (${percentage}%)`, name];
+                                }}
+                                contentStyle={{
+                                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                  border: "1px solid #E5E7EB",
+                                  borderRadius: 6,
+                                  padding: "6px 10px",
+                                  fontSize: "0.75rem"
+                                }}
+                              />
+                              <Legend
+                                verticalAlign="bottom"
+                                height="auto"
+                                iconSize={10}
+                                wrapperStyle={{ fontSize: "0.7rem" }}
+                                formatter={(value, entry) => {
+                                  const total = receiptChartData.reduce((sum, item) => sum + item.value, 0);
+                                  const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : 0;
+                                  return (
+                                    <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>
+                                      {value}: {formatCurrency(entry.payload.value)} ({percentage}%)
+                                    </span>
+                                  );
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+
+                {/* Invoice Pie Chart */}
+                {selectedDate && depositSummary && invoiceChartData.length > 0 && (
+                  <Grid item xs={12} sm={12} md={6}>
+                    <Card
+                      elevation={0}
+                      sx={{
+                        height: "100%",
+                        bgcolor: "white",
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 2.5,
+                        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.08)",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
+                        overflow: "hidden",
+                        "&:hover": {
+                          boxShadow: "0 8px 24px rgba(59, 130, 246, 0.15)",
+                          transform: "translateY(-2px)",
+                          borderColor: "#3B82F6",
+                        },
+                        "&::before": {
+                          content: '""',
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          background: "linear-gradient(90deg, #3B82F6 0%, #2563EB 100%)",
+                        },
+                      }}
+                    >
+                      <CardContent sx={{ p: 2 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Box
+                              sx={{
+                                bgcolor: "#EFF6FF",
+                                borderRadius: 1,
+                                p: 0.75,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#3B82F6",
+                              }}
+                            >
+                              <DescriptionIcon sx={{ fontSize: 18 }} />
+                            </Box>
+                            <Box>
+                              <Typography
+                                variant="body2"
+                                sx={{
+                                  color: "#6B7280",
+                                  fontSize: "0.65rem",
+                                  fontWeight: 600,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.5px",
+                                  mb: 0.25
+                                }}
+                              >
+                                Total Invoice
+                              </Typography>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
+                                  fontWeight: 700,
+                                  color: "#111827",
+                                  fontSize: "1.125rem",
+                                  lineHeight: 1.2
+                                }}
+                              >
+                                {formatCurrency(depositSummary?.totalInvoice || 0)}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+
+                        <Box sx={{ height: { xs: 220, sm: 200, md: 180 }, width: "100%" }}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={invoiceChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={({ percent }) => {
+                                  const percentage = (percent * 100).toFixed(0);
+                                  return `${percentage}%`;
+                                }}
+                                outerRadius="60%"
+                                fill="#8884d8"
+                                dataKey="value"
+                              >
+                                {invoiceChartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value, name) => {
+                                  const total = invoiceChartData.reduce((sum, item) => sum + item.value, 0);
+                                  const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                  return [`${formatCurrency(value)} (${percentage}%)`, name];
+                                }}
+                                contentStyle={{
+                                  backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                  border: "1px solid #E5E7EB",
+                                  borderRadius: 6,
+                                  padding: "6px 10px",
+                                  fontSize: "0.75rem"
+                                }}
+                              />
+                              <Legend
+                                verticalAlign="bottom"
+                                height="auto"
+                                iconSize={10}
+                                wrapperStyle={{ fontSize: "0.7rem" }}
+                                formatter={(value, entry) => {
+                                  const total = invoiceChartData.reduce((sum, item) => sum + item.value, 0);
+                                  const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : 0;
+                                  return (
+                                    <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>
+                                      {value}: {formatCurrency(entry.payload.value)} ({percentage}%)
+                                    </span>
+                                  );
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                )}
+              </Grid>
+            </Box>
+          </Grid>
         </Grid>
-        <Grid item xs={12} my={1}>
-          <LoadingButton loading={isSubmitting} handleSubmit={handleSubmit} disabled={false} />
-        </Grid>
-      </Grid>
+      )}
+
+      {/* Invoice Line Details Modal */}
+      <Modal
+        open={invoiceLineDetailsModalOpen}
+        onClose={() => setInvoiceLineDetailsModalOpen(false)}
+        aria-labelledby="invoice-line-details-modal"
+        aria-describedby="invoice-line-details-description"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "95%", sm: "90%", md: "80%", lg: "70%" },
+            maxWidth: "1200px",
+            maxHeight: "90vh",
+            bgcolor: "background.paper",
+            borderRadius: 2.5,
+            boxShadow: 24,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          }}
+        >
+          <Box
+            sx={{
+              p: 3,
+              borderBottom: "1px solid #E5E7EB",
+              bgcolor: "#FAFBFC",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}
+          >
+            <Typography
+              id="invoice-line-details-modal"
+              variant="h6"
+              component="h2"
+              sx={{
+                fontWeight: 600,
+                color: "#1F2937",
+                fontSize: "1.25rem"
+              }}
+            >
+              Invoice Line Details - {selectedSupplierForDetails?.supplierName || "N/A"}
+            </Typography>
+            <IconButton
+              onClick={() => setInvoiceLineDetailsModalOpen(false)}
+              sx={{
+                color: "#6B7280",
+                "&:hover": {
+                  bgcolor: "#F3F4F6"
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
+            {loadingInvoiceDetails ? (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "200px" }}>
+                <CircularProgress />
+              </Box>
+            ) : invoiceLineDetails.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography color="textSecondary">No invoice line details found.</Typography>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>#</TableCell>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Invoice Number</TableCell>
+                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Item Name</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Quantity</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Line Total</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Cost Price</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Profit</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {invoiceLineDetails.map((detail, index) => (
+                      <TableRow
+                        key={index}
+                        sx={{
+                          "&:hover": {
+                            bgcolor: "#F9FAFB"
+                          }
+                        }}
+                      >
+                        <TableCell sx={{ color: "#6B7280" }}>{index + 1}</TableCell>
+                        <TableCell sx={{ fontWeight: 500, color: "#111827" }}>{detail.invoiceNumber}</TableCell>
+                        <TableCell sx={{ color: "#374151" }}>{detail.itemName}</TableCell>
+                        <TableCell align="right" sx={{ color: "#374151" }}>{detail.quantity.toFixed(2)}</TableCell>
+                        <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.lineTotal)}</TableCell>
+                        <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.costPrice)}</TableCell>
+                        <TableCell align="right" sx={{ fontWeight: 600, color: detail.profit >= 0 ? "#10B981" : "#EF4444" }}>
+                          {formatCurrency(detail.profit)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow sx={{ bgcolor: "#F9FAFB", fontWeight: 600 }}>
+                      <TableCell colSpan={3} sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>Total</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                        {invoiceLineDetails.reduce((sum, d) => sum + d.quantity, 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.lineTotal, 0))}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.costPrice, 0))}
+                      </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.profit, 0))}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        </Box>
+      </Modal>
     </>
   );
 }

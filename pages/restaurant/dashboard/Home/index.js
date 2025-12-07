@@ -7,7 +7,7 @@ import Tables from "../table";
 import BASE_URL from "Base/api";
 
 
-const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChangeSteward, onChangeTable, onSetPickupType }, ref) => {
+const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChangeSteward, onChangeTable, onSetPickupType, pickupType }, ref) => {
     const filteredItemsRef = useRef();
 
     useImperativeHandle(ref, () => ({
@@ -187,10 +187,12 @@ const Home = forwardRef(({ searchText, onUpdateItems, billUpdatedItems, onChange
                     ))}
                 </Box>
             </Grid>
-            <Grid item xs={12} lg={2} sx={{ mt: 1, display: "flex", gap: 1 }}>
-                <Steward onSelectSteward={handleSelectSteward} />
-                <Tables onSelectTable={handleSelectTable} />
-            </Grid>
+            {!pickupType && (
+                <Grid item xs={12} lg={2} sx={{ mt: 1, display: "flex", gap: 1 }}>
+                    <Steward onSelectSteward={handleSelectSteward} />
+                    <Tables onSelectTable={handleSelectTable} />
+                </Grid>
+            )}
             <Grid item xs={12}>
                 <Box
                     sx={{

@@ -40,6 +40,8 @@ export const getModule = (type) => {
       return "Help Desk";
     case 20:
       return "ECommerce";
+    case 21:
+      return "Project Management";
     default:
       return "N/A";
   }

@@ -13,6 +13,7 @@ import { Field, Form, Formik } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
 import BASE_URL from "Base/api";
+import { getOrgId } from "components/utils/apiHelpers";
 
 const style = {
   position: "absolute",
@@ -48,9 +49,14 @@ export default function CreateEmploymentTypeModal({ fetchItems }) {
   };
 
   const handleSubmit = async (values, { setSubmitting }) => {
+    const payload = {
+      ...values,
+      orgid: getOrgId() || values.orgid || "",
+    };
+
     fetch(`${BASE_URL}/EmploymentType/CreateEmploymentType`, { 
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -88,6 +94,7 @@ export default function CreateEmploymentTypeModal({ fetchItems }) {
               Name: "",
               IsPayrollEligible: true,
               IsActive: true,
+              orgid: getOrgId() || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

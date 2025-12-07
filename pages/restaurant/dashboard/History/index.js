@@ -68,7 +68,7 @@ export default function History() {
                     component={Paper}
                     sx={{ flex: 1, overflowY: 'auto', '&::-webkit-scrollbar': { display: 'none' }, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
-                    <Table size="small" stickyHeader>
+                    <Table stickyHeader>
                         <TableHead>
                             <TableRow>
                                 <TableCell sx={{ backgroundColor: '#fe6564', color: '#fff', fontWeight: 'bold' }}>Bill No</TableCell>

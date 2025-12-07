@@ -9,6 +9,7 @@ import { Field, Form, Formik } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
 import BASE_URL from "Base/api";
+import { getOrgId } from "components/utils/apiHelpers";
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
@@ -102,6 +103,7 @@ export default function AddEmployeeDialog({ fetchEmployees }) {
       IsActive: values.IsActive,
       IsLabour: values.IsLabour,
       IsSupervisor: values.IsSupervisor,
+      orgid: getOrgId() || values.orgid || "",
     };
 
     fetch(`${BASE_URL}/Employee/CreateEmployeescyAsync`, {
@@ -112,21 +114,31 @@ export default function AddEmployeeDialog({ fetchEmployees }) {
       },
       body: JSON.stringify(payload),
     })
-      .then((res) => res.json())
-      .then((data) => {
-       if (data.statusCode === 200) {
-  toast.success("Employee created successfully");
-  if (typeof fetchItems === "function") {
-    fetchItems(); // refresh table after creation
-  }
-  resetForm();
-  handleClose();
-}
- else {
-          toast.error(data.message || "Creation failed");
+      .then(async (res) => {
+        const data = await res.json();
+        // Check for success - ResponseStatus enum: SUCCESS = 200, FAILED = -99
+        // Handle both string and number serialization
+        const statusCode = data.statusCode || data.StatusCode;
+        const isSuccess = 
+          statusCode === 200 || 
+          statusCode === "200" ||
+          statusCode === "SUCCESS" ||
+          (res.ok && statusCode !== -99 && statusCode !== "-99" && statusCode !== "FAILED");
+        
+        if (isSuccess) {
+          toast.success(data.message || data.Message || "Employee created successfully");
+          if (typeof fetchEmployees === "function") {
+            fetchEmployees(); // refresh table after creation
+          }
+          resetForm();
+          handleClose();
+        } else {
+          const errorMsg = data.message || data.Message || "Creation failed";
+          toast.error(errorMsg);
         }
       })
       .catch((err) => {
+        console.error("Error creating employee:", err);
         toast.error("Error: " + err.message);
       });
   };
@@ -166,6 +178,7 @@ export default function AddEmployeeDialog({ fetchEmployees }) {
               IsActive: true,
               IsLabour: false,
               IsSupervisor: false,
+              orgid: getOrgId() || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

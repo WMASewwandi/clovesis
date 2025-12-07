@@ -7,8 +7,15 @@ export default function SwitchDesign({ onChangeSwitch }) {
     const [selectedType, setSelectedType] = useState(null);
 
     const handleChange = () => {
-        setIsPickup(!isPickup);
-        if (!isPickup) {
+        const newPickupState = !isPickup;
+        setIsPickup(newPickupState);
+        if (!newPickupState) {
+            // Turning pickup OFF - switch back to dine-in
+            if (onChangeSwitch) {
+                onChangeSwitch(null);
+            }
+        } else {
+            // Turning pickup ON - open dialog to select type
             setDialogOpen(true);
         }
     };
@@ -17,6 +24,10 @@ export default function SwitchDesign({ onChangeSwitch }) {
         setDialogOpen(false);
         setIsPickup(false);
         setSelectedType(null);
+        // Notify parent that pickup is cancelled (back to dine-in)
+        if (onChangeSwitch) {
+            onChangeSwitch(null);
+        }
     };
 
     const handleConfirm = () => {

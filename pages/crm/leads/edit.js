@@ -18,8 +18,13 @@ import Tooltip from "@mui/material/Tooltip";
 import Stack from "@mui/material/Stack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CircularProgress from "@mui/material/CircularProgress";
+import FormHelperText from "@mui/material/FormHelperText";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import useCRMAccounts from "hooks/useCRMAccounts";
+import useContactsByAccount from "hooks/useContactsByAccount";
+
+const getAccountValue = (account) => String(account.id);
 
 export default function EditLeadModal({ lead, onLeadUpdated }) {
   const [open, setOpen] = React.useState(false);
@@ -32,6 +37,8 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
     status: "",
     leadScore: 0,
     notes: "",
+    accountId: "",
+    contactId: ""
   });
   const [statusOptions, setStatusOptions] = React.useState([]);
   const [loadingStatuses, setLoadingStatuses] = React.useState(false);
@@ -40,6 +47,8 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
   const [loadingSources, setLoadingSources] = React.useState(false);
   const [sourceError, setSourceError] = React.useState(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const { accounts, isLoading: accountsLoading, error: accountsError } = useCRMAccounts();
+  const { contacts: accountContacts, isLoading: contactsLoading, error: contactsError } = useContactsByAccount(formValues.accountId);
 
   const fetchStatuses = React.useCallback(async () => {
     try {
@@ -148,15 +157,24 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
         status: normalizedStatus !== "" ? String(normalizedStatus) : "",
         leadScore: typeof lead.leadScore === "number" ? lead.leadScore : 50,
         notes: lead.notes || lead.description || "",
+        accountId: lead.accountId ? String(lead.accountId) : "",
+        contactId: lead.contactId ? String(lead.contactId) : ""
       });
     }
   }, [lead, open]);
 
   const handleChange = (field) => (event) => {
-    setFormValues((prev) => ({
-      ...prev,
-      [field]: event.target.value,
-    }));
+    setFormValues((prev) => {
+      const newValues = {
+        ...prev,
+        [field]: event.target.value,
+      };
+      // Reset contactId when accountId changes
+      if (field === "accountId") {
+        newValues.contactId = "";
+      }
+      return newValues;
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -197,6 +215,8 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
       LeadStatus: Number(formValues.status),
       LeadScore: Number(formValues.leadScore) || 0,
       Description: formValues.notes?.trim() || "",
+      AccountId: formValues.accountId || null,
+      ContactId: formValues.contactId || null
     };
 
     try {
@@ -287,7 +307,48 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
                   onChange={handleChange("phone")}
                 />
               </Grid>
-
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Account</InputLabel>
+                  <Select
+                    value={formValues.accountId}
+                    label="Account"
+                    onChange={handleChange("accountId")}
+                    disabled={accountsLoading || accounts.length === 0}
+                  >
+                    {accounts.map((account) => (
+                      <MenuItem key={account.id} value={getAccountValue(account)}>
+                        {account.accountName || account.accountId || getAccountValue(account)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {accountsError && <FormHelperText error>{accountsError}</FormHelperText>}
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Contact</InputLabel>
+                  <Select
+                    value={formValues.contactId}
+                    label="Contact"
+                    onChange={handleChange("contactId")}
+                    disabled={!formValues.accountId || contactsLoading || accountContacts.length === 0}
+                  >
+                    {accountContacts.map((contact) => {
+                      const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email || `Contact #${contact.id}`;
+                      return (
+                        <MenuItem key={contact.id} value={String(contact.id)}>
+                          {contactName}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                  {contactsError && <FormHelperText error>{contactsError}</FormHelperText>}
+                  {!formValues.accountId && (
+                    <FormHelperText>Please select an account first</FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Lead Source</InputLabel>

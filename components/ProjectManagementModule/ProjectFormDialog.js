@@ -159,25 +159,54 @@ const buildProjectNameOptions = (projectsData) => {
 };
 
 const validationSchema = Yup.object().shape({
-  name: Yup.string().required("Project name is required"),
+  name: Yup.string()
+    .required("Project name is required")
+    .min(2, "Project name must be at least 2 characters")
+    .max(128, "Project name cannot exceed 128 characters")
+    .trim(),
+  clientName: Yup.string()
+    .nullable()
+    .max(128, "Client name cannot exceed 128 characters"),
   clientPhoneNumber: Yup.string()
     .nullable()
-    .matches(/^[0-9+\-\s()]*$/, "Enter a valid phone number")
-    .max(32, "Phone number is too long"),
-  clientEmail: Yup.string().nullable().email("Enter a valid email address"),
+    .matches(/^[0-9+\-\s()]*$/, "Please enter a valid phone number (digits, +, -, spaces, and parentheses only)")
+    .max(32, "Phone number cannot exceed 32 characters"),
+  clientEmail: Yup.string()
+    .nullable()
+    .email("Please enter a valid email address (e.g., example@domain.com)")
+    .max(128, "Email address cannot exceed 128 characters"),
   advancedAmount: Yup.number()
     .nullable()
-    .typeError("Enter a numeric value")
-    .min(0, "Amount cannot be negative"),
+    .typeError("Advanced amount must be a number")
+    .min(0, "Advanced amount cannot be negative")
+    .test("max-value", "Advanced amount is too large", (value) => {
+      if (value === null || value === undefined) return true;
+      return value <= 999999999.99;
+    }),
   budgetAmount: Yup.number()
     .nullable()
-    .typeError("Enter a numeric value")
-    .min(0, "Amount cannot be negative"),
-  startDate: Yup.date().required("Start date is required"),
+    .typeError("Budget amount must be a number")
+    .min(0, "Budget amount cannot be negative")
+    .test("max-value", "Budget amount is too large", (value) => {
+      if (value === null || value === undefined) return true;
+      return value <= 999999999.99;
+    }),
+  startDate: Yup.date()
+    .required("Start date is required")
+    .typeError("Please select a valid start date"),
   endDate: Yup.date()
     .required("End date is required")
-    .min(Yup.ref("startDate"), "End date cannot be earlier than start date"),
+    .typeError("Please select a valid end date")
+    .min(Yup.ref("startDate"), "End date must be on or after the start date"),
+  description: Yup.string()
+    .nullable()
+    .max(1024, "Description cannot exceed 1024 characters"),
+  notes: Yup.string()
+    .nullable()
+    .max(2048, "Notes cannot exceed 2048 characters"),
   customerId: Yup.number().nullable(),
+  primaryOwnerId: Yup.number().nullable(),
+  memberIds: Yup.array().of(Yup.number()).nullable(),
 });
 
 const ProjectFormDialog = ({
@@ -582,6 +611,8 @@ const ProjectFormDialog = ({
                       minRows={3}
                       value={values.description}
                       onChange={handleChange}
+                      error={touched.description && Boolean(errors.description)}
+                      helperText={touched.description && errors.description}
                     />
                   </Grid>
                   <Grid item xs={12}>
@@ -593,6 +624,8 @@ const ProjectFormDialog = ({
                       minRows={3}
                       value={values.notes}
                       onChange={handleChange}
+                      error={touched.notes && Boolean(errors.notes)}
+                      helperText={touched.notes && errors.notes}
                     />
                   </Grid>
                 </Grid>

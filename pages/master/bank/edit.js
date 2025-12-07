@@ -102,6 +102,7 @@ export default function EditBank({ item, fetchItems }) {
               AccountUsername: item.accountUsername || "",
               BankAccountType: item.bankAccountType || "",
               IsActive: item.isActive || true,
+              IsProfitAccount: item.isProfitAccount || false,
               WarehouseId: null,
             }}
             validationSchema={validationSchema}
@@ -225,6 +226,21 @@ export default function EditBank({ item, fetchItems }) {
                           />
                         }
                         label="Active"
+                      />
+                    </Grid>
+                    <Grid item xs={12} mt={1}>
+                      <FormControlLabel
+                        control={
+                          <Field
+                            as={Checkbox}
+                            name="IsProfitAccount"
+                            checked={values.IsProfitAccount}
+                            onChange={() =>
+                              setFieldValue("IsProfitAccount", !values.IsProfitAccount)
+                            }
+                          />
+                        }
+                        label="Profit Account"
                       />
                     </Grid>
                   </Grid>

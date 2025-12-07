@@ -24,7 +24,7 @@ import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import useAccounts from "../../../hooks/useAccounts";
 import useContactsByAccount from "../../../hooks/useContactsByAccount";
-import useOpportunities from "../../../hooks/useOpportunities";
+import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
@@ -69,14 +69,14 @@ export default function CreateQuote() {
   const { accounts } = useAccounts();
   const [accountId, setAccountId] = React.useState("");
   const [contactId, setContactId] = React.useState("");
-  const [opportunityId, setOpportunityId] = React.useState("");
+  const [leadId, setLeadId] = React.useState("");
   const [status, setStatus] = React.useState("");
   const [validUntil, setValidUntil] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [lineItems, setLineItems] = React.useState([createEmptyLineItem()]);
   const [submitting, setSubmitting] = React.useState(false);
   const { contacts } = useContactsByAccount(accountId);
-  const { opportunities, isLoading: opportunitiesLoading } = useOpportunities();
+  const { leads, isLoading: leadsLoading } = useLeads();
   const { statuses: quoteStatuses, isLoading: statusesLoading } = useQuoteStatuses();
 
   React.useEffect(() => {
@@ -128,18 +128,30 @@ export default function CreateQuote() {
     );
   }, [lineItems]);
 
-  const handleOpportunityChange = (event) => {
+  const handleLeadChange = (event) => {
     const value = event.target.value;
-    setOpportunityId(value);
+    setLeadId(value);
 
-    const selectedOpportunity = opportunities.find(
-      (opportunity) => opportunity.id && String(opportunity.id) === String(value)
+    const selectedLead = leads.find(
+      (lead) => lead.id && String(lead.id) === String(value)
     );
 
-    if (selectedOpportunity?.meta) {
-      const { accountId: opportunityAccountId, contactId: opportunityContactId } = selectedOpportunity.meta;
-      setAccountId(opportunityAccountId != null ? String(opportunityAccountId) : "");
-      setContactId(opportunityContactId != null ? String(opportunityContactId) : "");
+    if (selectedLead?.meta) {
+      const leadData = selectedLead.meta;
+      const leadAccountId = leadData.accountId ?? null;
+      const leadContactId = leadData.contactId ?? null;
+      
+      if (leadAccountId != null) {
+        setAccountId(String(leadAccountId));
+      } else {
+        setAccountId("");
+      }
+      
+      if (leadContactId != null) {
+        setContactId(String(leadContactId));
+      } else {
+        setContactId("");
+      }
     } else {
       setAccountId("");
       setContactId("");
@@ -173,8 +185,8 @@ export default function CreateQuote() {
   };
 
   const validateForm = () => {
-    if (!opportunityId) {
-      toast.error("Please select an opportunity to continue.");
+    if (!leadId) {
+      toast.error("Please select a lead to continue.");
       return false;
     }
 
@@ -258,7 +270,7 @@ export default function CreateQuote() {
     const payload = {
       AccountId: Number(accountId),
       ContactId: Number(contactId),
-      OpportunityId: opportunityId ? Number(opportunityId) : 0,
+      LeadId: leadId ? Number(leadId) : 0,
       ValidUntil: validUntil ? new Date(validUntil).toISOString() : null,
       Description: description.trim() || null,
       Status: Number(status),
@@ -315,16 +327,16 @@ export default function CreateQuote() {
 
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
-                <InputLabel>Opportunity</InputLabel>
+                <InputLabel>Lead</InputLabel>
                 <Select
-                  value={opportunityId}
-                  label="Opportunity"
-                  onChange={handleOpportunityChange}
-                  disabled={opportunitiesLoading}
+                  value={leadId}
+                  label="Lead"
+                  onChange={handleLeadChange}
+                  disabled={leadsLoading}
                 >
-                  {opportunities.map((opportunity) => (
-                    <MenuItem key={opportunity.id} value={String(opportunity.id)}>
-                      {opportunity.name}
+                  {leads.map((lead) => (
+                    <MenuItem key={lead.id} value={String(lead.id)}>
+                      {lead.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -334,7 +346,12 @@ export default function CreateQuote() {
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
                 <InputLabel>Account</InputLabel>
-                <Select value={accountId} label="Account" onChange={() => {}} disabled>
+                <Select 
+                  value={accountId} 
+                  label="Account" 
+                  onChange={() => {}}
+                  disabled
+                >
                   {accountOptions.map((account) => (
                     <MenuItem key={account.value} value={account.value}>
                       {account.label}
@@ -347,7 +364,12 @@ export default function CreateQuote() {
             <Grid item xs={12} md={4}>
               <FormControl fullWidth size="small">
                 <InputLabel>Contact</InputLabel>
-                <Select value={contactId} label="Contact" onChange={() => {}} disabled>
+                <Select 
+                  value={contactId} 
+                  label="Contact" 
+                  onChange={() => {}}
+                  disabled
+                >
                   {contactOptions.map((contact) => (
                     <MenuItem key={contact.value} value={contact.value}>
                       {contact.label}

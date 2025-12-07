@@ -27,12 +27,27 @@ const sdlcPhases = [
 ];
 
 const validationSchema = Yup.object().shape({
-  phaseName: Yup.string().required("Phase name is required"),
-  phaseType: Yup.string().required("Select the SDLC stage"),
-  startDate: Yup.date().required("Start date is required"),
+  phaseName: Yup.string()
+    .required("Phase name is required")
+    .min(2, "Phase name must be at least 2 characters")
+    .max(128, "Phase name cannot exceed 128 characters")
+    .trim(),
+  phaseType: Yup.string()
+    .required("Please select an SDLC stage")
+    .oneOf(sdlcPhases, "Please select a valid SDLC stage"),
+  startDate: Yup.date()
+    .required("Start date is required")
+    .typeError("Please select a valid start date"),
   endDate: Yup.date()
     .required("End date is required")
-    .min(Yup.ref("startDate"), "End date cannot be before start date"),
+    .typeError("Please select a valid end date")
+    .min(Yup.ref("startDate"), "End date must be on or after the start date"),
+  memberIds: Yup.array()
+    .of(Yup.number().positive())
+    .nullable(),
+  notes: Yup.string()
+    .nullable()
+    .max(1024, "Notes cannot exceed 1024 characters"),
 });
 
 const TimelineEntryFormDialog = ({
@@ -48,7 +63,8 @@ const TimelineEntryFormDialog = ({
     phaseType: initialValues?.phaseType ?? sdlcPhases[0],
     startDate: dayjs(),
     endDate: dayjs().add(3, "day"),
-    assignedToMemberId: "",
+    assignedToMemberId: null,
+    memberIds: [],
     notes: "",
     ...(initialValues || {}),
   };
@@ -62,11 +78,26 @@ const TimelineEntryFormDialog = ({
         enableReinitialize
         onSubmit={async (values, helpers) => {
           try {
-            await onSubmit({
+            // Convert memberIds array to list of numbers, filter out invalid values
+            const memberIds = Array.isArray(values.memberIds)
+              ? values.memberIds
+                  .map((id) => Number(id))
+                  .filter((id) => Number.isInteger(id) && id > 0)
+              : [];
+            
+            // Keep assignedToMemberId for backward compatibility (use first member if available)
+            const assignedToMemberId = memberIds.length > 0 ? memberIds[0] : null;
+            
+            const payload = {
               ...values,
               startDate: dayjs(values.startDate).toISOString(),
               endDate: dayjs(values.endDate).toISOString(),
-            });
+              assignedToMemberId: assignedToMemberId,
+              memberIds: memberIds,
+              phaseType: values.phaseType || null,
+              notes: values.notes || null,
+            };
+            await onSubmit(payload);
             helpers.setSubmitting(false);
           } catch (error) {
             helpers.setSubmitting(false);
@@ -119,27 +150,24 @@ const TimelineEntryFormDialog = ({
                   </Grid>
                   <Grid item xs={12}>
                     <Autocomplete
+                      multiple
                       options={teamMembers}
                       value={
-                        teamMembers.find(
-                          (member) =>
-                            member.memberId ===
-                            (values.assignedToMemberId === ""
-                              ? null
-                              : values.assignedToMemberId)
-                        ) ?? null
+                        teamMembers.filter((member) =>
+                          (values.memberIds || []).includes(member.memberId)
+                        )
                       }
                       getOptionLabel={(option) => option.name}
                       onChange={(_, newValue) =>
                         setFieldValue(
-                          "assignedToMemberId",
-                          newValue ? newValue.memberId : ""
+                          "memberIds",
+                          newValue.map((member) => member.memberId)
                         )
                       }
                       renderInput={(params) => (
                         <TextField
                           {...params}
-                          label="Assigned To (optional)"
+                          label="Assigned Members (select one or more)"
                           fullWidth
                         />
                       )}
@@ -148,7 +176,7 @@ const TimelineEntryFormDialog = ({
                   <Grid item xs={12} sm={6}>
                     <DatePicker
                       label="Start Date"
-                      value={values.startDate ? dayjs(values.startDate) : null}
+                      value={values.startDate ? (dayjs.isDayjs(values.startDate) ? values.startDate : dayjs(values.startDate)) : null}
                       onChange={(date) => setFieldValue("startDate", date)}
                       renderInput={(params) => (
                         <TextField
@@ -163,7 +191,7 @@ const TimelineEntryFormDialog = ({
                   <Grid item xs={12} sm={6}>
                     <DatePicker
                       label="End Date"
-                      value={values.endDate ? dayjs(values.endDate) : null}
+                      value={values.endDate ? (dayjs.isDayjs(values.endDate) ? values.endDate : dayjs(values.endDate)) : null}
                       onChange={(date) => setFieldValue("endDate", date)}
                       renderInput={(params) => (
                         <TextField
@@ -184,6 +212,8 @@ const TimelineEntryFormDialog = ({
                       minRows={3}
                       value={values.notes}
                       onChange={handleChange}
+                      error={touched.notes && Boolean(errors.notes)}
+                      helperText={touched.notes && errors.notes}
                     />
                   </Grid>
                 </Grid>

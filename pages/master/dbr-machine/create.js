@@ -31,9 +31,11 @@ export default function AddDBRMachine({ fetchItems }) {
   const [open, setOpen] = React.useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [salesPersons, setSalesPersons] = useState([]);
+  const [banks, setBanks] = useState([]);
   const handleClose = () => setOpen(false);
 
   const { data: supplierList } = useApi("/Supplier/GetAllSupplier");
+  const { data: bankList } = useApi("/Bank/GetAllBanks");
 
   const inputRef = useRef(null);
 
@@ -75,6 +77,12 @@ export default function AddDBRMachine({ fetchItems }) {
       setSuppliers(supplierList);
     }
   }, [supplierList]);
+
+  useEffect(() => {
+    if (bankList) {
+      setBanks(bankList);
+    }
+  }, [bankList]);
 
   const handleOpen = async () => {
     setOpen(true);
@@ -121,6 +129,7 @@ export default function AddDBRMachine({ fetchItems }) {
               Name: "",
               SupplierId: null,
               SalesPersonId: null,
+              BankId: null,
               IsActive: true,
             }}
             validationSchema={validationSchema}
@@ -209,6 +218,34 @@ export default function AddDBRMachine({ fetchItems }) {
                             : (salesPersons.map((persons) => (
                               <MenuItem key={persons.id} value={persons.id}>{persons.name}</MenuItem>
                             )))}
+                        </Select>
+                      </Grid>
+                      <Grid item xs={12} mt={1}>
+                        <Typography
+                          sx={{
+                            fontWeight: "500",
+                            mb: "5px",
+                          }}
+                        >
+                          Bank
+                        </Typography>
+                        <Select
+                          fullWidth
+                          value={values.BankId || ""}
+                          onChange={(e) => {
+                            setFieldValue("BankId", e.target.value || null);
+                          }}
+                        >
+                          <MenuItem value="">Select Bank</MenuItem>
+                          {banks.length === 0 ? (
+                            <MenuItem disabled>No Banks Available</MenuItem>
+                          ) : (
+                            banks.map((bank) => (
+                              <MenuItem key={bank.id} value={bank.id}>
+                                {bank.name}
+                              </MenuItem>
+                            ))
+                          )}
                         </Select>
                       </Grid>
                       <Grid item xs={12} mt={1} p={1}>

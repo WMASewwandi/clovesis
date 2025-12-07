@@ -33,7 +33,7 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import useAccounts from "../../../hooks/useAccounts";
 import useContacts from "../../../hooks/useContacts";
-import useOpportunities from "../../../hooks/useOpportunities";
+import useLeads from "../../../hooks/useLeads";
 import BASE_URL from "Base/api";
 
 const formatCurrency = (value) => {
@@ -109,7 +109,7 @@ export default function QuotesList() {
 
   const { accounts } = useAccounts();
   const { contacts } = useContacts();
-  const { opportunities } = useOpportunities();
+  const { leads } = useLeads();
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [selectedQuote, setSelectedQuote] = React.useState(null);
@@ -131,13 +131,13 @@ export default function QuotesList() {
     return map;
   }, [contacts]);
 
-  const opportunityMap = React.useMemo(() => {
+  const leadMap = React.useMemo(() => {
     const map = {};
-    opportunities.forEach((opportunity) => {
-      map[String(opportunity.id)] = opportunity.name;
+    leads.forEach((lead) => {
+      map[String(lead.id)] = lead.name;
     });
     return map;
-  }, [opportunities]);
+  }, [leads]);
 
   const refreshQuotes = React.useCallback(
     (targetPage = page) => {
@@ -247,7 +247,7 @@ export default function QuotesList() {
                   <TableCell>Quote Number</TableCell>
                   <TableCell>Account</TableCell>
                   <TableCell>Contact</TableCell>
-                  <TableCell>Opportunity</TableCell>
+                  <TableCell>Lead</TableCell>
                   <TableCell>Total</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Valid Until</TableCell>
@@ -265,7 +265,7 @@ export default function QuotesList() {
                   quotes.map((quote) => {
                     const accountName = accountMap[String(quote.accountId)] || "-";
                     const contactName = contactMap[String(quote.contactId)] || "-";
-                    const opportunityName = opportunityMap[String(quote.opportunityId)] || "-";
+                    const leadName = leadMap[String(quote.leadId || quote.opportunityId)] || "-";
                     const statusLabel = quote.statusName || quote.status || "-";
                     const statusChipProps = getStatusChipProps(statusLabel);
 
@@ -274,7 +274,7 @@ export default function QuotesList() {
                         <TableCell>{quote.quoteNumber || `Quote #${quote.id}`}</TableCell>
                         <TableCell>{accountName}</TableCell>
                         <TableCell>{contactName}</TableCell>
-                        <TableCell>{opportunityName}</TableCell>
+                        <TableCell>{leadName}</TableCell>
                         <TableCell>{formatCurrency(quote.total ?? quote.subTotal)}</TableCell>
                         <TableCell>
                           <Chip

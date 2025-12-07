@@ -18,6 +18,33 @@ import {
 import StatusPill from "./StatusPill";
 import MetricCard from "./MetricCard";
 
+// Category mapping for fallback display
+const categoryMap = {
+  1: "General",
+  2: "Salary",
+  3: "Server Cost",
+  4: "Database Cost",
+  5: "Infrastructure",
+  6: "Operational Expense",
+  7: "Travel",
+  8: "Marketing",
+  9: "Other",
+  10: "Project Billing",
+  11: "Change Request",
+  12: "Maintenance",
+  13: "Consulting",
+  14: "Product Sales",
+  15: "Other Income",
+};
+
+const getCategoryName = (record) => {
+  if (record.categoryName) {
+    return record.categoryName;
+  }
+  // Fallback to mapping if categoryName is not available
+  return categoryMap[record.category] || record.category?.toString() || "Unknown";
+};
+
 const TabPanel = ({ value, index, children }) => {
   if (value !== index) return null;
   return (
@@ -251,11 +278,18 @@ const ProjectDetailDialog = ({
                                 {new Date(item.startDate).toLocaleDateString()} →{" "}
                                 {new Date(item.endDate).toLocaleDateString()}
                               </Typography>
-                              {item.assignedToName ? (
-                                <Typography variant="body2">
-                                  {item.assignedToName}
-                                </Typography>
-                              ) : null}
+                              {(() => {
+                                const members = item.members || [];
+                                const memberNames = members.length > 0
+                                  ? members.map((m) => m.name || m.Name || "").filter(Boolean).join(", ")
+                                  : item.assignedToName;
+                                
+                                return memberNames ? (
+                                  <Typography variant="body2">
+                                    {memberNames}
+                                  </Typography>
+                                ) : null;
+                              })()}
                               {item.notes ? (
                                 <Typography variant="body2" color="text.secondary">
                                   {item.notes}
@@ -442,7 +476,7 @@ const ProjectDetailDialog = ({
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle2">
-                            {record.categoryName}
+                            {getCategoryName(record)}
                           </Typography>
                           <Chip
                             label={record.recordType === 1 ? "Income" : "Expense"}

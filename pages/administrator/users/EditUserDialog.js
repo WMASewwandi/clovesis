@@ -36,16 +36,23 @@ const validationSchema = Yup.object().shape({
     .required("Mobile Number is required"),
   WarehouseId: Yup.string().required("Warehouse is required"),
   UserRole: Yup.string().required("User Role is required"),
+  SalesPersonId: Yup.number().when("UserType", {
+    is: 24,
+    then: (schema) => schema.required("Sales Person is required."),
+    otherwise: (schema) => schema.nullable(),
+  }),
 });
 
 export default function EditUserDialog({ item, fetchItems, warehouses, roles }) {
   const [open, setOpen] = React.useState(false);
   const [scroll, setScroll] = React.useState("paper");
   const [userTypes, setUserTypes] = useState([]);
+  const [salesPersons, setSalesPersons] = useState([]);
 
   const handleClickOpen = (scrollType) => () => {
     setOpen(true);
     fetchUserTypes();
+    fetchSalesPersons();
     setScroll(scrollType);
   };
 
@@ -70,6 +77,32 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
       setUserTypes(data);
     } catch (error) {
       console.error("Error fetching:", error);
+    }
+  };
+
+  const fetchSalesPersons = async () => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/SalesPerson/GetAllSalesPersonCRM`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch");
+      }
+
+      const data = await response.json();
+      if (data.statusCode === 200 && data.result) {
+        setSalesPersons(data.result);
+      }
+    } catch (error) {
+      console.error("Error fetching sales persons:", error);
     }
   };
 
@@ -129,6 +162,7 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
               IsAgeVerified: 1,
               EmailConfirmed: 0,
               WarehouseId: item.warehouseId || "",
+              SalesPersonId: item.salesPersonId || null,
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -321,9 +355,13 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
                         name="UserType"
                         label="User Type"
                         value={values.UserType}
-                        onChange={(e) =>
-                          setFieldValue("UserType", e.target.value)
-                        }
+                        onChange={(e) => {
+                          const newUserType = e.target.value;
+                          setFieldValue("UserType", newUserType);
+                          if (newUserType !== 24) {
+                            setFieldValue("SalesPersonId", null);
+                          }
+                        }}
                       >
                         {userTypes.length === 0 ? (
                           <MenuItem disabled color="error">
@@ -347,6 +385,57 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
                       )}
                     </FormControl>
                   </Grid>
+                  {values.UserType === 24 && (
+                    <Grid item xs={12}>
+                      <Typography
+                        component="label"
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "10px",
+                          display: "block",
+                        }}
+                      >
+                        Sales Person
+                      </Typography>
+                      <FormControl fullWidth>
+                        <InputLabel id="sales-person-select-label">
+                          Sales Person
+                        </InputLabel>
+                        <Field
+                          as={Select}
+                          labelId="sales-person-select-label"
+                          id="sales-person-select"
+                          name="SalesPersonId"
+                          label="Sales Person"
+                          value={values.SalesPersonId}
+                          onChange={(e) =>
+                            setFieldValue("SalesPersonId", e.target.value)
+                          }
+                        >
+                          {salesPersons.length === 0 ? (
+                            <MenuItem disabled color="error">
+                              No Sales Persons Available
+                            </MenuItem>
+                          ) : (
+                            salesPersons.map((person, index) => (
+                              <MenuItem
+                                key={index}
+                                value={person.id}
+                              >
+                                {person.code} - {person.name}
+                              </MenuItem>
+                            ))
+                          )}
+                        </Field>
+                        {touched.SalesPersonId && Boolean(errors.SalesPersonId) && (
+                          <Typography variant="caption" color="error">
+                            {errors.SalesPersonId}
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                  )}
                   <Grid item xs={12}>
                     <Button
                       type="submit"

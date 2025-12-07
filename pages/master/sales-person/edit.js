@@ -35,7 +35,7 @@ const validationSchema = Yup.object().shape({
   MobileNumber: Yup.string().required("Mobile Number is required"),
 });
 
-export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,suppliers }) {
+export default function EditSalesPerson({ item, fetchItems, isSupplierSalesRef, suppliers }) {
   const [open, setOpen] = useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -53,7 +53,7 @@ export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,sup
   }, [open]);
 
   const handleSubmit = (values) => {
-    if(!values.SupplierId && isSupplierSalesRef){
+    if (!values.SupplierId && isSupplierSalesRef) {
       toast.info("Please Select Supplier");
       return;
     }
@@ -103,6 +103,8 @@ export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,sup
               MobileNumber: item.mobileNumber || "",
               SupplierId: item.supplier,
               Remark: item.remark || "",
+              SalesTarget: null,
+              Range: null
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -161,35 +163,35 @@ export default function EditSalesPerson({ item,fetchItems,isSupplierSalesRef,sup
                     </Grid>
                     {isSupplierSalesRef && (
                       <Grid item xs={12} mt={1}>
-                      <Typography
-                        sx={{
-                          fontWeight: "500",
-                          fontSize: "14px",
-                          mb: "5px",
-                        }}
-                      >
-                        Supplier
-                      </Typography>
-                      <FormControl fullWidth>
-                        <Field
-                          as={TextField}
-                          select
-                          fullWidth
-                          name="SupplierId"
-                          size="small"
+                        <Typography
+                          sx={{
+                            fontWeight: "500",
+                            fontSize: "14px",
+                            mb: "5px",
+                          }}
                         >
-                          {suppliers.length === 0 ? (
-                            <MenuItem disabled>No Suppliers Available</MenuItem>
-                          ) : (
-                            suppliers.map((supplier, index) => (
-                              <MenuItem key={index} value={supplier.id}>
-                                {supplier.name}
-                              </MenuItem>
-                            ))
-                          )}
-                        </Field>
-                      </FormControl>
-                    </Grid>
+                          Supplier
+                        </Typography>
+                        <FormControl fullWidth>
+                          <Field
+                            as={TextField}
+                            select
+                            fullWidth
+                            name="SupplierId"
+                            size="small"
+                          >
+                            {suppliers.length === 0 ? (
+                              <MenuItem disabled>No Suppliers Available</MenuItem>
+                            ) : (
+                              suppliers.map((supplier, index) => (
+                                <MenuItem key={index} value={supplier.id}>
+                                  {supplier.name}
+                                </MenuItem>
+                              ))
+                            )}
+                          </Field>
+                        </FormControl>
+                      </Grid>
                     )}
                     <Grid item xs={12} mt={1}>
                       <Typography

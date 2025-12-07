@@ -8,6 +8,7 @@ import { Field, Form, Formik } from "formik";
 import { toast } from "react-toastify";
 import TextField from "@mui/material/TextField";
 import BASE_URL from "Base/api";
+import { getOrgId } from "components/utils/apiHelpers";
 
 const style = {
   position: "absolute",
@@ -44,9 +45,14 @@ export default function AddPersonTitle({ fetchItems }) {
 
   const handleSubmit = (values, { setSubmitting }) => {
     const token = localStorage.getItem("token");
+    const payload = {
+      ...values,
+      orgid: getOrgId() || values.orgid || "",
+    };
+
     fetch(`${BASE_URL}/PersonTitle/CreatePersonTitle`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -89,6 +95,7 @@ export default function AddPersonTitle({ fetchItems }) {
             initialValues={{
               Name: "",
               IsActive: true,
+              orgid: getOrgId() || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

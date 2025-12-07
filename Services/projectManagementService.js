@@ -258,9 +258,9 @@ export const addChecklistItem = async (taskId, payload) => {
 
 export const updateChecklistItem = async (checklistItemId, payload) => {
   const response = await fetch(
-    `${BASE_URL}/ProjectManagementModule/checklist/${checklistItemId}`,
+    `${BASE_URL}/ProjectManagementModule/checklist/${checklistItemId}/update`,
     {
-      method: "PUT",
+      method: "POST",
       headers: authHeaders(),
       body: JSON.stringify(payload),
     }

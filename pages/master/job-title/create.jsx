@@ -16,6 +16,7 @@ import * as Yup from "yup";
 import { toast } from "react-toastify";
 import AddIcon from "@mui/icons-material/Add";
 import BASE_URL from "Base/api";
+import { getOrgId } from "components/utils/apiHelpers";
 
 // Modal style
 const style = {
@@ -76,13 +77,18 @@ export default function AddJobTitle({ fetchItems = [] }) {
       // console.log(payload);
       // return;
 
+      const payload = {
+        ...values,
+        orgid: getOrgId() || values.orgid || "",
+      };
+
       const response = await fetch(`${BASE_URL}/JobTitle/CreateJobTitle`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(values),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -139,6 +145,7 @@ export default function AddJobTitle({ fetchItems = [] }) {
               description: "",
               rankOrder: 0,
               isActive: true,
+              orgid: getOrgId() || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
