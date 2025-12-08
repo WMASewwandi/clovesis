@@ -808,6 +808,7 @@ export default function CRMDashboard() {
                         type="date"
                         value={dateRange.from}
                         onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -821,6 +822,7 @@ export default function CRMDashboard() {
                         type="date"
                         value={dateRange.to}
                         onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -840,6 +842,7 @@ export default function CRMDashboard() {
                           const selectedDate = e.target.value;
                           setDateRange({ from: selectedDate, to: selectedDate });
                         }}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -886,6 +889,7 @@ export default function CRMDashboard() {
                               }
                             }
                           }}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
@@ -917,6 +921,7 @@ export default function CRMDashboard() {
                           type="date"
                           value={dateRange.from}
                           onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
@@ -930,6 +935,7 @@ export default function CRMDashboard() {
                           type="date"
                           value={dateRange.to}
                           onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
@@ -947,6 +953,7 @@ export default function CRMDashboard() {
                         type="date"
                         value={dateRange.from}
                         onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -960,6 +967,7 @@ export default function CRMDashboard() {
                         type="date"
                         value={dateRange.to}
                         onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -979,6 +987,7 @@ export default function CRMDashboard() {
                           const selectedDate = e.target.value;
                           setDateRange({ from: selectedDate, to: selectedDate });
                         }}
+                        disabled
                         InputLabelProps={{
                           shrink: true,
                         }}
@@ -1025,6 +1034,7 @@ export default function CRMDashboard() {
                               }
                             }
                           }}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
@@ -1056,6 +1066,7 @@ export default function CRMDashboard() {
                           type="date"
                           value={dateRange.from}
                           onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
@@ -1069,6 +1080,7 @@ export default function CRMDashboard() {
                           type="date"
                           value={dateRange.to}
                           onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                          disabled
                           InputLabelProps={{
                             shrink: true,
                           }}
