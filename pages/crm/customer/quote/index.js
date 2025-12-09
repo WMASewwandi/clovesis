@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/router";
 import { ProjectNo } from "Base/catelogue";
-import { Catelogue } from "Base/catelogue";
-import { Report } from "Base/report";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -18,13 +16,12 @@ import { format } from "date-fns";
 import BASE_URL from "Base/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { formatDate } from "@/components/utils/formatHelper";
 
 export default function CustomerQuote() {
   const router = useRouter();
   const quoteId = router.query.id;
   const quoteNumber = router.query.documentNumber;
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [iframeError, setIframeError] = useState(false);
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signature, setSignature] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -38,37 +35,6 @@ export default function CustomerQuote() {
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (pdfUrl && !iframeError) {
-      const timer = setTimeout(() => {
-        const iframe = document.querySelector('iframe[title="Quote PDF"]');
-        if (iframe) {
-          try {
-            const hasContent = iframe.contentWindow || iframe.contentDocument;
-            if (!hasContent) {
-              setIframeError(true);
-            }
-          } catch (e) {
-          }
-        }
-      }, 5000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [pdfUrl, iframeError]);
-
-  useEffect(() => {
-    if (quoteId) {
-      const documentNumber = quoteNumber || quoteId;
-      const reportName = "CRMQuote.rpt";
-      const warehouseId = router.query.warehouseId || 1;
-      const currentUser = router.query.currentUser || "SuperAdmin";
- 
-      const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${reportName}&warehouseId=${warehouseId}&currentUser=${currentUser}`;
-      const fullUrl = `${Report}${reportLink}`;
-      setPdfUrl(fullUrl);
-    }
-  }, [quoteId, quoteNumber, router.query]);
 
   useEffect(() => {
     const fetchQuoteData = async () => {
@@ -382,110 +348,261 @@ export default function CustomerQuote() {
 
         <Box
           sx={{
-            width: "100%",
-            height: { xs: "60vh", sm: "70vh", md: "75vh" },
+            width: "210mm",
+            minHeight: "297mm",
+            maxWidth: "100%",
+            margin: "0 auto",
             marginBottom: 4,
-            border: "1px solid #e0e0e0",
-            borderRadius: 2,
-            overflow: "hidden",
-            boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
-            backgroundColor: "#fafafa",
             position: "relative",
+            backgroundColor: "white",
+            backgroundImage: "url('/images/quotation/cbassletter.jpg')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            paddingTop: { xs: "50mm", sm: "60mm", md: "70mm" },
+            paddingX: { xs: "20mm", sm: "25mm", md: "30mm" },
+            paddingBottom: { xs: "20mm", sm: "25mm", md: "30mm" },
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            "@media print": {
+              width: "210mm",
+              minHeight: "297mm",
+              margin: 0,
+              paddingTop: "60mm",
+              paddingX: "25mm",
+              paddingBottom: "25mm",
+              boxShadow: "none",
+              pageBreakAfter: "always",
+            },
           }}
         >
-          {pdfUrl ? (
-            <>
-              {!iframeError ? (
-                <>
-                  <iframe
-                    src={pdfUrl}
-                    width="100%"
-                    height="100%"
-                    style={{ border: "none" }}
-                    title="Quote PDF"
-                    onError={() => setIframeError(true)}
-                    onLoad={() => {
-                      setTimeout(() => {
-                        try {
-                          const iframe = document.querySelector('iframe[title="Quote PDF"]');
-                          if (iframe) {
-                            try {
-                              iframe.contentWindow?.document;
-                            } catch (e) {
-                            }
-                          }
-                        } catch (err) {
-                        }
-                      }, 2000);
-                    }}
-                    allow="fullscreen"
-                  />
+          {loadingQuote ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "400px",
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                Loading quote...
+              </Typography>
+            </Box>
+          ) : quoteData ? (
+            <Box sx={{ position: "relative", zIndex: 1 }}>
+              <Typography
+                variant="h4"
+                sx={{
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  mb: 4,
+                  fontSize: { xs: "1.5rem", sm: "2rem" },
+                }}
+              >
+                QUOTATION
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  mb: 4,
+                  flexDirection: { xs: "column", sm: "row" },
+                  gap: 2,
+                }}
+              >
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                    {quoteData?.companyName || "Company Name"}
+                  </Typography>
+                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                    {quoteData?.leadEmail || "Email Address"}
+                  </Typography>
+                  <Typography variant="body2">
+                    {quoteData?.leadMobileNumber || "Mobile No"}
+                  </Typography>
+                </Box>
+
+                <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    <strong>Quotation No:</strong> {quoteData.quoteNumber || quoteNumber || "-"}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Date:</strong> {quoteData.createdOn ? format(new Date(quoteData.createdOn), "dd-MMM-yyyy") : currentDate}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Valid Until:</strong> {formatDate(quoteData.validUntil)}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box>
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    {quoteData.description || ""}
+                  </Typography>
+                </Box>              
+
+              {quoteData.lineItems && quoteData.lineItems.length > 0 && (
+                <Box sx={{ mb: 3 }}>
                   <Box
                     sx={{
-                      position: "absolute",
-                      bottom: 10,
-                      right: 10,
-                      zIndex: 10,
+                      backgroundColor: "#bdd2e7",
+                      color: "black",
+                      display: "flex",
+                      padding: "12px 16px",
+                      borderRadius: "4px 4px 0 0",
                     }}
                   >
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => window.open(pdfUrl, "_blank")}
-                      sx={{
-                        backgroundColor: "rgba(255, 255, 255, 0.9)",
-                        backdropFilter: "blur(4px)",
-                        "&:hover": {
-                          backgroundColor: "rgba(255, 255, 255, 1)",
-                        },
-                      }}
-                    >
-                      Open in New Window
-                    </Button>
+                    <Box sx={{ flex: 2, fontWeight: 600 }}>Description</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Price</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Discount</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Total</Box>
                   </Box>
-                </>
-              ) : (
+                  {quoteData.lineItems.map((item, index) => {
+                    const price = parseFloat(item.price || 0);
+                    const discount = parseFloat(item.discount || 0);
+                    const total = price - discount;
+                    return (
+                      <Box
+                        key={index}
+                        sx={{
+                          display: "flex",
+                          padding: "12px 16px",
+                          borderBottom: "1px solid #e0e0e0",
+                          backgroundColor: index % 2 === 0 ? "white" : "#f9f9f9",
+                        }}
+                      >
+                        <Box sx={{ flex: 2 }}>{item.description || "-"}</Box>
+                        <Box sx={{ flex: 1, textAlign: "right" }}>
+                          {price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Box>
+                        <Box sx={{ flex: 1, textAlign: "right" }}>
+                          {discount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Box>
+                        <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500 }}>
+                          {total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </Box>
+                      </Box>
+                    );
+                  })}
+                </Box>
+              )}
+
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  mt: 3,
+                  mb: 4,
+                }}
+              >
+                <Box sx={{ textAlign: "right", minWidth: "200px" }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: "bold",
+                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                    }}
+                  >
+                    Total: {(quoteData.total || 0).toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box
+                sx={{
+                  mt: { xs: 8, sm: 10, md: 12 },
+                  mb: 2,
+                }}
+              >
                 <Box
                   sx={{
                     display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    height: "100%",
-                    flexDirection: "column",
-                    gap: 3,
-                    padding: 3,
+                    justifyContent: "space-between",
                   }}
                 >
-                  <Typography variant="h6" color="text.secondary" align="center">
-                    Unable to display PDF in this view
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" align="center">
-                    The PDF cannot be embedded due to security restrictions. Please click the button below to open the quotation in a new window.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => window.open(pdfUrl, "_blank")}
-                    sx={{ mt: 2 }}
-                  >
-                    Open Quotation PDF
-                  </Button>
+                  <Box sx={{ flex: 1 }}>
+                    {(quoteData?.salesPersonSignature) && (
+                      <img
+                        src={quoteData?.salesPersonSignature}
+                        alt="Signature"
+                        style={{
+                          maxWidth: "150px",
+                          maxHeight: "50px",
+                          objectFit: "contain",
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Box sx={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
+                    {(quoteData?.signatureImage) && (
+                      <img
+                        src={quoteData?.signatureImage}
+                        alt="Signature"
+                        style={{
+                          maxWidth: "150px",
+                          maxHeight: "50px",
+                          objectFit: "contain",
+                        }}
+                      />
+                    )}
+                  </Box>
                 </Box>
-              )}
-            </>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 1,
+                  }}
+                >
+                  <Box sx={{ width: "150px", borderTop: "1px dotted #000", pt: 1 }} />
+                  <Box sx={{ width: "150px", borderTop: "1px dotted #000", pt: 1 }} />
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Sales Person
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    Approved By
+                  </Typography>
+                </Box>
+
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Typography variant="body2">
+                    {quoteData?.salesPersonName || "Person Name"}
+                  </Typography>
+                  <Typography variant="body2">
+                    {quoteData?.companyName || "CompanyName"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
           ) : (
             <Box
               sx={{
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
-                height: "100%",
-                flexDirection: "column",
-                gap: 2,
+                minHeight: "400px",
               }}
             >
-              <Typography variant="body2" color="text.secondary">
-                Loading quote...
+              <Typography variant="body2" color="error">
+                Failed to load quote data
               </Typography>
             </Box>
           )}

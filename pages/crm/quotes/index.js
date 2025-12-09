@@ -331,7 +331,7 @@ export default function QuotesList() {
                               <AssessmentIcon fontSize="medium" />
                             </IconButton>
                           </Tooltip>
-                          {canViewReport && (
+                          {/* {canViewReport && (
                             <Tooltip title="Open PDF Report">
                               <IconButton
                                 size="small"
@@ -346,7 +346,7 @@ export default function QuotesList() {
                                 <PictureAsPdfIcon fontSize="medium" />
                               </IconButton>
                             </Tooltip>
-                          )}
+                          )} */}
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"
