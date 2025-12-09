@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Grid,
-  IconButton,
   MenuItem,
   Select,
   Tooltip,
   Typography,
+  IconButton,
 } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BASE_URL from "Base/api";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const style = {
   position: "absolute",
@@ -33,16 +34,29 @@ const validationSchema = Yup.object().shape({
   Code: Yup.string().required("Code is required"),
   Name: Yup.string().required("Name is required"),
   MobileNumber: Yup.string().required("Mobile Number is required"),
+  Email: Yup.string().email("Invalid email format").required("Email is required"),
   SalesTarget: Yup.string().required("Sales Target is required"),
   Range: Yup.string().required("Time Period is required"),
 });
 
 export default function EditSalesPerson({ item, fetchItems }) {
   const [open, setOpen] = useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleOpen = () => {
+    setOpen(true);
+    if (item.signatureImage) {
+      setSignaturePreview(item.signatureImage);
+    }
+  };
+  const handleClose = () => {
+    setOpen(false);
+    setSignatureImage(null);
+    setSignaturePreview(item.signatureImage || null);
+  };
 
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const [signatureImage, setSignatureImage] = useState(null);
+  const [signaturePreview, setSignaturePreview] = useState(item.signatureImage || null);
 
   useEffect(() => {
     if (open) {
@@ -54,13 +68,50 @@ export default function EditSalesPerson({ item, fetchItems }) {
     }
   }, [open]);
 
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
+      }
+      setSignatureImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignaturePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveSignature = () => {
+    setSignatureImage(null);
+    setSignaturePreview(item.signatureImage || null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = (values) => {
     const token = localStorage.getItem("token");
+    const formData = new FormData();
+    
+    Object.keys(values).forEach((key) => {
+      if (values[key] !== null && values[key] !== undefined) {
+        formData.append(key, values[key]);
+      }
+    });
+    
+    if (signatureImage) {
+      formData.append("SignatureImage", signatureImage);
+    } else {
+      formData.append("SignatureImage", "");
+    }
+
     fetch(`${BASE_URL}/SalesPerson/UpdateSalesPerson`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: formData,
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     })
@@ -69,6 +120,7 @@ export default function EditSalesPerson({ item, fetchItems }) {
         if (data.statusCode == 200) {
           toast.success(data.result.message);
           setOpen(false);
+          setSignatureImage(null);
           fetchItems();
         } else {
           toast.error(data.result.message);
@@ -99,6 +151,7 @@ export default function EditSalesPerson({ item, fetchItems }) {
               Code: item.code || "",
               Name: item.name || "",
               MobileNumber: item.mobileNumber || "",
+              Email: item.email || "",
               SupplierId: null,
               Remark: item.remark || "",
               SalesTarget: item.salesTarget || null,
@@ -187,6 +240,25 @@ export default function EditSalesPerson({ item, fetchItems }) {
                           mb: "5px",
                         }}
                       >
+                        Email
+                      </Typography>
+                      <Field
+                        as={TextField}
+                        fullWidth
+                        type="email"
+                        name="Email"
+                        error={touched.Email && Boolean(errors.Email)}
+                        helperText={touched.Email && errors.Email}
+                      />
+                    </Grid>
+                    <Grid item xs={12} mt={1}>
+                      <Typography
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "5px",
+                        }}
+                      >
                         Target Time Period
                       </Typography>
                       <Select fullWidth value={values.Range} onChange={(e) => setFieldValue("Range", e.target.value)}>
@@ -234,6 +306,73 @@ export default function EditSalesPerson({ item, fetchItems }) {
                         fullWidth
                         name="Remark"
                       />
+                    </Grid>
+                    <Grid item xs={12} mt={1}>
+                      <Typography
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "5px",
+                        }}
+                      >
+                        Signature Image
+                      </Typography>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        style={{ display: "none" }}
+                      />
+                      <Box display="flex" flexDirection="column" gap={1}>
+                        <Button
+                          variant="outlined"
+                          onClick={() => fileInputRef.current?.click()}
+                          sx={{ width: "fit-content" }}
+                        >
+                          {signatureImage ? "Change Signature" : signaturePreview ? "Change Signature" : "Upload Signature"}
+                        </Button>
+                        {signaturePreview && (
+                          <Box
+                            sx={{
+                              border: "1px solid #e0e0e0",
+                              borderRadius: 1,
+                              padding: 1,
+                              backgroundColor: "#fafafa",
+                              position: "relative",
+                              display: "inline-block",
+                            }}
+                          >
+                            <img
+                              src={signaturePreview}
+                              alt="Signature preview"
+                              style={{
+                                maxWidth: "200px",
+                                maxHeight: "100px",
+                                objectFit: "contain",
+                                display: "block",
+                              }}
+                            />
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={handleRemoveSignature}
+                              aria-label="remove signature"
+                              sx={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                                backgroundColor: "rgba(255, 255, 255, 0.9)",
+                                "&:hover": {
+                                  backgroundColor: "rgba(255, 255, 255, 1)",
+                                },
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Box>
                     </Grid>
                   </Grid>
                 </Box>

@@ -62,6 +62,7 @@ export default function SalesPerson() {
     fetchSalesPersonList(1, search, size); 
   };
 
+
   if (!navigate) {
     return <AccessDenied />;
   }
@@ -99,6 +100,7 @@ export default function SalesPerson() {
                   <TableCell>Code</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Mobile Number</TableCell>
+                  <TableCell>Email</TableCell>
                   <TableCell>Target Time Period</TableCell>
                   <TableCell>Sales Target</TableCell>
                   <TableCell>Remark</TableCell>
@@ -108,7 +110,7 @@ export default function SalesPerson() {
               <TableBody>
                 {salesPersonList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={8}>
                       <Typography color="error">No Sales Person Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -120,6 +122,7 @@ export default function SalesPerson() {
                       </TableCell>
                       <TableCell>  {item?.name}</TableCell>
                       <TableCell>  {item?.mobileNumber}</TableCell>
+                      <TableCell>  {item?.email}</TableCell>
                       <TableCell>  {item?.rangeName}</TableCell>
                       <TableCell>  {formatCurrency(item?.salesTarget)}</TableCell>
                       <TableCell>  {item?.remark}</TableCell>

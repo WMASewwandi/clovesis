@@ -28,6 +28,8 @@ import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
 
 const toDateInputValue = (value) => {
   if (!value) {
@@ -392,12 +394,21 @@ export default function EditQuote() {
       .filter(Boolean);
   };
 
+  const generateReportLink = (quoteId, quoteNumber) => {
+    if (typeof window === "undefined") return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/crm/customer/quote?id=${quoteId}&documentNumber=${quoteNumber}`;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validateForm()) {
       return;
     }
+
+    const quoteNumber = quoteDetails?.quoteNumber || quoteId;
+    const reportLink = generateReportLink(quoteId, quoteNumber);
 
     const payload = {
       Id: Number(quoteId),
@@ -408,6 +419,7 @@ export default function EditQuote() {
       Description: description.trim() || null,
       Status: Number(status),
       LineItems: buildLineItemsPayload(),
+      ReportLink: reportLink,
     };
 
     try {

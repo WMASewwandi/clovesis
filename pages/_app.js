@@ -367,7 +367,12 @@ function MyApp({ Component, pageProps }) {
     );
   }
 
-  if (token == null) {
+  // Exclude customer/quote page from layout and token check
+  const noLayoutRoutes = ["/crm/customer/quote"];
+  const shouldUseLayout = !noLayoutRoutes.includes(router.pathname);
+  const shouldCheckToken = !noLayoutRoutes.includes(router.pathname);
+
+  if (token == null && shouldCheckToken) {
     if (ProjectNo === 1) {
       return <SignIn /> ;
     } else {
@@ -380,9 +385,13 @@ function MyApp({ Component, pageProps }) {
     <>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Layout>
+        {shouldUseLayout ? (
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        ) : (
           <Component {...pageProps} />
-        </Layout>
+        )}
       </ThemeProvider>
     </>
   );

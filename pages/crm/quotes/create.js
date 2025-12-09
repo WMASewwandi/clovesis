@@ -28,6 +28,8 @@ import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
 
 const createEmptyLineItem = () => ({
   id: `${Date.now()}-${Math.random()}`,
@@ -70,7 +72,7 @@ export default function CreateQuote() {
   const [accountId, setAccountId] = React.useState("");
   const [contactId, setContactId] = React.useState("");
   const [leadId, setLeadId] = React.useState("");
-  const [status, setStatus] = React.useState("");
+  const [status, setStatus] = React.useState(0);
   const [validUntil, setValidUntil] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [lineItems, setLineItems] = React.useState([createEmptyLineItem()]);
@@ -260,6 +262,12 @@ export default function CreateQuote() {
       .filter(Boolean);
   };
 
+  const generateReportLink = (quoteId, quoteNumber) => {
+    if (typeof window === "undefined") return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/crm/customer/quote?id=${quoteId}&documentNumber=${quoteNumber}`;
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
@@ -280,6 +288,7 @@ export default function CreateQuote() {
     try {
       setSubmitting(true);
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      
       const response = await fetch(`${BASE_URL}/CRMQuotes/CreateCRMQuote`, {
         method: "POST",
         headers: {
@@ -293,6 +302,24 @@ export default function CreateQuote() {
 
       if (!response.ok) {
         throw new Error(data?.message || "Failed to create quote");
+      }
+
+      if (data?.result?.id && data?.result?.quoteNumber) {
+        const reportLink = generateReportLink(data.result.id, data.result.quoteNumber);
+        
+        const updatePayload = {
+          Id: data.result.id,
+          ReportLink: reportLink,
+        };
+
+        await fetch(`${BASE_URL}/CRMQuotes/UpdateCRMQuote`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(updatePayload),
+        });
       }
 
       toast.success(data?.message || "Quote created successfully.");
@@ -398,7 +425,8 @@ export default function CreateQuote() {
                   value={status}
                   label="Status"
                   onChange={(event) => setStatus(event.target.value)}
-                  disabled={statusesLoading || quoteStatuses.length === 0}
+                  disabled
+                  //disabled={statusesLoading || quoteStatuses.length === 0}
                 >
                   {quoteStatuses.map((option) => (
                     <MenuItem key={option.value} value={String(option.value)}>

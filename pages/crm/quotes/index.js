@@ -20,6 +20,8 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
@@ -35,6 +37,8 @@ import useAccounts from "../../../hooks/useAccounts";
 import useContacts from "../../../hooks/useContacts";
 import useLeads from "../../../hooks/useLeads";
 import BASE_URL from "Base/api";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
 
 const formatCurrency = (value) => {
   if (value === null || value === undefined || value === "") {
@@ -268,6 +272,17 @@ export default function QuotesList() {
                     const leadName = leadMap[String(quote.leadId || quote.opportunityId)] || "-";
                     const statusLabel = quote.statusName || quote.status || "-";
                     const statusChipProps = getStatusChipProps(statusLabel);
+                    const quoteStatus = quote.status ?? quote.statusId;
+                    const canEdit = quoteStatus === 0 || quoteStatus === 3 || quoteStatus === 4;
+                    const canViewReport = quoteStatus === 2;
+                    
+                    const generateReportLink = (documentNumber) => {
+                      const warehouseId = typeof window !== "undefined" ? localStorage.getItem("warehouse") || 1 : 1;
+                      const currentUser = typeof window !== "undefined" ? localStorage.getItem("name") || "SuperAdmin" : "SuperAdmin";
+                      const reportName = "CRMQuote.rpt";
+                      const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${reportName}&warehouseId=${warehouseId}&currentUser=${currentUser}`;
+                      return `${Report}${reportLink}`;
+                    };
 
                     return (
                       <TableRow key={quote.id}>
@@ -286,16 +301,52 @@ export default function QuotesList() {
                         </TableCell>
                         <TableCell>{formatDateValue(quote.validUntil)}</TableCell>
                         <TableCell align="right">
-                          <Tooltip title="Edit">
+                          <Tooltip title={canEdit ? "Edit" : "Edit not available for this status"}>
+                            <span>
+                              <IconButton
+                                size="small"
+                                component={canEdit ? Link : "span"}
+                                href={canEdit ? `/crm/quotes/edit?id=${quote.id}` : undefined}
+                                aria-label="edit quote"
+                                disabled={!canEdit}
+                                sx={{
+                                  opacity: canEdit ? 1 : 0.5,
+                                  cursor: canEdit ? "pointer" : "not-allowed",
+                                }}
+                              >
+                                <EditOutlinedIcon color={canEdit ? "primary" : "disabled"} fontSize="medium" />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                          <Tooltip title="Report">
                             <IconButton
                               size="small"
-                              component={Link}
-                              href={`/crm/quotes/edit?id=${quote.id}`}
-                              aria-label="edit quote"
+                              color="primary"
+                              aria-label="view report"
+                              onClick={() => {
+                                const quoteNumber = quote.quoteNumber || quote.id;
+                                window.open(`/crm/customer/quote?id=${quote.id}&documentNumber=${quoteNumber}`, '_blank');
+                              }}
                             >
-                              <EditOutlinedIcon color="primary" fontSize="inherit" />
+                              <AssessmentIcon fontSize="medium" />
                             </IconButton>
                           </Tooltip>
+                          {canViewReport && (
+                            <Tooltip title="Open PDF Report">
+                              <IconButton
+                                size="small"
+                                color="secondary"
+                                aria-label="open pdf report"
+                                onClick={() => {
+                                  const quoteNumber = quote.quoteNumber || quote.id;
+                                  const reportLink = generateReportLink(quoteNumber);
+                                  window.open(reportLink, '_blank');
+                                }}
+                              >
+                                <PictureAsPdfIcon fontSize="medium" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"
@@ -303,7 +354,7 @@ export default function QuotesList() {
                               aria-label="delete quote"
                               onClick={() => handleDeleteClick(quote)}
                             >
-                              <DeleteOutlineIcon fontSize="inherit" />
+                              <DeleteOutlineIcon fontSize="medium" />
                             </IconButton>
                           </Tooltip>
                         </TableCell>
