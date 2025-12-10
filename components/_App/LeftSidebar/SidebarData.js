@@ -360,6 +360,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             // { title: "Opportunities", path: "/crm/opportunities/", categoryId: 111, isAvailable: true },                     
             { title: "Activities", path: "/crm/activities/", categoryId: 112, isAvailable: true },                     
             { title: "Quotes", path: "/crm/quotes/", categoryId: 113, isAvailable: true },                     
+            { title: "Invoice", path: "/crm/invoice/", categoryId: 137, isAvailable: true },                     
             { title: "Sales Person", path: "/crm/sales-person/", categoryId: 135, isAvailable: true },                     
             //{ title: "Reports", path: "/crm/reports/", categoryId: 114, isAvailable: true },                     
         ],

@@ -189,9 +189,10 @@ export default function CustomerQuote() {
       if (response.ok && data?.statusCode === 200) {
         toast.success(data?.message || "Quote approved successfully!");
         setSignature(null);
-        if (data.result) {
-          setQuoteData(data.result);
-        }
+        // Reload page to get updated quote data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         toast.error(data?.message || "Failed to approve quote. Please try again.");
       }
@@ -241,9 +242,10 @@ export default function CustomerQuote() {
         toast.success(data?.message || "Quote rejected successfully.");
         setRejectDialogOpen(false);
         setRejectionReason("");
-        if (data.result) {
-          setQuoteData(data.result);
-        }
+        // Reload page to get updated quote data
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
       } else {
         toast.error(data?.message || "Failed to reject quote. Please try again.");
       }

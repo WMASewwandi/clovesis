@@ -573,65 +573,70 @@ const ShipmentCreate = () => {
       >
         <Box sx={style} className="bg-black">
           <Grid>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Product</TableCell>
-                  <TableCell>Requested Qty</TableCell>
-                  <TableCell>Ordered Qty</TableCell>
-                  <TableCell>Shipment Qty</TableCell>
-                  <TableCell>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {selectedPOProducts?.map((product, index) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <Typography>
-                        {product.productCode} - {product.productName}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        size="small"
-                        value={product.qty}
-                        disabled
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        disabled
-                        fullWidth
-                        type="number"
-                        value={product.orderedQty ? product.orderedQty : 0}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        type="number"
-                        min="1"
-                        max="10"
-                        size="small"
-                        disabled={product.isAdded ? product.isAdded : false}
-                        value={product.requestQty}
-                        onChange={(e) => handleUpdateQty(e, index)}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Checkbox
-                        disabled={product.isAdded ? product.isAdded : false}
-                        checked={product.isChecked || false}
-                        onChange={(event) => handleCheckboxChange(event, index)}
-                      />
-                    </TableCell>
+            <TableContainer 
+              component={Paper}
+              sx={{ maxHeight: 400, overflow: "auto" }}
+            >
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Product</TableCell>
+                    <TableCell>Requested Qty</TableCell>
+                    <TableCell>Ordered Qty</TableCell>
+                    <TableCell>Shipment Qty</TableCell>
+                    <TableCell>Action</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHead>
+                <TableBody>
+                  {selectedPOProducts?.map((product, index) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <Typography>
+                          {product.productCode} - {product.productName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          fullWidth
+                          type="number"
+                          size="small"
+                          value={product.qty}
+                          disabled
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          disabled
+                          fullWidth
+                          type="number"
+                          value={product.orderedQty ? product.orderedQty : 0}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          fullWidth
+                          type="number"
+                          min="1"
+                          max="10"
+                          size="small"
+                          disabled={product.isAdded ? product.isAdded : false}
+                          value={product.requestQty}
+                          onChange={(e) => handleUpdateQty(e, index)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Checkbox
+                          disabled={product.isAdded ? product.isAdded : false}
+                          checked={product.isChecked || false}
+                          onChange={(event) => handleCheckboxChange(event, index)}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Grid>
           <Grid
             item
