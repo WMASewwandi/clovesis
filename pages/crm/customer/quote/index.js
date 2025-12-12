@@ -12,7 +12,7 @@ import DialogContentText from "@mui/material/DialogContentText";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import BASE_URL from "Base/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -53,7 +53,6 @@ export default function CustomerQuote() {
 
         if (response.ok && data?.statusCode === 200) {
           setQuoteData(data.result);
-          console.log(data.result);
         } else {
           console.error("Failed to fetch quote data");
         }
@@ -263,6 +262,26 @@ export default function CustomerQuote() {
       setRejectDialogOpen(false);
       setRejectionReason("");
     }
+  };
+
+  // Check if quote was updated within 3 days
+  const isUpdatedWithin3Days = () => {
+    if (!quoteData?.updatedOn) return false;
+    try {
+      const updatedDate = new Date(quoteData.updatedOn);
+      const today = new Date();
+      const daysDifference = differenceInDays(today, updatedDate);
+      return daysDifference <= 3;
+    } catch (error) {
+      console.error("Error calculating date difference:", error);
+      return false;
+    }
+  };
+
+  // Check if disclaimer should be shown
+  const shouldShowDisclaimer = () => {
+    const isApprovedOrRejected = quoteData?.status === 2 || quoteData?.status === 3;
+    return isApprovedOrRejected && isUpdatedWithin3Days();
   };
 
   return (
@@ -656,6 +675,25 @@ export default function CustomerQuote() {
             </Typography>
             <Typography variant="body2" sx={{ color: "#424242" }}>
               {quoteData.rejectionReason}
+            </Typography>
+          </Box>
+        )}
+
+        {shouldShowDisclaimer() && (
+          <Box
+            sx={{
+              marginBottom: 2,
+              padding: 2,
+              backgroundColor: "#fff3cd",
+              borderRadius: 2,
+              borderLeft: "4px solid #ffc107",
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: "#856404" }}>
+              Disclaimer:
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#856404" }}>
+              If you need to change anything in this quote, please contact your sales person.
             </Typography>
           </Box>
         )}
