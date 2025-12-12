@@ -309,7 +309,7 @@ export default function CreateQuote() {
           Price: price,
           Discount: discountValue,
           LineTotal: lineTotal,
-          DiscountInput: item.discountInput,
+          DiscountInput: item.discountInput && item.discountInput.trim() !== "" ? parseNumber(item.discountInput, 0) : 0,
           DiscountType: parseInt(item.discountType)
         };
       })
