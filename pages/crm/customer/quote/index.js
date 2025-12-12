@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import BASE_URL from "Base/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { formatDate } from "@/components/utils/formatHelper";
+import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 
 export default function CustomerQuote() {
   const router = useRouter();
@@ -53,6 +53,7 @@ export default function CustomerQuote() {
 
         if (response.ok && data?.statusCode === 200) {
           setQuoteData(data.result);
+          console.log(data.result);
         } else {
           console.error("Failed to fetch quote data");
         }
@@ -174,11 +175,11 @@ export default function CustomerQuote() {
     try {
       setApproveLoading(true);
       const blob = await fetch(signature).then((res) => res.blob());
- 
+
       const formData = new FormData();
       formData.append("Id", quoteId);
       formData.append("SignatureImage", blob, "signature.png");
- 
+
       const response = await fetch(`${BASE_URL}/CRMQuotes/ApproveCRMQuote`, {
         method: "POST",
         body: formData,
@@ -439,10 +440,10 @@ export default function CustomerQuote() {
               </Box>
 
               <Box>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    {quoteData.description || ""}
-                  </Typography>
-                </Box>              
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  {quoteData.description || ""}
+                </Typography>
+              </Box>
 
               {quoteData.lineItems && quoteData.lineItems.length > 0 && (
                 <Box sx={{ mb: 3 }}>
@@ -476,13 +477,20 @@ export default function CustomerQuote() {
                       >
                         <Box sx={{ flex: 2 }}>{item.description || "-"}</Box>
                         <Box sx={{ flex: 1, textAlign: "right" }}>
-                          {price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <Box display="flex" gap={1} justifyContent="end">
+                            <Box>
+                            {item.qty > 1 ? `${item.qty} X` : ""}
+                          </Box>
+                          <Box>
+                            {formatCurrency(item.price)}
+                          </Box>
+                          </Box>
                         </Box>
                         <Box sx={{ flex: 1, textAlign: "right" }}>
-                          {discount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(item.discount)}
                         </Box>
                         <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500 }}>
-                          {total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatCurrency(item.lineTotal)}
                         </Box>
                       </Box>
                     );
@@ -688,12 +696,12 @@ export default function CustomerQuote() {
               {approveLoading
                 ? "Approving..."
                 : quoteData?.status === 2
-                ? "Approved"
-                : quoteData?.status === 5
-                ? "Expired"
-                : signature
-                ? "Approve"
-                : "Sign & Approve"}
+                  ? "Approved"
+                  : quoteData?.status === 5
+                    ? "Expired"
+                    : signature
+                      ? "Approve"
+                      : "Sign & Approve"}
             </Button>
             {signature && quoteData?.status === 1 && (
               <Button
@@ -730,10 +738,10 @@ export default function CustomerQuote() {
             {rejectLoading
               ? "Rejecting..."
               : quoteData?.status === 3
-              ? "Rejected"
-              : quoteData?.status === 5
-              ? "Expired"
-              : "Reject"}
+                ? "Rejected"
+                : quoteData?.status === 5
+                  ? "Expired"
+                  : "Reject"}
           </Button>
         </Box>
       </Box>
@@ -834,136 +842,136 @@ export default function CustomerQuote() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }} >
-          <Box sx={{width: '100%'}} display="flex" justifyContent="space-between">
+          <Box sx={{ width: '100%' }} display="flex" justifyContent="space-between">
             <Button onClick={handleSignatureDialogClose} variant="outlined">
               Cancel
             </Button>
-              <Button
-                onClick={saveSignature}
-                variant="contained"
-                color="primary"
-                disabled={!hasSignature() || approveLoading}
-              >
-                Save Signature
-              </Button>
+            <Button
+              onClick={saveSignature}
+              variant="contained"
+              color="primary"
+              disabled={!hasSignature() || approveLoading}
+            >
+              Save Signature
+            </Button>
           </Box>
-          </DialogActions>
-        </Dialog>
+        </DialogActions>
+      </Dialog>
 
-        <Dialog
-          open={confirmDialogOpen}
-          onClose={() => setConfirmDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            },
-          }}
-        >
-          <DialogTitle>
-            <Typography variant="h6" fontWeight={600}>
-              Confirm Approval
-            </Typography>
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="body1">
-              Are you sure you want to approve this quotation? This action cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Box sx={{ width: "100%" }} display="flex" justifyContent="space-between">
-              <Button
-                onClick={() => setConfirmDialogOpen(false)}
-                variant="outlined"
-                disabled={approveLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmApprove}
-                variant="contained"
-                color="success"
-                disabled={approveLoading}
-              >
-                {approveLoading ? "Approving..." : "Confirm Approval"}
-              </Button>
-            </Box>
-          </DialogActions>
-        </Dialog>
-
-        <Dialog
-          open={rejectDialogOpen}
-          onClose={handleRejectDialogClose}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 2,
-            },
-          }}
-        >
-          <DialogTitle>
-            <Typography variant="h6" fontWeight={600}>
-              Reject Quotation
-            </Typography>
-          </DialogTitle>
-          <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>
-              Please provide a reason for rejecting this quotation.
-            </DialogContentText>
-            <TextField
-              autoFocus
-              margin="dense"
-              label="Rejection Reason"
-              fullWidth
-              multiline
-              rows={4}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={600}>
+            Confirm Approval
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Are you sure you want to approve this quotation? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Box sx={{ width: "100%" }} display="flex" justifyContent="space-between">
+            <Button
+              onClick={() => setConfirmDialogOpen(false)}
               variant="outlined"
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              required
-              error={rejectionReason.length > 2000}
-              helperText={
-                rejectionReason.length > 2000
-                  ? "Rejection reason cannot exceed 2000 characters."
-                  : `${rejectionReason.length}/2000 characters`
-              }
-              disabled={rejectLoading}
-            />
-          </DialogContent>
-          <DialogActions sx={{ p: 2 }}>
-            <Box sx={{ width: "100%" }} display="flex" justifyContent="space-between">
-              <Button
-                onClick={handleRejectDialogClose}
-                variant="outlined"
-                disabled={rejectLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleConfirmReject}
-                variant="contained"
-                color="error"
-                disabled={!rejectionReason.trim() || rejectionReason.length > 2000 || rejectLoading}
-              >
-                {rejectLoading ? "Rejecting..." : "Reject"}
-              </Button>
-            </Box>
-          </DialogActions>
-        </Dialog>
+              disabled={approveLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmApprove}
+              variant="contained"
+              color="success"
+              disabled={approveLoading}
+            >
+              {approveLoading ? "Approving..." : "Confirm Approval"}
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
 
-        <ToastContainer
-          position="top-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
+      <Dialog
+        open={rejectDialogOpen}
+        onClose={handleRejectDialogClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+          },
+        }}
+      >
+        <DialogTitle>
+          <Typography variant="h6" fontWeight={600}>
+            Reject Quotation
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Please provide a reason for rejecting this quotation.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Rejection Reason"
+            fullWidth
+            multiline
+            rows={4}
+            variant="outlined"
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            required
+            error={rejectionReason.length > 2000}
+            helperText={
+              rejectionReason.length > 2000
+                ? "Rejection reason cannot exceed 2000 characters."
+                : `${rejectionReason.length}/2000 characters`
+            }
+            disabled={rejectLoading}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Box sx={{ width: "100%" }} display="flex" justifyContent="space-between">
+            <Button
+              onClick={handleRejectDialogClose}
+              variant="outlined"
+              disabled={rejectLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmReject}
+              variant="contained"
+              color="error"
+              disabled={!rejectionReason.trim() || rejectionReason.length > 2000 || rejectLoading}
+            >
+              {rejectLoading ? "Rejecting..." : "Reject"}
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </Box>
   );
 }

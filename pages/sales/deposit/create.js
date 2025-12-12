@@ -11,7 +11,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider, CircularProgress } from "@mui/material";
+import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider, CircularProgress, Tooltip as MuiTooltip } from "@mui/material";
 import { toast, ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -62,6 +62,7 @@ export default function CreateDailyDeposit() {
   const [bankAssignmentModalOpen, setBankAssignmentModalOpen] = useState(false);
   const [supplierNeedingBank, setSupplierNeedingBank] = useState(null);
   const [selectedBankForAssignment, setSelectedBankForAssignment] = useState(null);
+  const [profitBreakdownModalOpen, setProfitBreakdownModalOpen] = useState(false);
 
 
   const fetchDepositSummary = async (date) => {
@@ -268,7 +269,16 @@ export default function CreateDailyDeposit() {
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const formattedDate = `${year}-${month}-${day}`;
 
-      const itemType = item.itemType || 1;
+      // Determine itemType: if itemType is not set, check if it's a DBR item by checking if supplierId matches DBR pattern
+      // For DBR items, we need to ensure itemType is 3
+      let itemType = item.itemType;
+      if (!itemType) {
+        // Check if this might be a DBR item - DBR items typically have higher supplierIds
+        // If itemType is not set, default to 1 (Item), but we should check the context
+        itemType = 1;
+      }
+      // Ensure itemType is a number
+      itemType = Number(itemType) || 1;
       const receiptNumber = item.isFromReceipt && item.receiptNumber ? `&receiptNumber=${encodeURIComponent(item.receiptNumber)}` : '';
       const query = `${BASE_URL}/DailyDeposit/GetInvoiceLineDetailsBySupplier?depositDate=${formattedDate}&supplierId=${item.supplierId}&itemType=${itemType}${receiptNumber}`;
 
@@ -354,7 +364,7 @@ export default function CreateDailyDeposit() {
         return;
       }
 
-      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0) + (supplier.cashAmount || 0);
+      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0);
 
       if (total <= 0) {
         return; // Skip entries with zero or negative amounts
@@ -444,7 +454,7 @@ export default function CreateDailyDeposit() {
     }
 
     const suppliersToAdd = supplierNeedingBank.map((supplier) => {
-      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0) + (supplier.cashAmount || 0);
+      const total = (supplier.totalCost || 0) + (supplier.totalProfit || 0);
       const paymentAmounts = {
         cashAmount: supplier.cashAmount || 0,
         cardAmount: supplier.cardAmount || 0,
@@ -492,13 +502,18 @@ export default function CreateDailyDeposit() {
 
   // Get profit account amount (this is the sum of all profits from invoices and receipts)
   const profitAccountItem = depositSummary?.supplierDetails?.find(item => item.isProfitAccount);
-  const profitAccountAmount = profitAccountItem?.totalProfit || 0;
+  const baseProfitAmount = profitAccountItem?.totalProfit || 0;
+  
+  // Calculate adjusted profit: base profit + cash in - cash out
+  const totalCashIn = summaryTotals?.totalCashIn || 0;
+  const totalCashOut = summaryTotals?.totalCashOut || 0;
+  const profitAccountAmount = baseProfitAmount + totalCashIn - totalCashOut;
 
   // Calculate total amount from invoice entries only (exclude receipt entries as they are separate)
-  // Total = Cost + Profit + CashAmount (from invoices only, receipts are separate entries)
+  // Total = Cost + Profit (selling price)
   const invoiceEntries = depositSummary?.supplierDetails?.filter(item => !item.isFromReceipt && !item.isProfitAccount) || [];
   const invoiceTotalAmount = invoiceEntries.reduce((sum, item) => {
-    return sum + (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+    return sum + (item.totalCost || 0) + (item.totalProfit || 0);
   }, 0);
 
   // Receipt entries total (Cost + Profit only, no cash amount in total)
@@ -510,8 +525,8 @@ export default function CreateDailyDeposit() {
   // Profit account amount
   const profitAccountTotal = profitAccountAmount || 0;
 
-  // Total Amount = Invoice Total + Receipt Total + Profit Account
-  const totalAmount = invoiceTotalAmount + receiptTotalAmount + profitAccountTotal;
+  // Total Amount = Cost + Profit (should equal Cost card + Profit card)
+  const totalAmount = supplierSummaryTotals.totalCost + profitAccountAmount;
 
   // Prepare pie chart data for Receipts
   const receiptChartData = [
@@ -640,14 +655,9 @@ export default function CreateDailyDeposit() {
       return;
     }
 
-    // Calculate total amount from all suppliers
+    // Calculate total amount from all suppliers (Cost + Profit only)
     const calculatedTotalAmount = allSuppliers.reduce((sum, item) => {
       const itemTotal = (item.totalCost || 0) + (item.totalProfit || 0);
-      // For invoice items, add cash amount (which includes receipt allocations)
-      if (!item.isFromReceipt && !item.isProfitAccount) {
-        return sum + itemTotal + (item.cashAmount || 0);
-      }
-      // For receipt items and profit account, just add cost + profit
       return sum + itemTotal;
     }, 0);
 
@@ -658,9 +668,8 @@ export default function CreateDailyDeposit() {
       DepositDate: formatDate(selectedDate),
       TotalAmount: parseFloat(calculatedTotalAmount),
       DailyDepositLineDetails: allSuppliers.map((row) => {
-        // Calculate amount for this row
-        const rowAmount = (row.totalCost || 0) + (row.totalProfit || 0) +
-          ((!row.isFromReceipt && !row.isProfitAccount) ? (row.cashAmount || 0) : 0);
+        // Calculate amount for this row (Cost + Profit only)
+        const rowAmount = (row.totalCost || 0) + (row.totalProfit || 0);
 
         return {
           SupplierId: String(row.supplierId || 0).startsWith('SUMMARY_') || row.isProfitAccount ? 0 : (row.supplierId || 0),
@@ -823,6 +832,19 @@ export default function CreateDailyDeposit() {
                         }}>
                           Supplier Name
                         </TableCell>
+                        <TableCell sx={{
+                          fontWeight: 600,
+                          bgcolor: "#F9FAFB",
+                          color: "#374151",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          borderBottom: "2px solid #E5E7EB",
+                          py: 1,
+                          width: "120px"
+                        }}>
+                          Sales Person
+                        </TableCell>
                         <TableCell align="right" sx={{
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
@@ -880,20 +902,20 @@ export default function CreateDailyDeposit() {
                     <TableBody>
                       {!selectedDate ? (
                         <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                             <Typography color="textSecondary">Please select a deposit date.</Typography>
                           </TableCell>
                         </TableRow>
                       ) : !depositSummary ? (
                         <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                             <CircularProgress size={24} sx={{ mr: 1 }} />
                             <Typography color="textSecondary">Loading...</Typography>
                           </TableCell>
                         </TableRow>
                       ) : depositSummary.supplierDetails?.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                             <Typography color="textSecondary">No supplier data found for the selected date.</Typography>
                           </TableCell>
                         </TableRow>
@@ -922,7 +944,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
@@ -937,7 +959,7 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {itemType1.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
                                       return (
                                         <TableRow
                                           key={`item-${item.supplierId}-${item.paymentType}`}
@@ -955,6 +977,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName}
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
+                                            {item.salesPersonName || "N/A"}
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -977,7 +1002,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
@@ -992,7 +1017,7 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {itemType2.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
                                       return (
                                         <TableRow
                                           key={`outlet-${item.supplierId}-${item.paymentType}`}
@@ -1010,6 +1035,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName}
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
+                                            {item.salesPersonName || "N/A"}
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -1032,7 +1060,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
@@ -1047,12 +1075,14 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {itemType3.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
+                                      // Ensure itemType is set to 3 for DBR items
+                                      const dbrItem = { ...item, itemType: 3 };
                                       return (
                                         <TableRow
                                           key={`dbr-${item.supplierId}-${item.paymentType}`}
-                                          onClick={() => handleRowClick(item)}
-                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          onClick={() => handleRowClick(dbrItem)}
+                                          onDoubleClick={() => handleRowDoubleClick(dbrItem)}
                                           hover
                                           sx={{
                                             cursor: "pointer",
@@ -1065,6 +1095,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName}
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: "#9CA3AF" }}>
+                                            -
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -1087,7 +1120,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
@@ -1102,7 +1135,7 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {receiptItemType1.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
                                       return (
                                         <TableRow
                                           key={`receipt-item-${item.supplierId}-${item.receiptNumber}`}
@@ -1120,6 +1153,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
+                                            {item.salesPersonName || "N/A"}
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -1142,7 +1178,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
@@ -1157,7 +1193,7 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {receiptItemType2.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
                                       return (
                                         <TableRow
                                           key={`receipt-outlet-${item.supplierId}-${item.receiptNumber}`}
@@ -1175,6 +1211,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
+                                            {item.salesPersonName || "N/A"}
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -1197,7 +1236,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
@@ -1212,12 +1251,14 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {receiptItemType3.map((item) => {
                                       rowIndex++;
-                                      const total = (item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0);
+                                      const total = (item.totalCost || 0) + (item.totalProfit || 0);
+                                      // Ensure itemType is set to 3 for DBR items
+                                      const dbrItem = { ...item, itemType: 3 };
                                       return (
                                         <TableRow
                                           key={`receipt-dbr-${item.supplierId}-${item.receiptNumber}`}
-                                          onClick={() => handleRowClick(item)}
-                                          onDoubleClick={() => handleRowDoubleClick(item)}
+                                          onClick={() => handleRowClick(dbrItem)}
+                                          onDoubleClick={() => handleRowDoubleClick(dbrItem)}
                                           hover
                                           sx={{
                                             cursor: "pointer",
@@ -1230,6 +1271,9 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName} (Receipt: {item.receiptNumber})
+                                          </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: "#9CA3AF" }}>
+                                            -
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
@@ -1252,7 +1296,7 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={6}
+                                        colSpan={7}
                                         sx={{
                                           bgcolor: "#DBEAFE",
                                           fontWeight: 600,
@@ -1267,10 +1311,14 @@ export default function CreateDailyDeposit() {
                                     </TableRow>
                                     {profitAccountItems.map((item) => {
                                       rowIndex++;
+                                      // Calculate adjusted profit: base profit - cash out + cash in
+                                      const adjustedProfit = (item.totalProfit || 0) - (summaryTotals?.totalCashOut || 0) + (summaryTotals?.totalCashIn || 0);
+                                      const adjustedTotal = (item.totalCost || 0) + adjustedProfit;
                                       return (
                                         <TableRow
                                           key={`profit-account-${item.supplierId}`}
                                           onClick={() => handleRowClick(item)}
+                                          onDoubleClick={() => setProfitBreakdownModalOpen(true)}
                                           hover
                                           sx={{
                                             cursor: "pointer",
@@ -1284,14 +1332,17 @@ export default function CreateDailyDeposit() {
                                           <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {item.supplierName}
                                           </TableCell>
+                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: "#9CA3AF" }}>
+                                            -
+                                          </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
                                           <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
-                                            {formatCurrency(item.totalProfit || 0)}
+                                            {formatCurrency(adjustedProfit)}
                                           </TableCell>
                                           <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
-                                            {formatCurrency((item.totalCost || 0) + (item.totalProfit || 0))}
+                                            {formatCurrency(adjustedTotal)}
                                           </TableCell>
                                           {renderBankCell(item)}
                                         </TableRow>
@@ -1625,22 +1676,62 @@ export default function CreateDailyDeposit() {
                           >
                             Total Profit
                           </Typography>
-                          <Typography
-                            variant="h4"
-                            sx={{
-                              fontWeight: 800,
-                              color: "#111827",
-                              fontSize: "1.5rem",
-                              lineHeight: 1.1,
-                              mb: 0.25,
-                              background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
-                              backgroundClip: "text",
-                              WebkitBackgroundClip: "text",
-                              WebkitTextFillColor: "transparent"
-                            }}
+                          <MuiTooltip
+                            title={
+                              <Box sx={{ p: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, color: "#fff" }}>
+                                  Profit Breakdown:
+                                </Typography>
+                                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="caption" sx={{ color: "#D1D5DB" }}>Base Profit:</Typography>
+                                    <Typography variant="caption" sx={{ color: "#fff", fontWeight: 600 }}>
+                                      {formatCurrency(baseProfitAmount)}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="caption" sx={{ color: "#D1D5DB" }}>Cash In (+):</Typography>
+                                    <Typography variant="caption" sx={{ color: "#10B981", fontWeight: 600 }}>
+                                      {formatCurrency(totalCashIn)}
+                                    </Typography>
+                                  </Box>
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="caption" sx={{ color: "#D1D5DB" }}>Cash Out (-):</Typography>
+                                    <Typography variant="caption" sx={{ color: "#EF4444", fontWeight: 600 }}>
+                                      {formatCurrency(totalCashOut)}
+                                    </Typography>
+                                  </Box>
+                                  <Divider sx={{ my: 0.5, bgcolor: "#6B7280" }} />
+                                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+                                    <Typography variant="caption" sx={{ color: "#fff", fontWeight: 700 }}>Final Profit:</Typography>
+                                    <Typography variant="caption" sx={{ color: "#fff", fontWeight: 700 }}>
+                                      {formatCurrency(profitAccountAmount)}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </Box>
+                            }
+                            arrow
+                            placement="top"
                           >
-                            {formatCurrency(profitAccountAmount)}
-                          </Typography>
+                            <Typography
+                              variant="h4"
+                              sx={{
+                                fontWeight: 800,
+                                color: "#111827",
+                                fontSize: "1.5rem",
+                                lineHeight: 1.1,
+                                mb: 0.25,
+                                background: "linear-gradient(135deg, #22C55E 0%, #16A34A 100%)",
+                                backgroundClip: "text",
+                                WebkitBackgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                                cursor: "help"
+                              }}
+                            >
+                              {formatCurrency(profitAccountAmount)}
+                            </Typography>
+                          </MuiTooltip>
                           {supplierSummaryTotals.totalCost > 0 && (
                             <Box sx={{ mt: 0.75 }}>
                               <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -2616,6 +2707,129 @@ export default function CreateDailyDeposit() {
                 </Table>
               </TableContainer>
             )}
+          </Box>
+        </Box>
+      </Modal>
+
+      {/* Profit Breakdown Modal */}
+      <Modal
+        open={profitBreakdownModalOpen}
+        onClose={() => setProfitBreakdownModalOpen(false)}
+        aria-labelledby="profit-breakdown-modal"
+        aria-describedby="profit-breakdown-description"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "95%", sm: "80%", md: "600px" },
+            maxHeight: "90vh",
+            bgcolor: "background.paper",
+            borderRadius: 2.5,
+            boxShadow: 24,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden"
+          }}
+        >
+          <Box
+            sx={{
+              p: 3,
+              borderBottom: "1px solid #E5E7EB",
+              bgcolor: "#FAFBFC",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}
+          >
+            <Typography
+              id="profit-breakdown-modal"
+              variant="h6"
+              component="h2"
+              sx={{
+                fontWeight: 600,
+                color: "#1F2937",
+                fontSize: "1.25rem"
+              }}
+            >
+              Profit Breakdown
+            </Typography>
+            <IconButton
+              onClick={() => setProfitBreakdownModalOpen(false)}
+              sx={{
+                color: "#6B7280",
+                "&:hover": {
+                  bgcolor: "#F3F4F6"
+                }
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Box
+            sx={{
+              p: 3,
+              overflow: "auto",
+              flex: 1
+            }}
+          >
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "#F9FAFB",
+                  borderRadius: 2,
+                  border: "1px solid #E5E7EB"
+                }}
+              >
+                <Typography variant="body2" sx={{ color: "#6B7280", mb: 2, fontWeight: 600 }}>
+                  Profit Calculation Breakdown:
+                </Typography>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="body2" sx={{ color: "#374151" }}>Base Profit:</Typography>
+                    <Typography variant="body2" sx={{ color: "#111827", fontWeight: 600 }}>
+                      {formatCurrency(baseProfitAmount)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="body2" sx={{ color: "#374151" }}>Cash In (+):</Typography>
+                    <Typography variant="body2" sx={{ color: "#10B981", fontWeight: 600 }}>
+                      {formatCurrency(totalCashIn)}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="body2" sx={{ color: "#374151" }}>Cash Out (-):</Typography>
+                    <Typography variant="body2" sx={{ color: "#EF4444", fontWeight: 600 }}>
+                      {formatCurrency(totalCashOut)}
+                    </Typography>
+                  </Box>
+                  <Divider sx={{ my: 1 }} />
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", pt: 1 }}>
+                    <Typography variant="body1" sx={{ color: "#111827", fontWeight: 700 }}>
+                      Final Profit:
+                    </Typography>
+                    <Typography variant="h6" sx={{ color: "#22C55E", fontWeight: 700 }}>
+                      {formatCurrency(profitAccountAmount)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Box
+                sx={{
+                  p: 2,
+                  bgcolor: "#FEF3C7",
+                  borderRadius: 2,
+                  border: "1px solid #FDE68A"
+                }}
+              >
+                <Typography variant="caption" sx={{ color: "#92400E", fontStyle: "italic" }}>
+                  Formula: Base Profit + Cash In - Cash Out = Final Profit
+                </Typography>
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Modal>

@@ -425,7 +425,7 @@ export default function EditInvoice() {
     }, 0);
 
     // Validate that invoice lines total equals quote subtotal
-    const quoteSubTotal = parseNumber(selectedQuote?.subTotal || currentQuote?.subTotal || amount, 0);
+    const quoteSubTotal = parseNumber(selectedQuote?.total || currentQuote?.total || amount, 0);
     if (Math.abs(invoiceLinesTotal - quoteSubTotal) > 0.01) {
       toast.error(`Invoice lines total (${formatCurrency(invoiceLinesTotal)}) must equal quote subtotal (${formatCurrency(quoteSubTotal)}).`);
       return false;
@@ -627,10 +627,10 @@ export default function EditInvoice() {
                 <Box display="flex" flexDirection="column" gap={1}>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="body1" color="text.secondary">
-                      Subtotal:
+                      Sub Total:
                     </Typography>
                     <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      {formatCurrency(amount)}
+                      {formatCurrency(parseNumber(amount, 0) + parseNumber(discount, 0))}
                     </Typography>
                   </Box>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
@@ -647,7 +647,7 @@ export default function EditInvoice() {
                         Total:
                       </Typography>
                       <Typography variant="h6" sx={{ fontWeight: 700, color: "primary.main" }}>
-                        {formatCurrency(parseNumber(amount, 0) - parseNumber(discount, 0))}
+                        {formatCurrency(amount)}
                       </Typography>
                     </Box>
                   </Box>
@@ -666,7 +666,7 @@ export default function EditInvoice() {
               </Box>
               {(() => {
                 const invoiceLinesTotal = invoiceLines.reduce((sum, line) => sum + parseNumber(line.amount, 0), 0);
-                const quoteSubTotal = parseNumber(selectedQuote?.subTotal || currentQuote?.subTotal || amount, 0);
+                const quoteSubTotal = parseNumber(selectedQuote?.total || currentQuote?.total || amount, 0);
                 const difference = invoiceLinesTotal - quoteSubTotal;
                 if (Math.abs(difference) > 0.01) {
                   return (

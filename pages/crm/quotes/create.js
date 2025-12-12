@@ -18,6 +18,7 @@ import TableCell from "@mui/material/TableCell";
 import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
+import TableFooter from "@mui/material/TableFooter";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
@@ -27,7 +28,7 @@ import useContactsByAccount from "../../../hooks/useContactsByAccount";
 import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { Report } from "Base/report";
 import { Catelogue } from "Base/catelogue";
 
@@ -36,6 +37,8 @@ const createEmptyLineItem = () => ({
   description: "",
   qty: "1",
   price: "",
+  discountType: "1",
+  discountInput: "",
   discount: "",
 });
 
@@ -52,6 +55,21 @@ const calculateLineAmount = (qty, price) => {
   const quantity = Math.max(parseNumber(qty, 0), 0);
   const unitPrice = Math.max(parseNumber(price, 0), 0);
   return quantity * unitPrice;
+};
+
+const calculateDiscount = (amount, discountType, discountInput) => {
+  if (!discountInput || discountInput.trim() === "") {
+    return 0;
+  }
+  
+  const inputValue = parseNumber(discountInput, 0);
+  
+  if (discountType === "2") {
+    const percentageValue = (amount * inputValue) / 100;
+    return Math.min(percentageValue, amount);
+  } else {
+    return Math.min(inputValue, amount);
+  }
 };
 
 const clampDiscount = (amount, discount) => {
@@ -80,6 +98,7 @@ export default function CreateQuote() {
   const { contacts } = useContactsByAccount(accountId);
   const { leads, isLoading: leadsLoading } = useLeads();
   const { statuses: quoteStatuses, isLoading: statusesLoading } = useQuoteStatuses();
+
 
   React.useEffect(() => {
     if (!status && quoteStatuses.length > 0) {
@@ -120,7 +139,7 @@ export default function CreateQuote() {
     return lineItems.reduce(
       (acc, item) => {
         const amount = calculateLineAmount(item.qty, item.price);
-        const discountValue = clampDiscount(amount, item.discount);
+        const discountValue = calculateDiscount(amount, item.discountType, item.discountInput);
         acc.subTotal += amount;
         acc.discountTotal += discountValue;
         acc.total += amount - discountValue;
@@ -188,17 +207,21 @@ export default function CreateQuote() {
 
   const validateForm = () => {
     if (!leadId) {
-      toast.error("Please select a lead to continue.");
+      toast.error("Lead selection required");
       return false;
     }
 
-    if (!accountId || !Number(accountId)) {
-      toast.error("A valid account is required.");
+    const selectedLead = leads.find((lead) => lead.id && String(lead.id) === String(leadId));
+    const leadAccountId = selectedLead?.meta?.accountId ?? null;
+    const leadContactId = selectedLead?.meta?.contactId ?? null;
+
+    if (!leadAccountId || !Number(leadAccountId)) {
+      toast.error("Selected lead must have a valid account.");
       return false;
     }
 
-    if (!contactId || !Number(contactId)) {
-      toast.error("A valid contact is required.");
+    if (!leadContactId || !Number(leadContactId)) {
+      toast.error("Selected lead must have a valid contact.");
       return false;
     }
 
@@ -207,11 +230,40 @@ export default function CreateQuote() {
       return false;
     }
 
+    if (!validUntil) {
+      toast.error("Valid date required");
+      return false;
+    }
+
+    if (lineItems.length === 0) {
+      toast.error("At least one line item required");
+      return false;
+    }
+
+    const hasEmptyDescription = lineItems.some((item) => {
+      return !item.description || item.description.trim() === "";
+    });
+
+    if (hasEmptyDescription) {
+      toast.error("Line item description is required");
+      return false;
+    }
+
+    const hasEmptyPrice = lineItems.some((item) => {
+      const price = parseNumber(item.price, 0);
+      return !item.price || item.price.trim() === "" || price <= 0;
+    });
+
+    if (hasEmptyPrice) {
+      toast.error("Line items unit price is required");
+      return false;
+    }
+
     const preparedLineItems = lineItems.map((item) => {
       const qty = parseNumber(item.qty, 0);
       const price = parseNumber(item.price, 0);
       const amount = calculateLineAmount(item.qty, item.price);
-      const discountValue = clampDiscount(amount, item.discount);
+      const discountValue = calculateDiscount(amount, item.discountType, item.discountInput);
 
       return {
         qty,
@@ -223,10 +275,10 @@ export default function CreateQuote() {
       };
     });
 
-    const validItems = preparedLineItems.filter((item) => item.qty > 0 && item.price >= 0 && item.hasContent);
+    const validItems = preparedLineItems.filter((item) => item.qty > 0 && item.price > 0 && item.hasContent);
 
     if (validItems.length === 0) {
-      toast.error("Please add at least one valid line item.");
+      toast.error("At least one line item required");
       return false;
     }
 
@@ -242,7 +294,7 @@ export default function CreateQuote() {
     return lineItems
       .map((item) => {
         const amount = calculateLineAmount(item.qty, item.price);
-        const discountValue = clampDiscount(amount, item.discount);
+        const discountValue = calculateDiscount(amount, item.discountType, item.discountInput);
         const lineTotal = amount - discountValue;
         const qty = parseNumber(item.qty, 0);
         const price = parseNumber(item.price, 0);
@@ -257,6 +309,8 @@ export default function CreateQuote() {
           Price: price,
           Discount: discountValue,
           LineTotal: lineTotal,
+          DiscountInput: item.discountInput,
+          DiscountType: parseInt(item.discountType)
         };
       })
       .filter(Boolean);
@@ -275,9 +329,13 @@ export default function CreateQuote() {
       return;
     }
 
+    const selectedLead = leads.find((lead) => lead.id && String(lead.id) === String(leadId));
+    const leadAccountId = selectedLead?.meta?.accountId ?? null;
+    const leadContactId = selectedLead?.meta?.contactId ?? null;
+
     const payload = {
-      AccountId: Number(accountId),
-      ContactId: Number(contactId),
+      AccountId: leadAccountId ? Number(leadAccountId) : null,
+      ContactId: leadContactId ? Number(leadContactId) : null,
       LeadId: leadId ? Number(leadId) : 0,
       ValidUntil: validUntil ? new Date(validUntil).toISOString() : null,
       Description: description.trim() || null,
@@ -333,6 +391,7 @@ export default function CreateQuote() {
 
   return (
     <>
+    <ToastContainer/>
       <div className={styles.pageTitle}>
         <h1>Create Quote</h1>
         <ul>
@@ -363,43 +422,7 @@ export default function CreateQuote() {
                 >
                   {leads.map((lead) => (
                     <MenuItem key={lead.id} value={String(lead.id)}>
-                      {lead.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Account</InputLabel>
-                <Select 
-                  value={accountId} 
-                  label="Account" 
-                  onChange={() => {}}
-                  disabled
-                >
-                  {accountOptions.map((account) => (
-                    <MenuItem key={account.value} value={account.value}>
-                      {account.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Contact</InputLabel>
-                <Select 
-                  value={contactId} 
-                  label="Contact" 
-                  onChange={() => {}}
-                  disabled
-                >
-                  {contactOptions.map((contact) => (
-                    <MenuItem key={contact.value} value={contact.value}>
-                      {contact.label}
+                      {lead.name} - {lead.company}
                     </MenuItem>
                   ))}
                 </Select>
@@ -412,6 +435,7 @@ export default function CreateQuote() {
                 type="date"
                 fullWidth
                 size="small"
+                required
                 InputLabelProps={{ shrink: true }}
                 value={validUntil}
                 onChange={(event) => setValidUntil(event.target.value)}
@@ -435,36 +459,6 @@ export default function CreateQuote() {
                   ))}
                 </Select>
               </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <TextField
-                label="Subtotal"
-                fullWidth
-                size="small"
-                value={formatCurrency(totals.subTotal)}
-                InputProps={{ readOnly: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <TextField
-                label="Discount"
-                fullWidth
-                size="small"
-                value={formatCurrency(totals.discountTotal)}
-                InputProps={{ readOnly: true }}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <TextField
-                label="Total"
-                fullWidth
-                size="small"
-                value={formatCurrency(totals.total)}
-                InputProps={{ readOnly: true }}
-              />
             </Grid>
 
             <Grid item xs={12}>
@@ -493,68 +487,25 @@ export default function CreateQuote() {
                 <Table size="small" aria-label="quote items table">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Description</TableCell>
-                      <TableCell width="120">Quantity</TableCell>
-                      <TableCell width="150">Unit Price</TableCell>
-                      <TableCell width="150">Discount</TableCell>
-                      <TableCell width="150">Line Total</TableCell>
-                      <TableCell align="center" width="80">
-                        Actions
-                      </TableCell>
+                      <TableCell align="center" width="20" sx={{ px: 1 }}></TableCell>
+                      <TableCell sx={{ px: 1 }}>Description</TableCell>
+                      <TableCell width="120" sx={{ px: 1 }}>Quantity</TableCell>
+                      <TableCell width="150" sx={{ px: 1 }}>Unit Price</TableCell>
+                      <TableCell width="120" sx={{ px: 1 }}>Discount Type</TableCell>
+                      <TableCell width="120" sx={{ px: 1 }}>Discount Input</TableCell>
+                      <TableCell width="150" sx={{ px: 1 }}>Discount</TableCell>
+                      <TableCell width="150" align="right" sx={{ px: 1 }}>Line Total</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {lineItems.map((item, index) => {
                       const amount = calculateLineAmount(item.qty, item.price);
-                      const discountValue = clampDiscount(amount, item.discount);
+                      const discountValue = calculateDiscount(amount, item.discountType, item.discountInput);
                       const lineTotal = amount - discountValue;
 
                       return (
                         <TableRow key={item.id}>
-                          <TableCell>
-                            <TextField
-                              placeholder="Line item description"
-                              size="small"
-                              fullWidth
-                              value={item.description}
-                              onChange={handleLineItemChange(index, "description")}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              size="small"
-                              placeholder="Qty"
-                              fullWidth
-                              inputProps={{ min: 0, step: "any" }}
-                              value={item.qty}
-                              onChange={handleLineItemChange(index, "qty")}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              size="small"
-                              placeholder="Unit Price"
-                              fullWidth
-                              inputProps={{ min: 0, step: "any" }}
-                              value={item.price}
-                              onChange={handleLineItemChange(index, "price")}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              type="number"
-                              size="small"
-                              placeholder="Discount"
-                              fullWidth
-                              inputProps={{ min: 0, step: "any" }}
-                              value={item.discount}
-                              onChange={handleLineItemChange(index, "discount")}
-                            />
-                          </TableCell>
-                          <TableCell>{formatCurrency(lineTotal)}</TableCell>
-                          <TableCell align="center">
+                          <TableCell align="center" sx={{ px: 1 }}>
                             <Tooltip title="Remove line item">
                               <span>
                                 <IconButton
@@ -568,10 +519,97 @@ export default function CreateQuote() {
                               </span>
                             </Tooltip>
                           </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            <TextField
+                              placeholder="Line item description"
+                              size="small"
+                              fullWidth
+                              value={item.description}
+                              onChange={handleLineItemChange(index, "description")}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            <TextField
+                              type="number"
+                              size="small"
+                              placeholder="Qty"
+                              fullWidth
+                              inputProps={{ min: 0, step: "any" }}
+                              value={item.qty}
+                              onChange={handleLineItemChange(index, "qty")}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            <TextField
+                              type="number"
+                              size="small"
+                              placeholder="Unit Price"
+                              fullWidth
+                              inputProps={{ min: 0, step: "any" }}
+                              value={item.price}
+                              onChange={handleLineItemChange(index, "price")}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            <FormControl fullWidth size="small">
+                              <Select
+                                value={item.discountType}
+                                onChange={handleLineItemChange(index, "discountType")}
+                                size="small"
+                              >
+                                <MenuItem value="1">Value</MenuItem>
+                                <MenuItem value="2">%</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            <TextField
+                              type="number"
+                              size="small"
+                              placeholder={item.discountType === "2" ? "Percentage" : "Value"}
+                              fullWidth
+                              inputProps={{ min: 0, step: "any" }}
+                              value={item.discountInput}
+                              onChange={handleLineItemChange(index, "discountInput")}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
+                            {formatCurrency(discountValue)}
+                          </TableCell>
+                          <TableCell align="right" sx={{ px: 1 }}>{formatCurrency(lineTotal)}</TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell sx={{ px: 1 }}></TableCell>
+                      <TableCell colSpan={6} align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>Subtotal</Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>{formatCurrency(totals.subTotal)}</Typography>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ px: 1 }}></TableCell>
+                      <TableCell colSpan={6} align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>Discount</Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>{formatCurrency(totals.discountTotal)}</Typography>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ px: 1 }}></TableCell>
+                      <TableCell colSpan={6} align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>Total</Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ px: 1 }}>
+                        <Typography fontWeight={600}>{formatCurrency(totals.total)}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               </TableContainer>
             </Grid>

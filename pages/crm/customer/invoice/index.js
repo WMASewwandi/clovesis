@@ -355,14 +355,14 @@ export default function CustomerInvoice() {
                       {formatCurrency(invoiceData.amount)}
                     </Typography>
                   </Box>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  {/* <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                     <Typography variant="body2" sx={{ mr: 2 }}>
                       Discount:
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                       {formatCurrency(invoiceData.discount || 0)}
                     </Typography>
-                  </Box>
+                  </Box> */}
                   <Box
                     sx={{
                       borderTop: "2px solid #1976d2",
@@ -377,7 +377,7 @@ export default function CustomerInvoice() {
                         fontSize: { xs: "1rem", sm: "1.25rem" },
                       }}
                     >
-                      Total: {formatCurrency(invoiceData.amount  - (invoiceData.discount || 0))}
+                      Total: {formatCurrency(invoiceData.amount)}
                     </Typography>
                   </Box>
                   {invoiceData.initialPayment > 0 && (

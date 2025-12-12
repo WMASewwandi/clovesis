@@ -32,6 +32,7 @@ const useLeads = () => {
         const normalized = items.map((lead) => ({
           id: lead.id,
           name: lead.leadName || lead.company || `Lead #${lead.id}`,
+          company: lead.company,
           meta: lead,
         }));
 

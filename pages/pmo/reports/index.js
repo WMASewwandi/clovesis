@@ -16,7 +16,7 @@ import {
 } from "@mui/material";
 import DownloadIcon from "@mui/icons-material/Download";
 import PageHeader from "@/components/ProjectManagementModule/PageHeader";
-import { getProjects, getReportData } from "@/Services/projectManagementService";
+import { getReportData, getProjects } from "@/Services/projectManagementService";
 import * as XLSX from "xlsx";
 
 const reportTypes = [

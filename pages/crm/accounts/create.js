@@ -25,11 +25,17 @@ const initialFormValues = {
   website: "",
   mobileNo: "",
   email: "",
-  billingAddress: "",
-  shippingAddress: "",
-  annualRevenue: "",
+  firstName: "",
+  lastName: "",
+  jobTitle: "",
+  department: "",
+  addressLine1: "",
+  addressLine2: "",
+  addressLine3: "",
+  postalCode: "",
   employeeCount: "",
   accountType: "",
+  notes: "",
   isActive: true,
 };
 
@@ -83,6 +89,21 @@ export default function AddAccountModal({ onAccountCreated }) {
       return;
     }
 
+    if (!formValues.firstName.trim()) {
+      toast.error("First name is required.");
+      return;
+    }
+
+    if (!formValues.lastName.trim()) {
+      toast.error("Last name is required.");
+      return;
+    }
+
+    if (!formValues.email.trim()) {
+      toast.error("Email is required.");
+      return;
+    }
+
     if (!formValues.mobileNo.trim()) {
       toast.error("Mobile number is required.");
       return;
@@ -99,11 +120,18 @@ export default function AddAccountModal({ onAccountCreated }) {
       Website: formValues.website.trim() || null,
       MobileNo: formValues.mobileNo.trim(),
       Email: formValues.email.trim() || null,
-      BillingAddress: formValues.billingAddress.trim(),
-      ShippingAddress: formValues.shippingAddress.trim() || null,
-      AnnualRevenue: parseDecimal(formValues.annualRevenue),
+      FirstName: formValues.firstName.trim() || "",
+      LastName: formValues.lastName.trim() || "",
+      JobTitle: formValues.jobTitle.trim() || "",
+      Department: formValues.department.trim() || "",
+      AddressLine1: formValues.addressLine1.trim() || "",
+      AddressLine2: formValues.addressLine2.trim() || "",
+      AddressLine3: formValues.addressLine3.trim() || "",
+      PostalCode: formValues.postalCode.trim() || "",
+      AnnualRevenue: 0,
       EmployeeCount: parseDecimal(formValues.employeeCount),
       AccountType: Number(formValues.accountType),
+      Description: formValues.notes.trim() || "",
       IsActive: formValues.isActive,
     };
 
@@ -156,7 +184,7 @@ export default function AddAccountModal({ onAccountCreated }) {
 
             <Grid item xs={12} md={6}>
               <TextField
-                label="Account Name"
+                label="Company Name"
                 fullWidth
                 size="small"
                 required
@@ -184,41 +212,10 @@ export default function AddAccountModal({ onAccountCreated }) {
                 onChange={handleFieldChange("website")}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Email"
-                type="email"
-                fullWidth
-                size="small"
-                value={formValues.email}
-                onChange={handleFieldChange("email")}
-              />
-            </Grid>
 
             <Grid item xs={12} md={6}>
               <TextField
-                label="Mobile Number"
-                fullWidth
-                size="small"
-                required
-                value={formValues.mobileNo}
-                onChange={handleFieldChange("mobileNo")}
-              />
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Annual Revenue"
-                fullWidth
-                size="small"
-                placeholder="250000"
-                value={formValues.annualRevenue}
-                onChange={handleFieldChange("annualRevenue")}
-              />
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <TextField
-                label="Employee Count"
+                label="Company Size"
                 fullWidth
                 size="small"
                 value={formValues.employeeCount}
@@ -243,29 +240,132 @@ export default function AddAccountModal({ onAccountCreated }) {
               </FormControl>
             </Grid>
 
+            <Grid item xs={12}>
+              <Typography variant="h6" fontWeight={600}>
+                Contact Information
+              </Typography>
+            </Grid>
+
             <Grid item xs={12} md={6}>
               <TextField
-                label="Billing Address"
+                label="First Name"
                 fullWidth
-                multiline
-                minRows={3}
                 size="small"
-                placeholder="Street, City, State"
-                value={formValues.billingAddress}
-                onChange={handleFieldChange("billingAddress")}
+                required
+                value={formValues.firstName}
+                onChange={handleFieldChange("firstName")}
               />
             </Grid>
 
             <Grid item xs={12} md={6}>
               <TextField
-                label="Shipping Address"
+                label="Last Name"
+                fullWidth
+                size="small"
+                required
+                value={formValues.lastName}
+                onChange={handleFieldChange("lastName")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Email"
+                type="email"
+                fullWidth
+                size="small"
+                required
+                value={formValues.email}
+                onChange={handleFieldChange("email")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Mobile Number"
+                fullWidth
+                size="small"
+                required
+                value={formValues.mobileNo}
+                onChange={handleFieldChange("mobileNo")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Job Title"
+                fullWidth
+                size="small"
+                value={formValues.jobTitle}
+                onChange={handleFieldChange("jobTitle")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Department"
+                fullWidth
+                size="small"
+                value={formValues.department}
+                onChange={handleFieldChange("department")}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Typography variant="h6" fontWeight={600}>
+                Address Information
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} lg={6}>
+              <TextField
+                label="Address Line 1"
+                fullWidth
+                size="small"
+                value={formValues.addressLine1}
+                onChange={handleFieldChange("addressLine1")}
+              />
+            </Grid>
+
+            <Grid item xs={12} lg={6}>
+              <TextField
+                label="Address Line 2"
+                fullWidth
+                size="small"
+                value={formValues.addressLine2}
+                onChange={handleFieldChange("addressLine2")}
+              />
+            </Grid>
+
+            <Grid item xs={12} lg={6}>
+              <TextField
+                label="Address Line 3"
+                fullWidth
+                size="small"
+                value={formValues.addressLine3}
+                onChange={handleFieldChange("addressLine3")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="Postal Code"
+                fullWidth
+                size="small"
+                value={formValues.postalCode}
+                onChange={handleFieldChange("postalCode")}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Notes"
                 fullWidth
                 multiline
                 minRows={3}
                 size="small"
-                placeholder="Street, City, State"
-                value={formValues.shippingAddress}
-                onChange={handleFieldChange("shippingAddress")}
+                value={formValues.notes}
+                onChange={handleFieldChange("notes")}
               />
             </Grid>
 

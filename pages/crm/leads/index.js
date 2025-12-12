@@ -182,8 +182,7 @@ export default function LeadsList() {
                   <TableCell>Company</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Mobile</TableCell>
-                  <TableCell>Account</TableCell>
-                  <TableCell>Contact</TableCell>
+                  <TableCell>Company Name</TableCell>
                   <TableCell>Lead Source</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Description</TableCell>
@@ -206,7 +205,6 @@ export default function LeadsList() {
                       <TableCell>{lead.email}</TableCell>
                       <TableCell>{lead.mobileNo}</TableCell>
                       <TableCell>{lead.accountName}</TableCell>
-                      <TableCell>{lead.contactName}</TableCell>
                       <TableCell>{renderLeadSource(lead.leadSource)}</TableCell>
                       <TableCell>{renderStatusChip(lead.leadStatus)}</TableCell>
                       <TableCell>{lead.description || "-"}</TableCell>

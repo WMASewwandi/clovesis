@@ -161,12 +161,13 @@ export default function AccountsList() {
             <Table aria-label="accounts table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>Account Name</TableCell>
+                  <TableCell>Company Name</TableCell>
                   <TableCell>Industry</TableCell>
-                  <TableCell>Website</TableCell>
+                  <TableCell>Contact Name</TableCell>
                   <TableCell>Email</TableCell>
                   <TableCell>Mobile</TableCell>
-                  <TableCell>Account Type</TableCell>
+                  <TableCell>Address</TableCell>
+                  <TableCell>Note</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
@@ -174,22 +175,25 @@ export default function AccountsList() {
               <TableBody>
                 {accounts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8}>
+                    <TableCell colSpan={9}>
                       <Typography color="error">No accounts available</Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
                   accounts.map((account) => {
-                    const accountTypeLabel =
-                      accountTypeMap[String(account.accountType ?? "")] || "-";
                     return (
                       <TableRow key={account.id}>
                         <TableCell>{account.accountName || "-"}</TableCell>
                         <TableCell>{account.industry}</TableCell>
-                        <TableCell>{account.website || "-"}</TableCell>
+                        <TableCell>{account.firstName || "-"}</TableCell>
                         <TableCell>{account.email || "-"}</TableCell>
                         <TableCell>{account.mobileNo || "-"}</TableCell>
-                        <TableCell>{accountTypeLabel}</TableCell>
+                        <TableCell>
+                          {[account.addressLine1, account.addressLine2, account.addressLine3]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </TableCell>
+                        <TableCell>{account.description}</TableCell>
                         <TableCell>
                           <Chip
                             label={account.isActive ? "Active" : "Inactive"}

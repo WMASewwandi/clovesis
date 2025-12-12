@@ -169,9 +169,23 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
         ...prev,
         [field]: event.target.value,
       };
-      // Reset contactId when accountId changes
       if (field === "accountId") {
-        newValues.contactId = "";
+        const selectedAccount = accounts.find(acc => getAccountValue(acc) === event.target.value);
+        console.log("Selected account:", selectedAccount);
+        if (selectedAccount) {
+          newValues.contactId = selectedAccount.contactId ? String(selectedAccount.contactId) : "";
+          const fullName = [selectedAccount.firstName, selectedAccount.lastName].filter(Boolean).join(" ");
+          newValues.fullName = fullName;
+          newValues.company = selectedAccount.accountName || "";
+          newValues.email = selectedAccount.email || "";
+          newValues.phone = selectedAccount.mobileNo || "";
+        } else {
+          newValues.contactId = "";
+          newValues.fullName = "";
+          newValues.company = "";
+          newValues.email = "";
+          newValues.phone = "";
+        }
       }
       return newValues;
     });
@@ -180,10 +194,6 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!formValues.fullName.trim()) {
-      toast.error("Lead name is required.");
-      return;
-    }
     if (!formValues.email.trim()) {
       toast.error("Email is required.");
       return;
@@ -205,9 +215,13 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
       return;
     }
 
+    const selectedAccount = accounts.find(acc => getAccountValue(acc) === formValues.accountId);
+    const contactId = selectedAccount?.contactId || null;
+    const fullName = selectedAccount ? [selectedAccount.firstName, selectedAccount.lastName].filter(Boolean).join(" ") : formValues.fullName.trim();
+
     const payload = {
       Id: lead.id,
-      LeadName: formValues.fullName.trim(),
+      LeadName: fullName,
       Company: formValues.company.trim(),
       Email: formValues.email.trim(),
       MobileNo: formValues.phone.trim(),
@@ -216,7 +230,7 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
       LeadScore: Number(formValues.leadScore) || 0,
       Description: formValues.notes?.trim() || "",
       AccountId: formValues.accountId || null,
-      ContactId: formValues.contactId || null
+      ContactId: contactId
     };
 
     try {
@@ -268,46 +282,6 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField
-                  label="Full Name"
-                  fullWidth
-                  size="small"
-                  required
-                  value={formValues.fullName}
-                  onChange={handleChange("fullName")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Company Name"
-                  fullWidth
-                  size="small"
-                  value={formValues.company}
-                  onChange={handleChange("company")}
-                />
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Email"
-                  type="email"
-                  fullWidth
-                  size="small"
-                  required
-                  value={formValues.email}
-                  onChange={handleChange("email")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  label="Phone"
-                  fullWidth
-                  size="small"
-                  value={formValues.phone}
-                  onChange={handleChange("phone")}
-                />
-              </Grid>
-              <Grid item xs={12} md={6}>
                 <FormControl fullWidth size="small">
                   <InputLabel>Account</InputLabel>
                   <Select
@@ -326,28 +300,37 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Contact</InputLabel>
-                  <Select
-                    value={formValues.contactId}
-                    label="Contact"
-                    onChange={handleChange("contactId")}
-                    disabled={!formValues.accountId || contactsLoading || accountContacts.length === 0}
-                  >
-                    {accountContacts.map((contact) => {
-                      const contactName = [contact.firstName, contact.lastName].filter(Boolean).join(" ") || contact.email || `Contact #${contact.id}`;
-                      return (
-                        <MenuItem key={contact.id} value={String(contact.id)}>
-                          {contactName}
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                  {contactsError && <FormHelperText error>{contactsError}</FormHelperText>}
-                  {!formValues.accountId && (
-                    <FormHelperText>Please select an account first</FormHelperText>
-                  )}
-                </FormControl>
+                <TextField
+                  label="Company Name"
+                  fullWidth
+                  size="small"
+                  disabled
+                  value={formValues.company}
+                  onChange={handleChange("company")}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Email"
+                  type="email"
+                  fullWidth
+                  size="small"
+                  required
+                  disabled
+                  value={formValues.email}
+                  onChange={handleChange("email")}
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  label="Phone"
+                  fullWidth
+                  size="small"
+                  disabled
+                  value={formValues.phone}
+                  onChange={handleChange("phone")}
+                />
               </Grid>
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth size="small">
