@@ -371,19 +371,19 @@ export default function CustomerQuote() {
         <Box
           sx={{
             width: "210mm",
-            minHeight: "297mm",
+            minHeight: { xs: "auto", sm: "297mm" },
             maxWidth: "100%",
             margin: "0 auto",
             marginBottom: 4,
             position: "relative",
             backgroundColor: "white",
-            backgroundImage: "url('/images/quotation/cbassletter.jpg')",
+            backgroundImage: { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
-            paddingTop: { xs: "50mm", sm: "60mm", md: "70mm" },
-            paddingX: { xs: "20mm", sm: "25mm", md: "30mm" },
-            paddingBottom: { xs: "20mm", sm: "25mm", md: "30mm" },
+            paddingTop: { xs: "10mm", sm: "60mm", md: "70mm" },
+            paddingX: { xs: "5mm", sm: "5mm", md: "30mm" },
+            paddingBottom: { xs: "10mm", sm: "25mm", md: "30mm" },
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             "@media print": {
               width: "210mm",
@@ -418,7 +418,7 @@ export default function CustomerQuote() {
                   fontWeight: "bold",
                   textAlign: "center",
                   mb: 4,
-                  fontSize: { xs: "1.5rem", sm: "2rem" },
+                  fontSize: { xs: "0.85rem", sm: "1.5rem", md: "2rem" },
                 }}
               >
                 QUOTATION
@@ -434,32 +434,32 @@ export default function CustomerQuote() {
                 }}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1, fontSize: { xs: "0.65rem", sm: "1.25rem" } }}>
                     {quoteData?.companyName || "Company Name"}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.leadEmail || "Email Address"}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.leadMobileNumber || "Mobile No"}
                   </Typography>
                 </Box>
 
                 <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Quotation No:</strong> {quoteData.quoteNumber || quoteNumber || "-"}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Date:</strong> {quoteData.createdOn ? format(new Date(quoteData.createdOn), "dd-MMM-yyyy") : currentDate}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Valid Until:</strong> {formatDate(quoteData.validUntil)}
                   </Typography>
                 </Box>
               </Box>
 
               <Box>
-                <Typography variant="body2" sx={{ mb: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                   {quoteData.description || ""}
                 </Typography>
               </Box>
@@ -475,10 +475,10 @@ export default function CustomerQuote() {
                       borderRadius: "4px 4px 0 0",
                     }}
                   >
-                    <Box sx={{ flex: 2, fontWeight: 600 }}>Description</Box>
-                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Price</Box>
-                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Discount</Box>
-                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Total</Box>
+                    <Box sx={{ flex: 2, fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>Description</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>Price</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>Discount</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>Total</Box>
                   </Box>
                   {quoteData.lineItems.map((item, index) => {
                     const price = parseFloat(item.price || 0);
@@ -494,21 +494,21 @@ export default function CustomerQuote() {
                           backgroundColor: index % 2 === 0 ? "white" : "#f9f9f9",
                         }}
                       >
-                        <Box sx={{ flex: 2 }}>{item.description || "-"}</Box>
+                        <Box sx={{ flex: 2, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>{item.description || "-"}</Box>
                         <Box sx={{ flex: 1, textAlign: "right" }}>
                           <Box display="flex" gap={1} justifyContent="end">
-                            <Box>
-                            {item.qty > 1 ? `${item.qty} X` : ""}
+                            <Box sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
+                            {item.qty > 1 ? `${item.qty}x` : ""}
                           </Box>
-                          <Box>
+                          <Box sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                             {formatCurrency(item.price)}
                           </Box>
                           </Box>
                         </Box>
-                        <Box sx={{ flex: 1, textAlign: "right" }}>
+                        <Box sx={{ flex: 1, textAlign: "right", fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                           {formatCurrency(item.discount)}
                         </Box>
-                        <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500 }}>
+                        <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                           {formatCurrency(item.lineTotal)}
                         </Box>
                       </Box>
@@ -530,7 +530,7 @@ export default function CustomerQuote() {
                     variant="h6"
                     sx={{
                       fontWeight: "bold",
-                      fontSize: { xs: "1rem", sm: "1.25rem" },
+                      fontSize: { xs: "0.65rem", sm: "1.25rem" },
                     }}
                   >
                     Total: {(quoteData.total || 0).toLocaleString("en-US", {
@@ -555,28 +555,46 @@ export default function CustomerQuote() {
                 >
                   <Box sx={{ flex: 1 }}>
                     {(quoteData?.salesPersonSignature) && (
-                      <img
-                        src={quoteData?.salesPersonSignature}
-                        alt="Signature"
-                        style={{
-                          maxWidth: "150px",
-                          maxHeight: "50px",
-                          objectFit: "contain",
+                      <Box
+                        sx={{
+                          maxWidth: { xs: "80px", sm: "150px" },
+                          maxHeight: { xs: "30px", sm: "50px" },
+                          display: "inline-block",
                         }}
-                      />
+                      >
+                        <img
+                          src={quoteData?.salesPersonSignature}
+                          alt="Signature"
+                          style={{
+                            maxWidth: "100%",
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                          }}
+                        />
+                      </Box>
                     )}
                   </Box>
                   <Box sx={{ flex: 1, display: "flex", justifyContent: "flex-end" }}>
                     {(quoteData?.signatureImage) && (
-                      <img
-                        src={quoteData?.signatureImage}
-                        alt="Signature"
-                        style={{
-                          maxWidth: "150px",
-                          maxHeight: "50px",
-                          objectFit: "contain",
+                      <Box
+                        sx={{
+                          maxWidth: { xs: "80px", sm: "150px" },
+                          maxHeight: { xs: "30px", sm: "50px" },
+                          display: "inline-block",
                         }}
-                      />
+                      >
+                        <img
+                          src={quoteData?.signatureImage}
+                          alt="Signature"
+                          style={{
+                            maxWidth: "100%",
+                            width: "auto",
+                            height: "auto",
+                            objectFit: "contain",
+                          }}
+                        />
+                      </Box>
                     )}
                   </Box>
                 </Box>
@@ -588,8 +606,8 @@ export default function CustomerQuote() {
                     mb: 1,
                   }}
                 >
-                  <Box sx={{ width: "150px", borderTop: "1px dotted #000", pt: 1 }} />
-                  <Box sx={{ width: "150px", borderTop: "1px dotted #000", pt: 1 }} />
+                  <Box sx={{ width: { xs: "80px", sm: "150px" }, borderTop: "1px dotted #000", pt: 1 }} />
+                  <Box sx={{ width: { xs: "80px", sm: "150px" }, borderTop: "1px dotted #000", pt: 1 }} />
                 </Box>
 
                 <Box
@@ -598,10 +616,10 @@ export default function CustomerQuote() {
                     justifyContent: "space-between",
                   }}
                 >
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     Sales Person
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     Approved By
                   </Typography>
                 </Box>
@@ -612,10 +630,10 @@ export default function CustomerQuote() {
                     justifyContent: "space-between",
                   }}
                 >
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.salesPersonName || "Person Name"}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.companyName || "CompanyName"}
                   </Typography>
                 </Box>

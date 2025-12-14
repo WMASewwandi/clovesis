@@ -172,20 +172,22 @@ export default function CustomerInvoice() {
             marginBottom: 1,
             paddingBottom: 1,
             borderBottom: "2px solid #e0e0e0",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 2, sm: 0 },
           }}
         >
-          <Box>
+          <Box sx={{ width: { xs: "100%", sm: "auto" }, textAlign: { xs: "center", sm: "left" } }}>
             <img
               src={ProjectNo === 1 ? "/images/cbass-2.png" : "/images/DBlogo.png"}
               alt="Logo"
-              style={{ maxWidth: "180px", height: "auto" }}
+              style={{ maxWidth: "180px", height: "auto", width: "100%" }}
             />
           </Box>
           <Box
             sx={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "flex-end",
+              alignItems: { xs: "center", sm: "flex-end" },
               gap: 1,
               "@media print": {
                 display: "none",
@@ -196,14 +198,14 @@ export default function CustomerInvoice() {
               variant="outlined"
               startIcon={<PictureAsPdfIcon />}
               onClick={handleDownloadPDF}
-              sx={{ textTransform: "none" }}
+              sx={{ textTransform: "none", fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
             >
               Download PDF
             </Button>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
               Date
             </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 600, fontSize: "1rem" }}>
+            <Typography variant="body1" sx={{ fontWeight: 600, fontSize: { xs: "0.875rem", sm: "1rem" } }}>
               {currentDate}
             </Typography>
           </Box>
@@ -212,20 +214,20 @@ export default function CustomerInvoice() {
         <Box
           ref={invoiceContentRef}
           sx={{
-            width: "210mm",
-            minHeight: "297mm",
+            width: { xs: "100%", sm: "210mm" },
+            minHeight: { xs: "auto", sm: "297mm" },
             maxWidth: "100%",
             margin: "0 auto",
-            marginBottom: 4,
+            marginBottom: { xs: 2, sm: 4 },
             position: "relative",
             backgroundColor: "white",
-            backgroundImage: "url('/images/quotation/cbassletter.jpg')",
+            backgroundImage: { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
-            paddingTop: { xs: "50mm", sm: "60mm", md: "70mm" },
-            paddingX: { xs: "20mm", sm: "25mm", md: "30mm" },
-            paddingBottom: { xs: "20mm", sm: "25mm", md: "30mm" },
+            paddingTop: { xs: "10mm", sm: "60mm", md: "70mm" },
+            paddingX: { xs: "5mm", sm: "25mm", md: "30mm" },
+            paddingBottom: { xs: "10mm", sm: "25mm", md: "30mm" },
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
@@ -249,8 +251,8 @@ export default function CustomerInvoice() {
                 sx={{
                   fontWeight: "bold",
                   textAlign: "center",
-                  mb: 4,
-                  fontSize: { xs: "1.5rem", sm: "2rem" },
+                  mb: { xs: 2, sm: 4 },
+                  fontSize: { xs: "0.85rem", sm: "1.5rem", md: "2rem" },
                 }}
               >
                 INVOICE
@@ -260,77 +262,77 @@ export default function CustomerInvoice() {
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
-                  mb: 4,
+                  mb: { xs: 2, sm: 4 },
                   flexDirection: { xs: "column", sm: "row" },
-                  gap: 2,
+                  gap: { xs: 1, sm: 2 },
                 }}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.leadEmail || "Email Address"}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  <Typography variant="body2" sx={{ mb: 0.5, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     {quoteData?.leadMobileNumber || "Mobile No"}
                   </Typography>
                 </Box>
 
-                <Box sx={{ textAlign: { xs: "left", sm: "right" } }}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                <Box sx={{ textAlign: { xs: "left", sm: "right" }, mt: { xs: 0.5, sm: 0 } }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Quote No:</strong> {quoteData?.quoteNumber || "-"}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Invoice No:</strong> {invoiceData.invoiceNo || invoiceNumber || "-"}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Date:</strong> {invoiceData.createdOn ? format(new Date(invoiceData.createdOn), "dd-MMM-yyyy") : currentDate}
                   </Typography>
-                  <Typography variant="body2" sx={{ mb: 1 }}>
+                  <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Status:</strong> {getPaymentStatusLabel(invoiceData.status)}
                   </Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Payment Plan:</strong> {getPaymentPlanTypeLabel(invoiceData.paymentPlanType)}
                   </Typography>
                 </Box>
               </Box>
 
               {invoiceData.crmInvoiceLines && invoiceData.crmInvoiceLines.length > 0 && (
-                <Box sx={{ mb: 3 }}>
+                <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                   <Box
                     sx={{
                       backgroundColor: "#bdd2e7",
                       color: "black",
                       display: "flex",
-                      padding: "12px 16px",
+                      padding: { xs: "4px 6px", sm: "12px 16px" },
                       borderRadius: "4px 4px 0 0",
                     }}
                   >
-                    <Box sx={{ flex: 2, fontWeight: 600 }}>Description</Box>
-                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600 }}>Date</Box>
-                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600 }}>Payment Type</Box>
-                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600 }}>Status</Box>
-                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600 }}>Amount</Box>
+                    <Box sx={{ flex: 2, fontWeight: 600, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>Description</Box>
+                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>Date</Box>
+                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>Payment Type</Box>
+                    <Box sx={{ flex: 1, textAlign: "center", fontWeight: 600, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>Status</Box>
+                    <Box sx={{ flex: 1, textAlign: "right", fontWeight: 600, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>Amount</Box>
                   </Box>
                   {invoiceData.crmInvoiceLines.map((line, index) => (
                     <Box
                       key={line.id || index}
                       sx={{
                         display: "flex",
-                        padding: "12px 16px",
+                        padding: { xs: "4px 6px", sm: "12px 16px" },
                         borderBottom: "1px solid #e0e0e0",
                         backgroundColor: index % 2 === 0 ? "white" : "#f9f9f9",
                       }}
                     >
-                      <Box sx={{ flex: 2 }}>{line.description || "-"}</Box>
-                      <Box sx={{ flex: 1, textAlign: "center" }}>
+                      <Box sx={{ flex: 2, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>{line.description || "-"}</Box>
+                      <Box sx={{ flex: 1, textAlign: "center", fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>
                         {line.paymentDate ? format(new Date(line.paymentDate), "dd-MMM-yyyy") : "-"}
                       </Box>
-                      <Box sx={{ flex: 1, textAlign: "center" }}>
+                      <Box sx={{ flex: 1, textAlign: "center", fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>
                         {getPaymentTypeLabel(line.paymentType)}
                       </Box>
-                      <Box sx={{ flex: 1, textAlign: "center" }}>
+                      <Box sx={{ flex: 1, textAlign: "center", fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>
                         {line.isPaid ? "Paid" : "Pending"}
                       </Box>
-                      <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500 }}>
+                      <Box sx={{ flex: 1, textAlign: "right", fontWeight: 500, fontSize: { xs: "0.5rem", sm: "0.875rem" } }}>
                         {formatCurrency(line.amount)}
                       </Box>
                     </Box>
@@ -342,16 +344,16 @@ export default function CustomerInvoice() {
                 sx={{
                   display: "flex",
                   justifyContent: "flex-end",
-                  mt: 3,
-                  mb: 4,
+                  mt: { xs: 2, sm: 3 },
+                  mb: { xs: 2, sm: 4 },
                 }}
               >
-                <Box sx={{ textAlign: "right", minWidth: "200px" }}>
+                <Box sx={{ textAlign: "right", minWidth: { xs: "150px", sm: "200px" } }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography variant="body2" sx={{ mr: 2 }}>
+                    <Typography variant="body2" sx={{ mr: 2, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                       Subtotal:
                     </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                       {formatCurrency(invoiceData.amount)}
                     </Typography>
                   </Box>
@@ -374,7 +376,7 @@ export default function CustomerInvoice() {
                       variant="h6"
                       sx={{
                         fontWeight: "bold",
-                        fontSize: { xs: "1rem", sm: "1.25rem" },
+                        fontSize: { xs: "0.65rem", sm: "1.25rem" },
                       }}
                     >
                       Total: {formatCurrency(invoiceData.amount)}
@@ -382,10 +384,10 @@ export default function CustomerInvoice() {
                   </Box>
                   {invoiceData.initialPayment > 0 && (
                     <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid #e0e0e0" }}>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                         <strong>Initial Payment:</strong> {formatCurrency(invoiceData.initialPayment)}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                         <strong>Due Date:</strong> {invoiceData.initialPaymentDueDate ? format(new Date(invoiceData.initialPaymentDueDate), "dd-MMM-yyyy") : "-"}
                       </Typography>
                     </Box>
