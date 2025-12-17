@@ -25,6 +25,7 @@ import People from '@mui/icons-material/People';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import WorkIcon from '@mui/icons-material/Work';
+import FactoryIcon from '@mui/icons-material/Factory';
 
 
 export const getSidebarData = (IsGarmentSystem) => {
@@ -41,7 +42,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Dashboard", path: "/dashboard/main", categoryId: 39, isAvailable: true },
                 { title: "Dashboard", path: "/dashboard/pos", categoryId: 60, isAvailable: true },
                 { title: "Dashboard", path: "/dashboard/reservation", categoryId: 61, isAvailable: true },
-                { title: "Help Desk Dashboard", path: "/dashboard/help-desk", categoryId: 108, isAvailable: true },
+                { title: "Help Desk Dashboard", path: "/dashboard/help-desk", categoryId: 107, isAvailable: true },
+                { title: "My Help Desk Dashboard", path: "/dashboard/help-desk/self", categoryId: 107, isAvailable: true, userTypeRestriction: 14 }, // Only for HelpDeskSupport
             ],
         },
         {
@@ -262,6 +264,24 @@ export const getSidebarData = (IsGarmentSystem) => {
             ],
         },
         {
+            title: "Manufacture",
+            path: "/manufacture/manufacture/",
+            icon: <FactoryIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 22,
+            IsAvailable: true,
+            subNav: [
+                { title: "Customers", path: "/manufacture/customer/", categoryId: 144, isAvailable: true },
+                { title: "Projects", path: "/manufacture/projects/", categoryId: 145, isAvailable: true },
+                { title: "Bill Of Material", path: "/manufacture/bom/", categoryId: 139, isAvailable: true },
+                { title: "Bill Of Quantities", path: "/manufacture/boq/", categoryId: 140, isAvailable: true },
+                { title: "Material Request Note", path: "/manufacture/material-request-note/", categoryId: 141, isAvailable: true },
+                { title: "Material Issued Note", path: "/manufacture/material-issued-note/", categoryId: 142, isAvailable: true },
+                { title: "Material Return Note", path: "/manufacture/material-return-note/", categoryId: 143, isAvailable: true },
+            ],
+        },
+        {
             title: "Contact",
             path: "/contact/contact/",
             icon: <CallIcon />,
@@ -377,6 +397,9 @@ export const getSidebarData = (IsGarmentSystem) => {
         subNav: [
             { title: "Tickets", path: "/help-desk/tickets/", categoryId: 105, isAvailable: true },
             { title: "Categories", path: "/help-desk/categories/", categoryId: 106, isAvailable: true },
+            { title: "Project and Customer Assign", path: "/help-desk/assign/", categoryId: 107, isAvailable: true },
+            { title: "Purchase Order", path: "/help-desk/purchase-order/", categoryId: 18, isAvailable: true },
+            { title: "Work Order", path: "/help-desk/work-order/", categoryId: 138, isAvailable: true },
         ],
     });
 

@@ -145,9 +145,29 @@ const QuickAccessContent = ({ header = null }) => {
       try {
         const rawItems = getSidebarData(isGarmentSystem);
         const role = localStorage.getItem("role");
+        const userType = localStorage.getItem("type");
+        const isHelpDeskSupport = userType === "14" || userType === 14;
 
         if (!role) {
-          applyModules(rawItems);
+          // Filter by user type even when no role
+          const filteredItems = rawItems.map((module) => {
+            if (!module.subNav) {
+              return module;
+            }
+            const filteredSubNav = module.subNav.filter((sub) => {
+              // Hide items with userTypeRestriction if user doesn't match
+              if (sub.userTypeRestriction && !isHelpDeskSupport) {
+                return false;
+              }
+              return true;
+            });
+            return {
+              ...module,
+              subNav: filteredSubNav,
+              IsAvailable: filteredSubNav.length > 0,
+            };
+          }).filter((module) => module.IsAvailable);
+          applyModules(filteredItems);
           setLoading(false);
           return;
         }
@@ -178,12 +198,22 @@ const QuickAccessContent = ({ header = null }) => {
               };
             }) || [];
 
+          const userType = localStorage.getItem("type");
+          const isHelpDeskSupport = userType === "14" || userType === 14;
+
           const updated = rawItems.map((module) => {
             if (!module.subNav) {
               return module;
             }
 
             const updatedSubNav = module.subNav.map((sub) => {
+              // Check user type restriction (e.g., only HelpDeskSupport can see self dashboard)
+              if (sub.userTypeRestriction && !isHelpDeskSupport) {
+                return {
+                  ...sub,
+                  isAvailable: false,
+                };
+              }
               const match = permissions.find(
                 (permission) => permission.categoryId === sub.categoryId
               );

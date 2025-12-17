@@ -229,6 +229,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                 NIC: "",
                 DateOfBirth: "",
                 ReceivableAccount: null,
+                IsManufacture: false,
                 CustomerContactDetails: contacts.map(() => ({
                   ContactName: "",
                   EmailAddress: "",

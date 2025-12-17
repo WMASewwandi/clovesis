@@ -18,6 +18,10 @@ const usePaginatedFetch = (
 
   
   const fetchData = async (pageNum = page, term = search, size = pageSize, isTodayOnly = isCurrentDate) => {
+    // Only fetch on client side to avoid SSR issues
+    if (typeof window === 'undefined') {
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       const skip = (pageNum - 1) * size;
@@ -145,11 +149,17 @@ const usePaginatedFetch = (
         if (Array.isArray(json.result)) {
           setData(json.result);
           setTotalCount(json.result.length);
+        } else if (json.result.result && json.result.result.items) {
+          // Handle nested result structure: json.result.result.items
+          const items = json.result.result.items || [];
+          setData(items);
+          setTotalCount(json.result.result.totalCount || items.length || 0);
+          console.log(`Loaded ${items.length} items from API (nested result)`);
         } else if (json.result.items) {
           const items = json.result.items || [];
           setData(items);
           setTotalCount(json.result.totalCount || items.length || 0);
-          console.log(`Loaded ${items.length} tickets from API`);
+          console.log(`Loaded ${items.length} items from API`);
         } else {
           console.warn("Unexpected result structure:", json.result);
           setData([]);
@@ -177,7 +187,10 @@ const usePaginatedFetch = (
   };
 
   useEffect(() => {
-    fetchData(1, search, pageSize, initialIsCurrentDate);
+    // Only fetch on client side to avoid SSR issues
+    if (typeof window !== 'undefined') {
+      fetchData(1, search, pageSize, initialIsCurrentDate);
+    }
   }, []);
 
   return {

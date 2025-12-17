@@ -38,6 +38,7 @@ import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 import GetAllSalesPersons from "@/components/utils/GetAllSalesPerson";
 import SearchDropdown from "@/components/utils/SearchDropdown";
 import FormatListNumberedIcon from '@mui/icons-material/FormatListNumbered';
+import CloseIcon from '@mui/icons-material/Close';
 
 
 const style = {
@@ -1105,15 +1106,24 @@ const GRNCreate = () => {
         <Box sx={style} className="bg-black">
           <Grid container>
             <Grid item xs={12}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: "500",
-                  mb: "12px",
-                }}
-              >
-                Enter Serial Numbers
-              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: "12px" }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: "500",
+                  }}
+                >
+                  Enter Serial Numbers
+                </Typography>
+                <IconButton
+                  onClick={() => setOpen(false)}
+                  size="small"
+                  sx={{ color: "text.primary" }}
+                  aria-label="close"
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Box>
             </Grid>
             <Grid item xs={12}>
               <Box sx={{ maxHeight: "50vh", overflowY: "scroll" }}>
@@ -1158,6 +1168,9 @@ const GRNCreate = () => {
               xs={12}
               p={1}
             >
+              <Button onClick={() => setOpen(false)} variant="outlined" size="small">
+                Close
+              </Button>
               <Button onClick={handleSaveSerials} variant="contained" size="small">
                 Save
               </Button>

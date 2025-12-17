@@ -17,6 +17,7 @@ import {
   Person,
 } from "@mui/icons-material";
 import BASE_URL from "Base/api";
+import TicketListModal from "./TicketListModal";
 
 const StatCards = () => {
   const [stats, setStats] = useState({
@@ -42,6 +43,11 @@ const StatCards = () => {
     openToday: 0,
     resolvedToday: 0,
   });
+
+  const [allTickets, setAllTickets] = useState([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [filteredTickets, setFilteredTickets] = useState([]);
 
   const fetchStats = async () => {
     try {
@@ -69,46 +75,49 @@ const StatCards = () => {
         const tickets = await ticketsResponse.json();
         const team = await teamResponse.json();
 
+        const ticketsList = tickets.result?.items || [];
+        setAllTickets(ticketsList);
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        const todayTickets = tickets.result?.items?.filter((t) => {
+        const todayTickets = ticketsList.filter((t) => {
           const created = new Date(t.createdOn);
           created.setHours(0, 0, 0, 0);
           return created.getTime() === today.getTime();
-        }) || [];
+        });
 
-        const yesterdayTickets = tickets.result?.items?.filter((t) => {
+        const yesterdayTickets = ticketsList.filter((t) => {
           const created = new Date(t.createdOn);
           created.setHours(0, 0, 0, 0);
           return created.getTime() === yesterday.getTime();
-        }) || [];
+        });
 
-        const resolvedToday = tickets.result?.items?.filter((t) => {
+        const resolvedToday = ticketsList.filter((t) => {
           if (!t.updatedOn) return false;
           const updated = new Date(t.updatedOn);
           updated.setHours(0, 0, 0, 0);
           return updated.getTime() === today.getTime() && (t.status === 3 || t.status === 4);
-        }) || [];
+        });
 
-        const resolvedYesterday = tickets.result?.items?.filter((t) => {
+        const resolvedYesterday = ticketsList.filter((t) => {
           if (!t.updatedOn) return false;
           const updated = new Date(t.updatedOn);
           updated.setHours(0, 0, 0, 0);
           return updated.getTime() === yesterday.getTime() && (t.status === 3 || t.status === 4);
-        }) || [];
+        });
 
-        const pendingToday = tickets.result?.items?.filter((t) => {
+        const pendingToday = ticketsList.filter((t) => {
           return t.status === 2 && new Date(t.createdOn).setHours(0, 0, 0, 0) <= today.getTime();
-        }) || [];
+        });
 
-        const overdueToday = tickets.result?.items?.filter((t) => {
+        const overdueToday = ticketsList.filter((t) => {
           if (!t.dueDate) return false;
           const dueDate = new Date(t.dueDate);
           return dueDate < today && (t.status === 1 || t.status === 2);
-        }) || [];
+        });
 
         setTodayStats({
           openToday: todayTickets.length,
@@ -137,36 +146,112 @@ const StatCards = () => {
     return Math.round(((current - previous) / previous) * 100);
   };
 
+  const handleCardClick = (cardType) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let filtered = [];
+
+    switch (cardType) {
+      case "open":
+        // Show all open tickets (status = 1)
+        filtered = allTickets.filter((t) => t.status === 1);
+        setModalTitle("Open Tickets");
+        break;
+      case "pending":
+        // Show all pending/in-progress tickets (status = 2)
+        filtered = allTickets.filter((t) => t.status === 2);
+        setModalTitle("Pending Tickets");
+        break;
+      case "overdue":
+        // Show all overdue tickets
+        filtered = allTickets.filter((t) => {
+          if (!t.dueDate) return false;
+          const dueDate = new Date(t.dueDate);
+          return dueDate < today && (t.status === 1 || t.status === 2);
+        });
+        setModalTitle("Overdue Tickets");
+        break;
+      case "resolved":
+        // Show tickets resolved today
+        filtered = allTickets.filter((t) => {
+          if (!t.updatedOn) return false;
+          const updated = new Date(t.updatedOn);
+          updated.setHours(0, 0, 0, 0);
+          return updated.getTime() === today.getTime() && (t.status === 3 || t.status === 4);
+        });
+        setModalTitle("Resolved Today");
+        break;
+      case "avgResolution":
+        // For average resolution time, show all resolved/closed tickets
+        filtered = allTickets.filter((t) => t.status === 3 || t.status === 4);
+        setModalTitle("Resolved Tickets (All Time)");
+        break;
+      case "activeAgents":
+        // For active agents, don't show tickets
+        return;
+      default:
+        return;
+    }
+
+    setFilteredTickets(filtered);
+    setModalOpen(true);
+  };
+
+  // Calculate total counts for each category
+  // Use calculated values from allTickets if available, otherwise fall back to API stats
+  const totalOpenTickets = allTickets.length > 0 
+    ? allTickets.filter((t) => t.status === 1).length 
+    : stats.openTickets;
+  const totalPendingTickets = allTickets.length > 0
+    ? allTickets.filter((t) => t.status === 2).length
+    : stats.inProgressTickets;
+  const totalOverdueTickets = allTickets.length > 0
+    ? allTickets.filter((t) => {
+        if (!t.dueDate) return false;
+        const dueDate = new Date(t.dueDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dueDate < today && (t.status === 1 || t.status === 2);
+      }).length
+    : todayStats.overdueToday;
+  const totalResolvedTickets = allTickets.filter((t) => t.status === 3 || t.status === 4).length;
+
   const statCards = [
     {
       title: "Open Tickets",
-      value: stats.openTickets,
+      value: totalOpenTickets,
       todayValue: todayStats.openToday,
       change: calculatePercentageChange(todayStats.openToday, previousDayStats.openToday),
       icon: <Pending />,
       color: "#3B82F6",
       bgColor: "#EFF6FF",
       iconBg: "#DBEAFE",
+      cardType: "open",
+      clickable: true,
     },
     {
       title: "Pending Tickets",
-      value: stats.inProgressTickets,
+      value: totalPendingTickets,
       todayValue: todayStats.pendingToday,
       change: 0,
       icon: <AccessTime />,
       color: "#F59E0B",
       bgColor: "#FFFBEB",
       iconBg: "#FEF3C7",
+      cardType: "pending",
+      clickable: true,
     },
     {
       title: "Overdue Tickets",
-      value: todayStats.overdueToday,
+      value: totalOverdueTickets,
       todayValue: todayStats.overdueToday,
       change: 0,
       icon: <Warning />,
       color: "#EF4444",
       bgColor: "#FEF2F2",
       iconBg: "#FEE2E2",
+      cardType: "overdue",
+      clickable: true,
     },
     {
       title: "Resolved Today",
@@ -177,6 +262,8 @@ const StatCards = () => {
       color: "#10B981",
       bgColor: "#ECFDF5",
       iconBg: "#D1FAE5",
+      cardType: "resolved",
+      clickable: true,
     },
     {
       title: "Avg Resolution Time",
@@ -187,6 +274,8 @@ const StatCards = () => {
       color: "#8B5CF6",
       bgColor: "#F5F3FF",
       iconBg: "#EDE9FE",
+      cardType: "avgResolution",
+      clickable: true,
     },
     {
       title: "Active Agents",
@@ -197,6 +286,8 @@ const StatCards = () => {
       color: "#6366F1",
       bgColor: "#EEF2FF",
       iconBg: "#E0E7FF",
+      cardType: "activeAgents",
+      clickable: false,
     },
   ];
 
@@ -205,6 +296,7 @@ const StatCards = () => {
       {statCards.map((card, index) => (
         <Grid item xs={12} sm={6} md={4} lg={4} xl={2} key={index}>
           <Card
+            onClick={() => card.clickable && handleCardClick(card.cardType)}
             sx={{
               height: "100%",
               bgcolor: "white",
@@ -214,9 +306,10 @@ const StatCards = () => {
               transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               position: "relative",
               overflow: "hidden",
+              cursor: card.clickable ? "pointer" : "default",
               "&:hover": {
                 boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-                transform: "translateY(-4px)",
+                transform: card.clickable ? "translateY(-4px)" : "none",
                 borderColor: card.color,
               },
               "&::before": {
@@ -231,7 +324,7 @@ const StatCards = () => {
                 transition: "opacity 0.2s ease",
               },
               "&:hover::before": {
-                opacity: 1,
+                opacity: card.clickable ? 1 : 0,
               },
             }}
           >
@@ -303,7 +396,7 @@ const StatCards = () => {
                   lineHeight: 1.2,
                 }}
               >
-                {card.todayValue !== undefined ? card.todayValue : card.value}
+                {card.value}
               </Typography>
               <Typography
                 variant="body2"
@@ -325,13 +418,19 @@ const StatCards = () => {
                     fontSize: "0.75rem",
                   }}
                 >
-                  Total: {card.value}
+                  Today: {card.todayValue}
                 </Typography>
               )}
             </CardContent>
           </Card>
         </Grid>
       ))}
+      <TicketListModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={modalTitle}
+        tickets={filteredTickets}
+      />
     </Grid>
   );
 };

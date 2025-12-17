@@ -4,8 +4,14 @@ import Grid from "@mui/material/Grid";
 import {
   Box,
   Button,
+  Checkbox,
+  FormControl,
+  FormControlLabel,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -25,53 +31,154 @@ import { useRouter } from "next/router";
 import BASE_URL from "Base/api";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import SearchItems from "@/components/utils/SearchItems";
+import SearchCustomer from "@/components/utils/SearchCustomer";
+import SearchProject from "@/components/utils/SearchProject";
 import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 
-const CreateBillOfMaterials = () => {
+const CreateBillOfQuantities = () => {
   const router = useRouter();
   const today = new Date();
   const [date, setDate] = useState(formatDate(today));
   const [billNo, setBillNo] = useState("");
   const [mainItem, setMainItem] = useState(null);
+  const [boq, setBoq] = useState({});
   const [mainQty, setMainQty] = useState(null);
   const [mainSellingPrice, setMainSellingPrice] = useState(null);
   const [remark, setRemark] = useState("");
+  const [isTemplate, setIsTemplate] = useState(false);
+  const [templateName, setTemplateName] = useState("");
   const [total, setTotal] = useState(0);
   const [addedRows, setAddedRows] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDisable, setIsDisable] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const { id } = router.query;
 
-  const updateBillNo = async () => {
+
+  const fetchTemplates = async () => {
     try {
-      const response = await fetch(`${BASE_URL}/DocumentSequence/GetNextDocumentNumber?documentType=30`, {
-        method: 'POST',
+      const response = await fetch(`${BASE_URL}/BillOfQuantity/GetBillOfQuantityTemplates`, {
+        method: "GET",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Fetch failed: ${response.status} ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        const templateList = Array.isArray(data?.result) ? data.result : Array.isArray(data) ? data : [];
+        setTemplates(templateList);
       }
-
-      const result = await response.json();
-      setBillNo(result.result);
-    } catch (err) {
-      console.error('Error fetching next document number:', err);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
     }
   };
 
+  const fetchBoq = async () => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/BillOfQuantity/GetBillOfQuantityById?id=${id}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch");
+      }
+
+      const data = await response.json();
+      const result = data.result;
+      setBoq(result);
+      setDate(result.date ? formatDate(result.date) : formatDate(today));
+      setMainQty(result.quantity);
+      setRemark(result.remark || "");
+      setMainSellingPrice(result.sellingPrice);
+      setBillNo(result.documentNo);
+      setTotal(result.totalCostPrice || 0);
+      setIsTemplate(result.isTemplate || false);
+      setTemplateName(result.templateName || "");
+
+      // Set customer and project IDs from response
+      if (result.customerId) {
+        // Try to fetch customer details or create placeholder
+        // The BOQ response may not include full customer details
+        // We'll create a placeholder that will be updated when user searches
+        const customerName = result.customerName || "";
+        const nameParts = customerName.trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+        
+        setSelectedCustomer({
+          id: result.customerId,
+          firstName: firstName,
+          lastName: lastName,
+          displayName: customerName,
+        });
+      } else {
+        setSelectedCustomer(null);
+      }
+      if (result.projectId) {
+        // Create project object from BOQ data
+        setSelectedProject({
+          id: result.projectId,
+          name: result.projectName || "",
+          code: result.projectCode || "",
+        });
+      }
+      // Set parent template ID from response
+      if (result.parentTemplateId) {
+        setSelectedTemplateId(String(result.parentTemplateId));
+      }
+
+      setAddedRows(
+        (result.billOfQuantityLines || []).map(item => ({
+          ...item,
+          name: item.productName,
+          averagePrice: item.costPrice != null ? item.costPrice : "",
+          totalCost: item.lineTotal || 0,
+          productId: item.productId,
+          code: item.productCode,
+          quantity: item.quantity != null ? item.quantity : "",
+          wastage: item.wastage != null ? item.wastage : ""
+        }))
+      );
+    } catch (error) {
+      console.error("Error fetching :", error);
+    }
+  };
   useEffect(() => {
-    updateBillNo();
-  }, []);
+    fetchTemplates();
+    if (id) {
+      fetchBoq();
+    }
+  }, [id]);
+
+  // Clear project when customer changes
+  useEffect(() => {
+    if (!selectedCustomer?.id) {
+      setSelectedProject(null);
+    }
+  }, [selectedCustomer]);
+
+  // Recalculate total whenever addedRows changes
+  useEffect(() => {
+    const calculatedTotal = addedRows.reduce((sum, row) => {
+      const rowTotal = parseFloat(row.totalCost) || 0;
+      return sum + (isNaN(rowTotal) ? 0 : rowTotal);
+    }, 0);
+    setTotal(calculatedTotal);
+  }, [addedRows]);
 
   const handleAddRow = (item) => {
-    if (!mainItem) {
-      toast.warning("Please Select Product");
-      return;
-    }
-
     const isDuplicate = addedRows.some(row => row.id === item.id);
     if (isDuplicate) {
       toast.warning("This Item is already added.");
@@ -83,6 +190,7 @@ const CreateBillOfMaterials = () => {
       quantity: "",
       wastage: "",
       averagePrice: item.averagePrice != null ? item.averagePrice : "",
+      productId: item.id,
       totalCost: item.averagePrice != null ? (item.averagePrice || 0) : 0,
     };
 
@@ -90,14 +198,11 @@ const CreateBillOfMaterials = () => {
       const updatedRows = [...prevRows, newRow];
       return updatedRows;
     });
-
-    setTotal((prevTotal) => prevTotal + parseFloat(newRow.totalCost));
   };
 
   const handleChange = (index, value, name) => {
     const updatedRows = [...addedRows];
     const row = updatedRows[index];
-    const oldTotalPrice = row.totalCost || 0;
 
     // Ensure value is never null - convert to empty string if needed
     row[name] = value != null ? value : "";
@@ -115,20 +220,15 @@ const CreateBillOfMaterials = () => {
     }
 
     setAddedRows(updatedRows);
-    setTotal((prevTotal) => prevTotal - oldTotalPrice + (row.totalCost || 0));
   };
-
 
   const handleDeleteRow = (index) => {
     const updatedRows = [...addedRows];
-    const row = updatedRows.splice(index, 1)[0];
-
+    updatedRows.splice(index, 1);
     setAddedRows(updatedRows);
-    setTotal((prevTotal) => prevTotal - row.totalCost);
   };
 
   const handleSubmit = async () => {
-    if (!mainItem) return toast.warning("Please select product");
     if (addedRows.length === 0) return toast.error("At least one item must be added");
     if (addedRows.some((r, i) => !r.averagePrice || !r.quantity))
       return toast.error("All rows must have cost price and quantity");
@@ -136,40 +236,37 @@ const CreateBillOfMaterials = () => {
     if (+mainSellingPrice < +total)
       return toast.warning("Selling price should be greater than total cost");
     if (!mainQty) return toast.warning("Please enter quantity");
+    if (isTemplate && !templateName?.trim()) return toast.error("Please enter template name");
 
-    const data =
-    {
-      DocumentNo: billNo,
-      BOMDate: date,
-      Remark: remark,
-      WarehouseId: 1,
-      TotalCost: parseFloat(total),
-      SellingPrice: parseFloat(mainSellingPrice),
+    const data = {
+      Id: boq.id,
+      ProjectId: Number(selectedProject.id),
+      CustomerId: selectedCustomer ? Number(selectedCustomer.id) : null,
+      ProductId: boq.productId,
+      Date: date ? new Date(date).toISOString() : null,
       Quantity: parseFloat(mainQty),
-      ProductId: mainItem.id,
-      ProductCode: mainItem.code,
-      ProductName: mainItem.name,
-      InventoryPeriodId: 1,
-      BillOfMaterialLineDetails: addedRows.map((row, index) => ({
-        BomHeaderId: 1,
-        DocumentNo: billNo,
-        WarehouseId: 1,
-        ProductId: row.id,
-        ProductCode: row.code,
-        ProductName: row.name,
-        CostPrice: parseFloat(row.averagePrice),
+      SellingPrice: parseFloat(mainSellingPrice),
+      IsTemplate: isTemplate,
+      Remark: remark || "",
+      TotalCostPrice: parseFloat(total),
+      ParentTemplateId: selectedTemplateId ? Number(selectedTemplateId) : null,
+      TemplateName: isTemplate ? (templateName || "") : "",
+      BillOfQuantityLines: addedRows.map((row) => ({
+        ProductId: row.productId || row.id,
+        ProductCode: row.code || "",
+        ProductName: row.name || "",
+        CostPrice: row.averagePrice ? parseFloat(row.averagePrice) : null,
         Quantity: parseFloat(row.quantity),
         LineTotal: parseFloat(row.totalCost),
         Wastage: parseFloat(row.wastage) || 0
       })),
     };
 
-
     try {
       setIsSubmitting(true);
       setIsDisable(true);
       const response = await fetch(
-        `${BASE_URL}/BillOfMaterial/CreateBillOfMaterial`,
+        `${BASE_URL}/BillOfQuantity/UpdateBillOfQuantity`,
         {
           method: "POST",
           headers: {
@@ -185,7 +282,7 @@ const CreateBillOfMaterials = () => {
         if (jsonResponse.statusCode === 200) {
           toast.success(jsonResponse.message);
           setTimeout(() => {
-            window.location.href = "/production/bom/";
+            window.location.href = "/manufacture/boq/";
           }, 1500);
         } else {
           toast.error(jsonResponse.message);
@@ -202,7 +299,7 @@ const CreateBillOfMaterials = () => {
 
   const navigateToBack = () => {
     router.push({
-      pathname: "/production/bom/",
+      pathname: "/manufacture/boq/",
     });
   };
 
@@ -210,12 +307,12 @@ const CreateBillOfMaterials = () => {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Create Bill Of Material</h1>
+        <h1>Edit Bill Of Quantity</h1>
         <ul>
           <li>
-            <Link href="/production/bom">Bill Of Material</Link>
+            <Link href="/manufacture/boq">Bill Of Quantity</Link>
           </li>
-          <li> Create</li>
+          <li> Edit</li>
         </ul>
       </div>
 
@@ -254,20 +351,101 @@ const CreateBillOfMaterials = () => {
                   width: "35%",
                 }}
               >
-                Product
+                Customer
               </Typography>
-              <Box sx={{ width: "60%", }}>
-                <SearchItems
-                  label="Search"
-                  placeholder="Search Items by name"
-                  fetchUrl={`${BASE_URL}/Items/GetAllItemsByName`}
+              <Box sx={{ width: "60%" }}>
+                <SearchCustomer
+                  label="Customer"
+                  placeholder="Search customers by name"
                   main={true}
-                  mainItem={null}
-                  onSelect={(item) => {
-                    setMainItem(item)
+                  mainItem={selectedCustomer?.id || null}
+                  displayValue={selectedCustomer 
+                    ? (selectedCustomer.firstName && selectedCustomer.lastName
+                        ? `${selectedCustomer.firstName} ${selectedCustomer.lastName}`
+                        : selectedCustomer.displayName || selectedCustomer.firstName || "")
+                    : ""}
+                  onSelect={(customer) => {
+                    setSelectedCustomer(customer);
                   }}
+                  onClear={() => {
+                    setSelectedCustomer(null);
+                    setSelectedProjectId("");
+                  }}
+                  disabled={true}
                 />
               </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Project
+              </Typography>
+              <Box sx={{ width: "60%" }}>
+                <SearchProject
+                  label="Project"
+                  placeholder="Search projects by name"
+                  main={true}
+                  mainItem={selectedProject?.id || null}
+                  billType={2}
+                  customerId={selectedCustomer?.id || null}
+                  displayValue={selectedProject 
+                    ? (selectedProject.code && selectedProject.name
+                        ? `${selectedProject.name} - ${selectedProject.code}`
+                        : selectedProject.code || selectedProject.name || "")
+                    : ""}
+                  onSelect={(project) => {
+                    setSelectedProject(project);
+                  }}
+                  onClear={() => {
+                    setSelectedProject(null);
+                  }}
+                  disabled={true}
+                />
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Product
+              </Typography>
+              <TextField
+                sx={{ width: "60%" }}
+                size="small"
+                type="text"
+                value={boq ? boq.productName : ""}
+                disabled
+                fullWidth
+              />
             </Grid>
             <Grid
               item
@@ -382,13 +560,117 @@ const CreateBillOfMaterials = () => {
                 onChange={(e) => setMainSellingPrice(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} mt={3} mb={2}>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Select Template
+              </Typography>
+              <Box sx={{ width: "60%" }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Template</InputLabel>
+                  <Select
+                    value={selectedTemplateId}
+                    label="Template"
+                    disabled
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {templates.map((template) => (
+                      <MenuItem key={template.id} value={String(template.id)}>
+                        {template.documentNo} - {template.templateName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Is Template
+              </Typography>
+              <Box sx={{ width: "60%" }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isTemplate}
+                      onChange={(e) => setIsTemplate(e.target.checked)}
+                    />
+                  }
+                  label=""
+                />
+              </Box>
+            </Grid>
+            {isTemplate && (
+              <Grid
+                item
+                xs={12}
+                lg={6}
+                display="flex"
+                justifyContent="space-between"
+                mt={1}
+              >
+                <Typography
+                  component="label"
+                  sx={{
+                    fontWeight: "500",
+                    p: 1,
+                    fontSize: "14px",
+                    display: "block",
+                    width: "35%",
+                  }}
+                >
+                  Template Name
+                </Typography>
+                <TextField
+                  sx={{ width: "60%" }}
+                  size="small"
+                  fullWidth
+                  required
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  placeholder="Enter template name"
+                  error={isTemplate && !templateName?.trim()}
+                  helperText={isTemplate && !templateName?.trim() ? "Template name is required" : ""}
+                />
+              </Grid>
+            )}
+            <Grid item xs={12} mt={3} mb={1}>
               <SearchItems
                 label="Search"
                 placeholder="Search Items by name"
                 fetchUrl={`${BASE_URL}/Items/GetAllItemsByName`}
                 main={false}
-                mainItem={mainItem ? mainItem.id : null}
+                mainItem={boq.productId}
                 onSelect={(item) => {
                   handleAddRow(item)
                 }}
@@ -485,4 +767,5 @@ const CreateBillOfMaterials = () => {
   );
 };
 
-export default CreateBillOfMaterials;
+export default CreateBillOfQuantities;
+

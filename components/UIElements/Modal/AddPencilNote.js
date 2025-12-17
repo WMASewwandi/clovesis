@@ -282,14 +282,14 @@ export default function AddPencilNote({
                             {values.ReservationFunctionType === 3 || type === 3 ?
                               <>
                                 <Grid item xs={12} lg={3} mt={1}>
-                                  <Typography>Date</Typography>
+                                  <Typography>Wedding Date</Typography>
                                   <Field
                                     as={TextField}
                                     name="ReservationDate"
                                     type="date"
                                     size="small"
                                     fullWidth
-                                    disabled
+                                    // disabled
                                   />
                                 </Grid>
                               </>

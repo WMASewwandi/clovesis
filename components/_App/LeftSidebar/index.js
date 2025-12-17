@@ -103,11 +103,33 @@ const Sidebar = ({ toogleActive, onGrantedCheck }) => {
         };
       });
       const rawItems = getSidebarData(IsGarmentSystem);
+      const userType = localStorage.getItem("type");
+      const isHelpDeskSupport = userType === "14" || userType === 14;
+
       const updatedItems = rawItems.map((menu) => {
         let updatedMenu = { ...menu };
 
         if (updatedMenu.subNav) {
           updatedMenu.subNav = updatedMenu.subNav.map((sub) => {
+            // Check user type restriction (e.g., only HelpDeskSupport can see self dashboard)
+            if (sub.userTypeRestriction) {
+              if (!isHelpDeskSupport) {
+                return {
+                  ...sub,
+                  isAvailable: false,
+                };
+              }
+              // For HelpDeskSupport users, still check permissions
+              const matched = transformed.find(
+                (t) => t.CategoryId === sub.categoryId
+              );
+              return {
+                ...sub,
+                isAvailable: matched ? matched.IsAvailable : false,
+              };
+            }
+
+            // For items without userTypeRestriction, check permissions normally
             const matched = transformed.find(
               (t) => t.CategoryId === sub.categoryId
             );

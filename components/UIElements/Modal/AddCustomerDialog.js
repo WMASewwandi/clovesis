@@ -223,6 +223,7 @@ export default function AddCustomerDialog({ fetchItems }) {
                 Company: "",
                 NIC: "",
                 DateOfBirth: "",
+                IsManufacture: false,
                 CustomerContactDetails: contacts.map(() => ({
                   ContactName: "",
                   EmailAddress: "",

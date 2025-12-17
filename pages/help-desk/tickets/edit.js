@@ -29,6 +29,8 @@ import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import useApi from "@/components/utils/useApi";
 import RichTextEditor from "@/components/help-desk/RichTextEditor";
+import TicketChecklist from "@/components/help-desk/TicketChecklist";
+import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import { formatDate } from "@/components/utils/formatHelper";
 
 const style = {
@@ -85,6 +87,14 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editingCommentText, setEditingCommentText] = useState("");
   const [timeUpdateTrigger, setTimeUpdateTrigger] = useState(0);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isHelpDeskCustomer, setIsHelpDeskCustomer] = useState(false);
+  const [ticketProject, setTicketProject] = useState(null);
+  const [checklist, setChecklist] = useState([]);
+  
+  // Get permissions
+  const cId = typeof window !== 'undefined' ? sessionStorage.getItem("category") : null;
+  const { navigate, create, update, remove } = IsPermissionEnabled(cId);
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const handleOpen = () => {
@@ -111,12 +121,203 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
     }
   }, [item, externalOpen, open]);
 
+  // Check if current user is SuperAdmin and HelpDeskCustomer
+  useEffect(() => {
+    const checkUserType = async () => {
+      try {
+        const roleId = localStorage.getItem("role");
+        const userType = localStorage.getItem("type");
+        
+        // Check if user is HelpDeskCustomer (UserType = 25)
+        if (userType === "25" || userType === 25) {
+          setIsHelpDeskCustomer(true);
+        } else {
+          setIsHelpDeskCustomer(false);
+        }
+
+        if (!roleId) {
+          setIsSuperAdmin(false);
+          return;
+        }
+
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${BASE_URL}/User/GetAllUserRoles?SkipCount=0&MaxResultCount=1000&Search=null`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const roles = data?.result?.items || data?.items || [];
+          const currentRole = roles.find((r) => r.id === parseInt(roleId));
+          if (currentRole && (currentRole.name === "SuperAdmin" || currentRole.displayName === "SuperAdmin")) {
+            setIsSuperAdmin(true);
+          } else {
+            setIsSuperAdmin(false);
+          }
+        } else {
+          setIsSuperAdmin(false);
+        }
+      } catch (error) {
+        console.error("Error checking user type:", error);
+        setIsSuperAdmin(false);
+        setIsHelpDeskCustomer(false);
+      }
+    };
+
+    if (open) {
+      checkUserType();
+    }
+  }, [open]);
+
+  // Fetch the ticket's project if it exists and is not in the normalizedProjects list
+  useEffect(() => {
+    const fetchTicketProject = async () => {
+      if (!open || !item) {
+        setTicketProject(null);
+        return;
+      }
+      
+      // First try to get projectId from the ticket
+      let ticketProjectId = item.projectId ?? item.projectEntity?.id;
+      
+      // If projectId is null but Project name exists, try to find the project by name in Project Management
+      if (!ticketProjectId && item.project) {
+        console.log("EditTicket: ProjectId is null but Project name exists:", item.project);
+        console.log("EditTicket: Searching for project by name in normalizedProjects...");
+        
+        // Wait for normalizedProjects to be available
+        const checkProjects = () => {
+          if (normalizedProjects && normalizedProjects.length > 0) {
+            const foundByName = normalizedProjects.find(p => 
+              p.name?.toLowerCase() === item.project?.toLowerCase() ||
+              p.code?.toLowerCase() === item.project?.toLowerCase()
+            );
+            if (foundByName) {
+              console.log("EditTicket: Found project by name:", foundByName);
+              setTicketProject(foundByName);
+              return true;
+            }
+          }
+          return false;
+        };
+        
+        // Check immediately if projects are already loaded
+        if (checkProjects()) {
+          return;
+        }
+        
+        // If not found, try fetching from Project Management by name
+        // This will be handled by the project fetching logic below
+      }
+      
+      if (!ticketProjectId) {
+        console.log("EditTicket: No projectId found in ticket");
+        setTicketProject(null);
+        return;
+      }
+
+      // Fetch the project by ID - try Project Management first, then fallback to old Project endpoint
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.warn("No token available for fetching project");
+          return;
+        }
+
+        console.log("EditTicket: Fetching ticket project with ID:", ticketProjectId);
+        
+        // First try Project Management module
+        let response = await fetch(`${BASE_URL}/ProjectManagementModule/projects/${ticketProjectId}`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        let project = null;
+        
+        if (response.ok) {
+          const data = await response.json();
+          project = data?.result || data;
+          if (project) {
+            console.log("EditTicket: Found project in Project Management module");
+          }
+        }
+
+        // If not found in Project Management, try old Project endpoint
+        if (!project) {
+          console.log("EditTicket: Project not found in Project Management, trying old Project endpoint");
+          response = await fetch(`${BASE_URL}/Project/GetProjectById?id=${ticketProjectId}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            project = data?.result || data;
+            if (project) {
+              console.log("EditTicket: Found project in old Project table");
+            }
+          }
+        }
+
+        if (project) {
+          // Normalize the project to match the format expected by normalizedProjects
+          const normalizedProject = {
+            ...project,
+            id: toNumericId(project.id || project.projectId || ticketProjectId),
+            customerIdNormalized: project.customerId,
+            customerNameNormalized: project.customerName || 
+              project.customer?.displayName || 
+              project.customer?.name ||
+              [project.customer?.firstName, project.customer?.lastName].filter(Boolean).join(" ").trim() ||
+              "",
+          };
+          setTicketProject(normalizedProject);
+          console.log("EditTicket: Fetched and set ticket project:", normalizedProject);
+        } else {
+          console.warn("EditTicket: Project not found in either Project Management or old Project table");
+          setTicketProject(null);
+        }
+      } catch (error) {
+        console.error("EditTicket: Error fetching ticket project:", error);
+        setTicketProject(null);
+      }
+    };
+
+    if (open && item) {
+      fetchTicketProject();
+    } else {
+      setTicketProject(null);
+    }
+  }, [open, item]);
+
   // Fetch checklist and comments when modal opens
   useEffect(() => {
     if (open && item?.id) {
       fetchComments();
+      // Initialize checklist from item data
+      if (item?.checklist && Array.isArray(item.checklist)) {
+        const formattedChecklist = item.checklist.map(c => ({
+          id: c.id,
+          item: c.item,
+          isCompleted: c.isCompleted || false,
+          order: c.order || 0,
+        }));
+        setChecklist(formattedChecklist);
+      } else {
+        setChecklist([]);
+      }
     }
-  }, [open, item?.id]);
+  }, [open, item?.id, item?.checklist]);
 
   // Timer to update remaining time display for editable comments
   useEffect(() => {
@@ -137,7 +338,10 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
 
   const fetchComments = async () => {
     try {
-      if (!item?.id) return;
+      if (!item?.id) {
+        console.warn("Cannot fetch comments: item.id is missing");
+        return;
+      }
       
       const token = localStorage.getItem("token");
       if (!token) {
@@ -158,17 +362,38 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
       
       if (response.ok) {
         const data = await response.json();
-        // Handle different response formats
-        let commentsList = data.result || data.data || data.items || (Array.isArray(data) ? data : []);
+        console.log("Fetched comments data:", data);
+        
+        // Handle different response formats - backend returns ApiResponse with result property
+        let commentsList = [];
+        if (Array.isArray(data)) {
+          commentsList = data;
+        } else if (data?.result) {
+          // ApiResponse format: { statusCode: 200, message: "...", result: [...] }
+          commentsList = Array.isArray(data.result) ? data.result : [];
+        } else if (data?.data) {
+          commentsList = Array.isArray(data.data) ? data.data : [];
+        } else if (data?.items) {
+          commentsList = Array.isArray(data.items) ? data.items : [];
+        }
+        
         // Sort comments in descending order (newest first)
         commentsList = commentsList.sort((a, b) => {
           const dateA = new Date(a.createdOn || 0).getTime();
           const dateB = new Date(b.createdOn || 0).getTime();
           return dateB - dateA; // Descending order
         });
+        
+        console.log("Setting comments list:", commentsList.length, "comments");
         setComments(commentsList);
       } else {
-        console.error("Failed to fetch comments:", response.status);
+        console.error("Failed to fetch comments. Status:", response.status);
+        try {
+          const errorText = await response.text();
+          console.error("Error response:", errorText);
+        } catch (textError) {
+          console.error("Could not read error response");
+        }
       }
     } catch (error) {
       console.error("Error fetching comments:", error);
@@ -390,7 +615,7 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
       const requestBody = {
         ticketId: item.id,
         comment: values.comment.trim(),
-        isInternal: values.isInternal || false,
+        isInternal: isHelpDeskCustomer ? false : (values.isInternal || false),
       };
 
       console.log("=== COMMENT SUBMISSION START ===");
@@ -409,83 +634,63 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
           },
           body: JSON.stringify(requestBody),
         });
-        console.log("Fetch completed. Response status:", response.status);
-        console.log("Response headers:", Object.fromEntries(response.headers.entries()));
       } catch (fetchError) {
-        console.error("=== FETCH ERROR ===");
-        console.error("Error type:", fetchError.name);
-        console.error("Error message:", fetchError.message);
-        console.error("Full error:", fetchError);
-        toast.error(`Network error: ${fetchError.message}. Please check your connection and CORS settings.`);
+        console.error("Network error:", fetchError);
+        toast.error("Network error. Please check your connection and try again.");
         setSubmitting(false);
         return;
       }
 
-      console.log("Response status:", response.status);
+      // Check HTTP status first - if 200, the request was successful
+      const isHttpSuccess = response.ok && response.status === 200;
       
-      let responseText = "";
-      try {
-        responseText = await response.text();
-        console.log("Response text:", responseText);
-      } catch (textError) {
-        console.error("Error reading response text:", textError);
-        toast.error("Failed to read server response. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-      
-      let data = {};
-      try {
-        data = responseText ? JSON.parse(responseText) : {};
-      } catch (parseError) {
-        console.error("Failed to parse JSON response:", parseError, "Response text:", responseText);
-        // If response is not JSON but status is OK, assume success
-        if (response.ok) {
-          toast.success("Comment added successfully");
-          resetForm();
-          try {
-            await fetchComments();
-          } catch (err) {
-            console.error("Error refreshing comments:", err);
-          }
-          setSubmitting(false);
-          return;
-        } else {
-          toast.error("Invalid response from server. Please try again.");
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      console.log("Parsed response data:", data);
-
-      if (response.ok) {
-        const isSuccess = data.status === "SUCCESS" || 
-                         data.statusCode === 200 || 
-                         response.status === 200 ||
-                         !data.status ||
-                         (data.status && data.status !== "ERROR" && data.status !== "FAIL");
-        
-      if (isSuccess) {
-        toast.success(data.message || "Comment added successfully");
-        resetForm();
-        // Refresh comments immediately to show new comment at top
+      if (isHttpSuccess) {
+        // HTTP 200 means success - comment was created
+        // Try to read response for message, but don't fail if we can't
+        let data = {};
         try {
-          await fetchComments();
-        } catch (err) {
-          console.error("Error refreshing comments:", err);
-          // Don't fail the whole operation if refresh fails
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              data = JSON.parse(responseText);
+            } catch (parseError) {
+              // Response is not JSON, but that's okay - HTTP 200 means success
+              console.log("Response is not JSON, but HTTP 200 indicates success");
+            }
+          }
+        } catch (readError) {
+          // Can't read response, but HTTP 200 means success
+          console.log("Could not read response body, but HTTP 200 indicates success");
         }
-        // Don't refresh items list - it might cause navigation issues
-        // fetchItems is called when modal closes anyway
-      } else {
-          const errorMessage = data.message || data.error || "Failed to add comment";
-          console.error("API returned error:", data);
+
+        // Check if there's an explicit error in the response data
+        if (data.statusCode === -99 || data.statusCode === "FAILED" || data.status === "FAILED") {
+          const errorMessage = data?.message || data?.error || "Failed to add comment";
           toast.error(errorMessage);
+        } else {
+          // Success - show success message
+          toast.success(data.message || "Comment added successfully");
+          resetForm();
+          
+          // Refresh comments from server immediately to get the complete data
+          await fetchComments();
         }
       } else {
-        const errorMessage = data?.message || data?.error || `Server error (${response.status}). Please try again.`;
-        console.error("HTTP error:", response.status, errorMessage);
+        // HTTP error - try to read error message
+        let errorMessage = `Server error (${response.status}). Please try again.`;
+        try {
+          const responseText = await response.text();
+          if (responseText) {
+            try {
+              const data = JSON.parse(responseText);
+              errorMessage = data?.message || data?.error || errorMessage;
+            } catch (parseError) {
+              // Couldn't parse, use default message
+            }
+          }
+        } catch (readError) {
+          // Couldn't read response, use default message
+        }
         toast.error(errorMessage);
       }
     } catch (error) {
@@ -497,45 +702,78 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
   };
 
   const { data: categoriesData } = useApi("/HelpDesk/GetAllCategories?SkipCount=0&MaxResultCount=1000&Search=null");
-  const { data: usersData } = useApi("/User/GetAllUser");
-  const { data: projectsData } = useApi("/Project/GetAllProjects");
+  // Use GetUsersByUserType endpoint to fetch only HelpDeskSupport users (UserType = 14)
+  const { data: helpDeskSupportUsersData } = useApi("/User/GetUsersByUserType?userType=14");
+  // Fetch projects from Project Management module instead of regular Project module
+  const [projectsData, setProjectsData] = useState(null);
+  
+  useEffect(() => {
+    const fetchProjectManagementProjects = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(`${BASE_URL}/ProjectManagementModule/projects`, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Normalize the response to match the expected format
+          const projectList = Array.isArray(data?.result) ? data.result : [];
+          setProjectsData({ result: projectList });
+          console.log("Fetched Project Management projects for edit:", projectList);
+        } else {
+          console.error("Failed to fetch Project Management projects:", response.status);
+          setProjectsData({ result: [] });
+        }
+      } catch (error) {
+        console.error("Error fetching Project Management projects:", error);
+        setProjectsData({ result: [] });
+      }
+    };
+    
+    if (open) {
+      fetchProjectManagementProjects();
+    }
+  }, [open]);
   const { data: prioritySettingsData } = useApi("/HelpDesk/GetPrioritySettings");
 
   const categories = categoriesData?.items || [];
-  const users = Array.isArray(usersData)
-    ? usersData
-    : Array.isArray(usersData?.result)
-    ? usersData.result
-    : usersData && typeof usersData === "object"
-    ? Object.values(usersData).find((value) => Array.isArray(value)) || []
-    : [];
-
+  
+  // Process HelpDeskSupport users from the API response
   const helpDeskUsers = React.useMemo(() => {
+    if (!helpDeskSupportUsersData) {
+      return [];
+    }
+    
+    const users = Array.isArray(helpDeskSupportUsersData) 
+      ? helpDeskSupportUsersData 
+      : Array.isArray(helpDeskSupportUsersData?.result) 
+        ? helpDeskSupportUsersData.result 
+        : Array.isArray(helpDeskSupportUsersData?.data)
+          ? helpDeskSupportUsersData.data
+          : [];
+    
     if (!Array.isArray(users) || users.length === 0) {
       return [];
     }
 
+    // Deduplicate users by ID
     const deduped = new Map();
     users.forEach((user) => {
       if (!user) return;
-
       const key = user?.id ?? user?.userId ?? null;
       if (key === null || key === undefined) return;
-
-      const userTypeName = (user.userTypeName || "").toLowerCase();
-      const userRoleName = (user.userRoleName || "").toLowerCase();
-      const isHelpDeskSupport =
-        userTypeName.includes("helpdesk") || userRoleName.includes("helpdesk");
-
-      if (!isHelpDeskSupport) return;
-
       if (!deduped.has(key)) {
         deduped.set(key, user);
       }
     });
 
+    console.log(`EditTicket: Found ${deduped.size} HelpDeskSupport users`);
     return Array.from(deduped.values());
-  }, [users]);
+  }, [helpDeskSupportUsersData]);
 
   const normalizeProjectSource = React.useMemo(() => {
     if (!projectsData) return [];
@@ -584,33 +822,107 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
     return "";
   };
 
-  const normalizedProjects = React.useMemo(
-    () =>
-      normalizeProjectSource.map((project) => {
-        const customerIdCandidates = [
-          project.customerId,
-          project.assignedToCustomerId,
-          project.customer?.id,
-          project.customer?.customerId,
-          project.customerDetails?.id,
-          project.customerDetails?.customerId,
-          project.customerInfo?.id,
-          project.customerInfo?.customerId,
-        ];
+  const normalizedProjects = React.useMemo(() => {
+    // Project Management projects come directly from the API, not from normalizeProjectSource
+    const sourceProjects = normalizeProjectSource;
+    
+    console.log("EditTicket: Normalizing projects", {
+      sourceProjectsCount: sourceProjects?.length || 0,
+      ticketProject: ticketProject ? { id: ticketProject.id, name: ticketProject.name } : null,
+    });
 
-        const customerId =
-          customerIdCandidates
-            .map((candidate) => toNumericId(candidate))
-            .find((candidate) => candidate !== null && candidate !== undefined) ?? null;
+    if (!sourceProjects || sourceProjects.length === 0) {
+      console.log("EditTicket: No Project Management projects available in edit form");
+      // If no projects but we have a ticketProject, return it
+      if (ticketProject) {
+        console.log("EditTicket: Only ticketProject available, returning it");
+        return [{
+          ...ticketProject,
+          id: toNumericId(ticketProject.id),
+          customerIdNormalized: ticketProject.customerId,
+          customerNameNormalized: deriveCustomerName(ticketProject),
+        }];
+      }
+      return [];
+    }
 
-        return {
-          ...project,
-          customerIdNormalized: customerId,
-          customerNameNormalized: deriveCustomerName(project),
+    const projects = sourceProjects.map((project) => {
+      // Project Management projects use 'id' directly
+      const projectId = project.id || project.projectId;
+      
+      const customerIdCandidates = [
+        project.customerId,
+        project.assignedToCustomerId,
+        project.customer?.id,
+        project.customer?.customerId,
+        project.customerDetails?.id,
+        project.customerDetails?.customerId,
+        project.customerInfo?.id,
+        project.customerInfo?.customerId,
+      ];
+
+      const customerId =
+        customerIdCandidates
+          .map((candidate) => toNumericId(candidate))
+          .find((candidate) => candidate !== null && candidate !== undefined) ?? null;
+
+      return {
+        ...project,
+        id: toNumericId(projectId), // Ensure id is numeric
+        customerIdNormalized: customerId,
+        customerNameNormalized: deriveCustomerName(project),
+      };
+    });
+
+    console.log("EditTicket: Normalized projects:", projects.map(p => ({ id: p.id, name: p.name })));
+
+    // Add the ticket's project if it exists and is not already in the list
+    if (ticketProject) {
+      const ticketProjectId = toNumericId(ticketProject.id);
+      const alreadyIncluded = projects.some(p => {
+        const pId = toNumericId(p.id);
+        const match = pId === ticketProjectId;
+        if (!match && projects.length < 10) {
+          console.log(`EditTicket: Comparing project ${pId} with ticket project ${ticketProjectId} - No match`);
+        }
+        return match;
+      });
+      
+      if (!alreadyIncluded) {
+        console.log("EditTicket: Adding ticket project to normalizedProjects:", {
+          id: ticketProject.id,
+          normalizedId: ticketProjectId,
+          name: ticketProject.name,
+        });
+        const normalizedTicketProject = {
+          ...ticketProject,
+          id: ticketProjectId, // Ensure id is numeric
+          customerIdNormalized: ticketProject.customerId || ticketProject.customerIdNormalized,
+          customerNameNormalized: ticketProject.customerNameNormalized || deriveCustomerName(ticketProject),
         };
-      }),
-    [normalizeProjectSource]
-  );
+        projects.push(normalizedTicketProject);
+        console.log("EditTicket: Added ticket project to list. New count:", projects.length);
+      } else {
+        console.log("EditTicket: Ticket project already in normalizedProjects list");
+      }
+    } else if (item?.project && projects.length > 0) {
+      // If no ticketProject but item.project name exists, try to find it by name
+      const foundByName = projects.find(p => 
+        p.name?.toLowerCase() === item.project?.toLowerCase() ||
+        p.code?.toLowerCase() === item.project?.toLowerCase()
+      );
+      if (foundByName) {
+        console.log("EditTicket: Found project by name in normalizedProjects:", foundByName);
+      } else {
+        console.log("EditTicket: Project name exists but not found in normalizedProjects:", item.project);
+      }
+    } else {
+      console.log("EditTicket: No ticketProject to add");
+    }
+
+    console.log("EditTicket: Final normalizedProjects count:", projects.length);
+    return projects;
+  }, [normalizeProjectSource, ticketProject]);
 
   const prioritySettings = Array.isArray(prioritySettingsData?.result)
     ? prioritySettingsData.result
@@ -697,8 +1009,11 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
     return null;
   }
 
-  const initialProjectIds = (() => {
-    if (!item) return [];
+  const initialProjectIds = React.useMemo(() => {
+    if (!item) {
+      console.log("EditTicket: No item provided for initialProjectIds");
+      return [];
+    }
 
     const normalizeId = (id) => {
       if (id === null || id === undefined) return null;
@@ -725,21 +1040,44 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
         })
         .filter((val) => val !== null && val !== undefined);
 
+    console.log("EditTicket: Checking project IDs from item:", {
+      projectId: item.projectId,
+      projectEntity: item.projectEntity,
+      projectIds: item.projectIds,
+      ticketProjects: item.ticketProjects,
+      projects: item.projects,
+    });
+
+    // First check if projectIds array exists
     if (Array.isArray(item.projectIds) && item.projectIds.length > 0) {
-      return fromArray(item.projectIds);
+      const result = fromArray(item.projectIds);
+      console.log("EditTicket: Found projectIds array:", result);
+      return result;
     }
 
+    // Check other possible array fields
     if (Array.isArray(item.ticketProjects) && item.ticketProjects.length > 0) {
-      return fromArray(item.ticketProjects);
+      const result = fromArray(item.ticketProjects);
+      console.log("EditTicket: Found ticketProjects array:", result);
+      return result;
     }
 
     if (Array.isArray(item.projects) && item.projects.length > 0) {
-      return fromArray(item.projects);
+      const result = fromArray(item.projects);
+      console.log("EditTicket: Found projects array:", result);
+      return result;
     }
 
+    // Most importantly: check projectId (singular) - this is what the backend stores
     const directId = normalizeId(item.projectId ?? item.projectEntity?.id);
-    return directId !== null ? [directId] : [];
-  })();
+    if (directId !== null) {
+      console.log("EditTicket: Found item.projectId or projectEntity.id:", directId);
+      return [directId];
+    }
+
+    console.log("EditTicket: No project ID found in item");
+    return [];
+  }, [item]);
 
   const initialCustomerId = React.useMemo(() => {
     if (!item) return null;
@@ -880,8 +1218,9 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                           fullWidth
                           name="subject"
                           label="Subject"
+                          disabled={!isSuperAdmin}
                           error={touched.subject && !!errors.subject}
-                          helperText={touched.subject && errors.subject}
+                          helperText={touched.subject ? errors.subject : (!isSuperAdmin ? "Only SuperAdmin can change subject" : "")}
                           sx={{
                             "& .MuiOutlinedInput-root": {
                               bgcolor: "white",
@@ -901,16 +1240,87 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
 
                       <Grid item xs={12} md={6}>
                         <Autocomplete
+                          disabled={!isSuperAdmin}
                           options={normalizedProjects}
                           getOptionLabel={(option) => option?.name || ""}
                           isOptionEqualToValue={(option, value) => option?.id === value?.id}
-                          value={
-                            normalizedProjects.find((project) =>
-                              Array.isArray(values.projectIds)
-                                ? values.projectIds.includes(project.id)
-                                : false
-                            ) || null
-                          }
+                          value={(() => {
+                            console.log("EditTicket Autocomplete: Calculating value", {
+                              valuesProjectIds: values.projectIds,
+                              itemProjectId: item?.projectId,
+                              itemProjectEntityId: item?.projectEntity?.id,
+                              itemProject: item?.project, // Project name (used when ProjectId is null)
+                              normalizedProjectsCount: normalizedProjects.length,
+                              normalizedProjectsIds: normalizedProjects.map(p => ({ id: p.id, name: p.name, code: p.code, type: typeof p.id })),
+                            });
+
+                            // First try to find from values.projectIds array
+                            if (Array.isArray(values.projectIds) && values.projectIds.length > 0) {
+                              for (const projectId of values.projectIds) {
+                                const normalizedProjectId = toNumericId(projectId);
+                                const found = normalizedProjects.find((project) => 
+                                  toNumericId(project.id) === normalizedProjectId
+                                );
+                                if (found) {
+                                  console.log("EditTicket: Found project from values.projectIds:", found);
+                                  return found;
+                                }
+                              }
+                            }
+                            
+                            // Fallback: check item.projectId directly (in case form hasn't initialized yet)
+                            const ticketProjectId = toNumericId(item?.projectId ?? item?.projectEntity?.id);
+                            if (ticketProjectId) {
+                              console.log("EditTicket: Looking for project with ID:", ticketProjectId, "Type:", typeof ticketProjectId);
+                              console.log("EditTicket: Available projects count:", normalizedProjects.length);
+                              console.log("EditTicket: Available project IDs:", normalizedProjects.map(p => ({ 
+                                id: p.id, 
+                                idType: typeof p.id,
+                                normalizedId: toNumericId(p.id),
+                                name: p.name 
+                              })));
+                              
+                              const found = normalizedProjects.find((project) => {
+                                const projectIdNormalized = toNumericId(project.id);
+                                const match = projectIdNormalized === ticketProjectId;
+                                if (!match) {
+                                  console.log(`EditTicket: Comparing ${projectIdNormalized} (${typeof projectIdNormalized}) with ${ticketProjectId} (${typeof ticketProjectId}) - No match`);
+                                }
+                                return match;
+                              });
+                              
+                              if (found) {
+                                console.log("EditTicket: Found project from item.projectId:", found);
+                                return found;
+                              } else {
+                                console.warn("EditTicket: Project ID", ticketProjectId, "not found in normalizedProjects list");
+                                console.warn("EditTicket: Item projectId:", item?.projectId, "projectEntity?.id:", item?.projectEntity?.id);
+                                console.warn("EditTicket: All normalized project IDs:", normalizedProjects.map(p => toNumericId(p.id)));
+                              }
+                            }
+                            
+                            // Last resort: if projectId is null but Project name exists, try to find by name
+                            // This happens when project is from Project Management (foreign key can't reference it)
+                            if (!ticketProjectId && item?.project && normalizedProjects.length > 0) {
+                              console.log("EditTicket: ProjectId is null, trying to find project by name:", item.project);
+                              const foundByName = normalizedProjects.find(p => {
+                                const nameMatch = p.name?.toLowerCase() === item.project?.toLowerCase();
+                                const codeMatch = p.code?.toLowerCase() === item.project?.toLowerCase();
+                                const codeNameMatch = `${p.code} - ${p.name}`.toLowerCase() === item.project?.toLowerCase();
+                                return nameMatch || codeMatch || codeNameMatch;
+                              });
+                              if (foundByName) {
+                                console.log("EditTicket: Found project by name:", foundByName);
+                                return foundByName;
+                              } else {
+                                console.warn("EditTicket: Project name not found in normalizedProjects:", item.project);
+                                console.warn("EditTicket: Available project names:", normalizedProjects.map(p => ({ name: p.name, code: p.code })));
+                              }
+                            }
+                            
+                            console.log("EditTicket: No project found, returning null");
+                            return null;
+                          })()}
                           onChange={(event, newValue) => {
                             const projectId = newValue?.id ?? null;
                             setFieldValue("projectIds", projectId ? [projectId] : []);
@@ -945,8 +1355,9 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                               label="Project"
                               placeholder="Select project"
                               size="small"
+                              disabled={!isSuperAdmin}
                               error={touched.projectIds && !!errors.projectIds}
-                              helperText={touched.projectIds && errors.projectIds}
+                              helperText={touched.projectIds ? errors.projectIds : (!isSuperAdmin ? "Only SuperAdmin can change project" : "")}
                               sx={{
                                 "& .MuiOutlinedInput-root": {
                                   bgcolor: "white",
@@ -994,6 +1405,7 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
 
                       <Grid item xs={12} md={6}>
                         <Autocomplete
+                          disabled={!isSuperAdmin}
                           options={helpDeskUsers}
                           getOptionLabel={(option) => {
                             if (!option) return "";
@@ -1003,7 +1415,6 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                           isOptionEqualToValue={(option, value) => option?.id === value?.id}
                           value={
                             helpDeskUsers.find((u) => u?.id === values.assignedToUserId) ||
-                            users.find((u) => u?.id === values.assignedToUserId) ||
                             null
                           }
                           onChange={(event, newValue) => {
@@ -1014,6 +1425,8 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                               {...params}
                               label="Assign To (Optional)"
                               size="small"
+                              disabled={!isSuperAdmin}
+                              helperText={!isSuperAdmin ? "Only SuperAdmin can change assignment" : ""}
                               sx={{
                                 "& .MuiOutlinedInput-root": {
                                   bgcolor: "white",
@@ -1038,6 +1451,7 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                             name="categoryId"
                             label="Category"
                             value={values.categoryId}
+                            disabled={!isSuperAdmin}
                             size="small"
                             sx={{
                               bgcolor: "white",
@@ -1046,12 +1460,21 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                               "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#2196F3" },
                             }}
                           >
-                            {categories.map((cat) => (
-                              <MenuItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </MenuItem>
-                            ))}
+                            {Array.isArray(categories) && categories.length > 0 ? (
+                              categories.map((cat) => (
+                                <MenuItem key={cat.id} value={cat.id}>
+                                  {cat.name}
+                                </MenuItem>
+                              ))
+                            ) : (
+                              <MenuItem disabled>No categories available</MenuItem>
+                            )}
                           </Field>
+                          {!isSuperAdmin && (
+                            <Typography variant="caption" sx={{ color: "#666", mt: 0.5, display: "block" }}>
+                              Only SuperAdmin can change category
+                            </Typography>
+                          )}
                         </FormControl>
                       </Grid>
 
@@ -1113,30 +1536,28 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                               "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#2196F3" },
                             }}
                           >
-                            {prioritySettings.length > 0 ? (
-                              prioritySettings.map((priority) => (
-                                <MenuItem key={priority.priority} value={priority.priority}>
-                                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                    <Box
-                                      sx={{
-                                        width: 12,
-                                        height: 12,
-                                        borderRadius: "50%",
-                                        bgcolor: priority.colorHex || "#2563EB",
-                                      }}
-                                    />
-                                    {priority.displayName || priority.priority}
-                                  </Box>
-                                </MenuItem>
-                              ))
-                            ) : (
-                              <>
-                                <MenuItem value={1}>Low</MenuItem>
-                                <MenuItem value={2}>Medium</MenuItem>
-                                <MenuItem value={3}>High</MenuItem>
-                                <MenuItem value={4}>Critical</MenuItem>
-                              </>
-                            )}
+                            {Array.isArray(prioritySettings) && prioritySettings.length > 0
+                              ? prioritySettings.map((priority) => (
+                                  <MenuItem key={priority.priority} value={priority.priority}>
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                      <Box
+                                        sx={{
+                                          width: 12,
+                                          height: 12,
+                                          borderRadius: "50%",
+                                          bgcolor: priority.colorHex || "#2563EB",
+                                        }}
+                                      />
+                                      {priority.displayName || priority.priority}
+                                    </Box>
+                                  </MenuItem>
+                                ))
+                              : [
+                                  <MenuItem key="low" value={1}>Low</MenuItem>,
+                                  <MenuItem key="medium" value={2}>Medium</MenuItem>,
+                                  <MenuItem key="high" value={3}>High</MenuItem>,
+                                  <MenuItem key="critical" value={4}>Critical</MenuItem>,
+                                ]}
                           </Field>
                         </FormControl>
                       </Grid>
@@ -1231,71 +1652,91 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
 
                       {/* Category moved above, removed here */}
 
-                      {(values.status === 3 || values.status === 4) && (
-                        <>
-                          <Grid item xs={12}>
-                            <Field
-                              as={TextField}
-                              fullWidth
-                              multiline
-                              rows={3}
-                              name="resolutionNotes"
-                              label="Resolution Notes"
-                              sx={{
-                                "& .MuiOutlinedInput-root": {
-                                  bgcolor: "white",
-                                  "& fieldset": { borderColor: "#E2E8F0" },
-                                  "&:hover fieldset": { borderColor: "#CBD5E0" },
-                                  "&.Mui-focused fieldset": { borderColor: "#2196F3" },
-                                },
-                              }}
-                            />
-                          </Grid>
+                      {/* Resolution Notes and Customer Feedback - Always visible */}
+                      <Grid item xs={12}>
+                        <Field
+                          as={TextField}
+                          fullWidth
+                          multiline
+                          rows={3}
+                          name="resolutionNotes"
+                          label="Resolution Notes"
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: "white",
+                              "& fieldset": { borderColor: "#E2E8F0" },
+                              "&:hover fieldset": { borderColor: "#CBD5E0" },
+                              "&.Mui-focused fieldset": { borderColor: "#2196F3" },
+                            },
+                          }}
+                        />
+                      </Grid>
 
-                          <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                              <InputLabel>Customer Feedback Rating</InputLabel>
-                              <Select
-                                value={values.feedbackRating ?? ""}
-                                label="Customer Feedback Rating"
-                                onChange={(e) =>
-                                  setFieldValue("feedbackRating", e.target.value ? Number(e.target.value) : null)
-                                }
-                              >
-                                <MenuItem value="">Not Provided</MenuItem>
-                                {[1, 2, 3, 4, 5].map((rating) => (
-                                  <MenuItem key={rating} value={rating}>
-                                    {rating} Star{rating > 1 ? "s" : ""}
-                                  </MenuItem>
-                                ))}
-                              </Select>
-                            </FormControl>
-                          </Grid>
+                      <Grid item xs={12} md={6}>
+                        <FormControl fullWidth>
+                          <InputLabel>Customer Feedback Rating</InputLabel>
+                          <Select
+                            value={values.feedbackRating ?? ""}
+                            label="Customer Feedback Rating"
+                            onChange={(e) =>
+                              setFieldValue("feedbackRating", e.target.value ? Number(e.target.value) : null)
+                            }
+                            sx={{
+                              bgcolor: "white",
+                              "& .MuiOutlinedInput-notchedOutline": { borderColor: "#E2E8F0" },
+                              "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#CBD5E0" },
+                              "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#2196F3" },
+                            }}
+                          >
+                            <MenuItem value="">Not Provided</MenuItem>
+                            {[1, 2, 3, 4, 5].map((rating) => (
+                              <MenuItem key={rating} value={rating}>
+                                {rating} Star{rating > 1 ? "s" : ""}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
 
-                          <Grid item xs={12} md={6}>
-                            <Field
-                              as={TextField}
-                              fullWidth
-                              multiline
-                              minRows={3}
-                              name="feedbackComment"
-                              label="Customer Feedback Comment"
-                              value={values.feedbackComment}
-                              onChange={(e) => setFieldValue("feedbackComment", e.target.value)}
-                              sx={{
-                                "& .MuiOutlinedInput-root": {
-                                  bgcolor: "white",
-                                  "& fieldset": { borderColor: "#E2E8F0" },
-                                  "&:hover fieldset": { borderColor: "#CBD5E0" },
-                                  "&.Mui-focused fieldset": { borderColor: "#2196F3" },
-                                },
-                              }}
-                            />
-                          </Grid>
-                        </>
-                      )}
+                      <Grid item xs={12} md={6}>
+                        <Field
+                          as={TextField}
+                          fullWidth
+                          multiline
+                          minRows={3}
+                          name="feedbackComment"
+                          label="Customer Feedback Comment"
+                          value={values.feedbackComment}
+                          onChange={(e) => setFieldValue("feedbackComment", e.target.value)}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              bgcolor: "white",
+                              "& fieldset": { borderColor: "#E2E8F0" },
+                              "&:hover fieldset": { borderColor: "#CBD5E0" },
+                              "&.Mui-focused fieldset": { borderColor: "#2196F3" },
+                            },
+                          }}
+                        />
+                      </Grid>
 
-                      {/* Checklist removed from frontend */}
+                      {/* Checklist Section */}
+                      <Grid item xs={12}>
+                        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: "#1A202C" }}>
+                          Checklist
+                        </Typography>
+                        <TicketChecklist
+                          ticketId={item?.id}
+                          checklist={checklist}
+                          onChecklistChange={(updatedChecklist) => {
+                            setChecklist(updatedChecklist);
+                            // Refresh ticket list to update checklist percentage
+                            if (item?.id) {
+                              fetchItems(currentPage, currentSearch, currentPageSize);
+                            }
+                          }}
+                          readOnly={!update}
+                        />
+                      </Grid>
 
                       <Grid item xs={12}>
                         <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
@@ -1395,17 +1836,20 @@ export default function EditTicketModal({ fetchItems, item, currentPage = 1, cur
                             }}
                           />
                           <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                            <Box sx={{ display: "flex", alignItems: "center" }}>
-                              <input
-                                type="checkbox"
-                                checked={commentValues.isInternal || false}
-                                onChange={(e) => setCommentFieldValue("isInternal", e.target.checked)}
-                                style={{ marginRight: 8 }}
-                              />
-                              <Typography sx={{ color: "#666", fontSize: "0.875rem" }}>
-                                Internal Note
-                              </Typography>
-                            </Box>
+                            {!isHelpDeskCustomer && (
+                              <Box sx={{ display: "flex", alignItems: "center" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={commentValues.isInternal || false}
+                                  onChange={(e) => setCommentFieldValue("isInternal", e.target.checked)}
+                                  style={{ marginRight: 8 }}
+                                />
+                                <Typography sx={{ color: "#666", fontSize: "0.875rem" }}>
+                                  Internal Note
+                                </Typography>
+                              </Box>
+                            )}
+                            {isHelpDeskCustomer && <Box />}
                             <Button
                               type="button"
                               variant="contained"

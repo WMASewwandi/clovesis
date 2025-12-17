@@ -144,10 +144,10 @@ export default function ReservationPayment({ fetchItems }) {
       IsExpire: selectedCustomer.isExpire,
       ReservationExpiryDate: selectedCustomer.reservationExpiryDate,
       ReservationFunctionType: formData.reservationFunctionType,
-      HomeComingDate: formData.homeComingDate,
-      HomeComingPreferredTime: formData.homeComingPreferredTime,
-      HomeComingBridleType: formData.homeComingBridleType,
-      HomeComingLocation: formData.homeComingLocation,
+      HomeComingDate: formData.homeComingDate || null,
+      HomeComingPreferredTime: formData.homeComingPreferredTime || null,
+      HomeComingBridleType: formData.homeComingBridleType || null,
+      HomeComingLocation: formData.homeComingLocation || null,
     }
 
     const response = await fetch(`${BASE_URL}/Reservation/UpdatePencilNoteReservation`, {

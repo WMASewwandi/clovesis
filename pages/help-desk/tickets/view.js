@@ -26,10 +26,13 @@ import AddIcon from "@mui/icons-material/Add";
 import LabelIcon from "@mui/icons-material/Label";
 import EventIcon from "@mui/icons-material/Event";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
+import BusinessIcon from "@mui/icons-material/Business";
+import PersonIcon from "@mui/icons-material/Person";
 import { Field, Form, Formik } from "formik";
 import * as Yup from "yup";
 import TicketImageUpload from "@/components/help-desk/TicketImageUpload";
 import ProjectMasterScreens from "@/components/help-desk/ProjectMasterScreens";
+import TicketChecklist from "@/components/help-desk/TicketChecklist";
 import useApi from "@/components/utils/useApi";
 
 const style = {
@@ -67,74 +70,33 @@ export default function ViewTicketModal({ open, onClose, ticket, fetchItems }) {
   const [comments, setComments] = useState([]);
   const [images, setImages] = useState([]);
   // Checklist removed from frontend
-  const [project, setProject] = useState(null);
   const [masterScreens, setMasterScreens] = useState([]);
-  const [projectId, setProjectId] = useState(null);
+  const [isHelpDeskCustomer, setIsHelpDeskCustomer] = useState(false);
 
   const { data: usersData } = useApi("/User/GetAllUser");
   const users = Array.isArray(usersData) ? usersData : [];
+
+  // Get project and customer from ticket's navigation properties (from help desk module)
+  const project = ticket?.projectEntity || null;
+  const customer = ticket?.customer || null;
+  const projectId = project?.id || ticket?.projectId || null;
+  
+  // Check if the ticket category is "assign" - only show project/customer for assign category
+  const categoryName = ticket?.category?.name || ticket?.categoryName || "";
+  const isAssignCategory = categoryName?.toLowerCase() === "assign";
 
   useEffect(() => {
     if (open && ticket?.id) {
       fetchComments();
       fetchImages();
       // Checklist removed from frontend
-      if (ticket.projectId) {
-        fetchProject(ticket.projectId);
-      } else if (ticket.project) {
-        // If project is a string, try to find project by name
-        fetchProjectByName(ticket.project);
+      // Fetch master screens if project exists
+      if (projectId) {
+        fetchMasterScreens(projectId);
       }
     }
-  }, [open, ticket?.id, ticket?.projectId, ticket?.project]);
+  }, [open, ticket?.id, projectId]);
 
-  const fetchProject = async (id) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${BASE_URL}/Project/GetProjectById?id=${id}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.result) {
-          setProject(data.result);
-          setProjectId(data.result.id);
-          fetchMasterScreens(data.result.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching project:", error);
-    }
-  };
-
-  const fetchProjectByName = async (projectName) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${BASE_URL}/Project/GetProjectByName?name=${encodeURIComponent(projectName)}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.result) {
-          setProject(data.result);
-          setProjectId(data.result.id);
-          fetchMasterScreens(data.result.id);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching project by name:", error);
-    }
-  };
 
   const fetchMasterScreens = async (projId) => {
     try {
@@ -216,7 +178,7 @@ export default function ViewTicketModal({ open, onClose, ticket, fetchItems }) {
         body: JSON.stringify({
           ticketId: ticket.id,
           comment: values.comment,
-          isInternal: values.isInternal || false,
+          isInternal: isHelpDeskCustomer ? false : (values.isInternal || false),
         }),
       });
 
@@ -460,7 +422,23 @@ export default function ViewTicketModal({ open, onClose, ticket, fetchItems }) {
               </Box>
             )}
 
-            {/* Checklist removed from frontend */}
+            {/* Checklist Section */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ color: "white", mb: 2 }}>
+                Checklist
+              </Typography>
+              <TicketChecklist
+                ticketId={ticket?.id}
+                checklist={ticket?.checklist || []}
+                onChecklistChange={() => {
+                  // Refresh ticket list to update checklist percentage
+                  if (fetchItems) {
+                    fetchItems();
+                  }
+                }}
+                readOnly={true}
+              />
+            </Box>
 
             {/* Images Section */}
             <Box sx={{ mb: 3 }}>
@@ -495,6 +473,68 @@ export default function ViewTicketModal({ open, onClose, ticket, fetchItems }) {
                 Show details
               </Button>
             </Box>
+
+            {/* Project and Customer Information - Only show for "Assign" category in Help Desk Module */}
+            {isAssignCategory && (project || ticket?.projectId || customer || ticket?.customerId || ticket?.customerName) && (
+              <Box sx={{ mb: 3, pb: 3, borderBottom: "1px solid #333" }}>
+                <Typography variant="subtitle2" sx={{ color: "#999", mb: 2, fontWeight: 600 }}>
+                  Details
+                </Typography>
+                
+                {/* Project Section - from Help Desk Ticket's ProjectEntity */}
+                {(project || ticket?.projectId || ticket?.project) && (
+                  <Box sx={{ mb: 2.5, display: "flex", gap: 1 }}>
+                    <BusinessIcon sx={{ color: "#2196F3", fontSize: "1.25rem", mt: 0.25 }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ color: "#999", display: "block", mb: 0.5 }}>
+                        Project
+                      </Typography>
+                      <Typography sx={{ color: "white", fontSize: "0.875rem", fontWeight: 500 }}>
+                        {project?.name || ticket?.project || "N/A"}
+                      </Typography>
+                      {project?.code && (
+                        <Typography sx={{ color: "#999", fontSize: "0.75rem", mt: 0.5 }}>
+                          Code: {project.code}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Customer Section - from Help Desk Ticket's Customer entity or direct fields */}
+                {(customer || ticket?.customerId || ticket?.customerName) && (
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <PersonIcon sx={{ color: "#4CAF50", fontSize: "1.25rem", mt: 0.25 }} />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="caption" sx={{ color: "#999", display: "block", mb: 0.5 }}>
+                        Customer
+                      </Typography>
+                      <Typography sx={{ color: "white", fontSize: "0.875rem", fontWeight: 500 }}>
+                        {customer?.displayName || 
+                         (customer?.firstName && customer?.lastName ? `${customer.firstName} ${customer.lastName}`.trim() : null) ||
+                         ticket?.customerName || 
+                         "N/A"}
+                      </Typography>
+                      {(customer?.company || ticket?.customerCompany) && (
+                        <Typography sx={{ color: "#999", fontSize: "0.75rem", mt: 0.5 }}>
+                          Company: {customer?.company || ticket?.customerCompany}
+                        </Typography>
+                      )}
+                      {(customer?.customerContactDetails?.[0]?.emailAddress || ticket?.customerEmail) && (
+                        <Typography sx={{ color: "#999", fontSize: "0.75rem", mt: 0.5 }}>
+                          Email: {customer?.customerContactDetails?.[0]?.emailAddress || ticket?.customerEmail}
+                        </Typography>
+                      )}
+                      {(customer?.customerContactDetails?.[0]?.contactNo || ticket?.customerPhone) && (
+                        <Typography sx={{ color: "#999", fontSize: "0.75rem", mt: 0.5 }}>
+                          Phone: {customer?.customerContactDetails?.[0]?.contactNo || ticket?.customerPhone}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                )}
+              </Box>
+            )}
 
             {/* Comment Input Form */}
             <Formik
@@ -532,17 +572,20 @@ export default function ViewTicketModal({ open, onClose, ticket, fetchItems }) {
                     }}
                   />
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={values.isInternal || false}
-                        onChange={(e) => setFieldValue("isInternal", e.target.checked)}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Typography sx={{ color: "#999", fontSize: "0.875rem" }}>
-                        Internal Note
-                      </Typography>
-                    </Box>
+                    {!isHelpDeskCustomer && (
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={values.isInternal || false}
+                          onChange={(e) => setFieldValue("isInternal", e.target.checked)}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Typography sx={{ color: "#999", fontSize: "0.875rem" }}>
+                          Internal Note
+                        </Typography>
+                      </Box>
+                    )}
+                    {isHelpDeskCustomer && <Box />}
                     <Button
                       type="submit"
                       variant="contained"

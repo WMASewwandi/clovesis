@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -14,6 +14,11 @@ import {
   Menu,
   MenuItem,
   Divider,
+  Drawer,
+  Stack,
+  FormControlLabel,
+  Checkbox,
+  LinearProgress,
 } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 import SearchIcon from "@mui/icons-material/Search";
@@ -23,6 +28,9 @@ import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PersonIcon from "@mui/icons-material/Person";
+import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ListIcon from "@mui/icons-material/List";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import dynamic from "next/dynamic";
@@ -100,10 +108,12 @@ const defaultPriorityPalette = {
 
 export default function Tickets() {
   useEffect(() => {
-    sessionStorage.setItem("category", "105");
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem("category", "105");
+    }
   }, []);
 
-  const cId = sessionStorage.getItem("category");
+  const cId = typeof window !== 'undefined' ? sessionStorage.getItem("category") : null;
   const { navigate, create, update, remove } = IsPermissionEnabled(cId);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -113,7 +123,44 @@ export default function Tickets() {
   const [menuTicket, setMenuTicket] = useState(null);
   const [draggedTicket, setDraggedTicket] = useState(null);
   const [dragOverColumn, setDragOverColumn] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [priorityPalette, setPriorityPalette] = useState(defaultPriorityPalette);
+  const [filterDrawer, setFilterDrawer] = useState(false);
+  // Calculate default dates: end date = today, start date = 3 months ago
+  const getDefaultDates = () => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    threeMonthsAgo.setHours(0, 0, 0, 0); // Start of day
+    
+    return {
+      startDate: threeMonthsAgo.toISOString().split('T')[0], // Format as YYYY-MM-DD
+      endDate: today.toISOString().split('T')[0], // Format as YYYY-MM-DD
+    };
+  };
+
+  const defaultDates = getDefaultDates();
+  
+  const [selectedFilters, setSelectedFilters] = useState({
+    statuses: [],
+    priorities: [],
+    categories: [],
+    assignedTo: [],
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
+  });
+  const [filterOptions, setFilterOptions] = useState({
+    statuses: [],
+    priorities: [],
+    categories: [],
+    assignedTo: [],
+  });
+  const [loadingFilterOptions, setLoadingFilterOptions] = useState({
+    categories: false,
+    assignedTo: false,
+  });
 
   const {
     data: ticketList,
@@ -125,7 +172,25 @@ export default function Tickets() {
     fetchData: fetchTicketList,
   } = usePaginatedFetch("HelpDesk/GetAllTickets", "", 10000, false);
 
+  // Optimistic updates state - tracks tickets that are being moved
+  const [optimisticUpdates, setOptimisticUpdates] = useState({});
+  
+  // Merge ticketList with optimistic updates
+  const mergedTicketList = useMemo(() => {
+    if (!Array.isArray(ticketList)) return ticketList;
+    return ticketList.map(ticket => {
+      const update = optimisticUpdates[ticket.id];
+      if (update) {
+        return { ...ticket, ...update };
+      }
+      return ticket;
+    });
+  }, [ticketList, optimisticUpdates]);
+
   useEffect(() => {
+    // Only fetch on client side to avoid SSR issues
+    if (typeof window === 'undefined') return;
+    
     const loadPrioritySettings = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -171,10 +236,12 @@ export default function Tickets() {
     statusConfig.forEach((status) => {
       grouped[status.value] = [];
     });
-    // Ensure ticketList is an array
-    if (Array.isArray(ticketList)) {
-      console.log("Grouping tickets. Total tickets:", ticketList.length);
-      ticketList.forEach((ticket) => {
+    // Use mergedTicketList instead of ticketList for optimistic updates
+    const listToUse = mergedTicketList || ticketList;
+    // Ensure listToUse is an array
+    if (Array.isArray(listToUse)) {
+      console.log("Grouping tickets. Total tickets:", listToUse.length);
+      listToUse.forEach((ticket) => {
         if (!ticket) return;
 
         const tryParseNumeric = (value) => {
@@ -207,35 +274,214 @@ export default function Tickets() {
       });
       console.log("Grouped tickets:", Object.keys(grouped).map(k => ({ status: k, count: grouped[k].length })));
     } else {
-      console.warn("ticketList is not an array:", typeof ticketList, ticketList);
+      console.warn("ticketList is not an array:", typeof listToUse, listToUse);
     }
     return grouped;
-  }, [ticketList]);
+  }, [mergedTicketList, ticketList]);
 
-  // Filter tickets by search
-  const filteredTicketsByStatus = useMemo(() => {
-    if (!search || search.trim() === "") {
-      return ticketsByStatus;
+  // Fetch filter options
+  const fetchFilterOptions = useCallback(async () => {
+    // Only fetch on client side to avoid SSR issues
+    if (typeof window === 'undefined') return;
+    
+    // Fetch categories
+    setLoadingFilterOptions(prev => ({ ...prev, categories: true }));
+    try {
+      const token = localStorage.getItem("token");
+      const categoriesResponse = await fetch(`${BASE_URL}/HelpDesk/GetAllCategories?SkipCount=0&MaxResultCount=1000&Search=null`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (categoriesResponse.ok) {
+        const categoriesData = await categoriesResponse.json();
+        const categories = Array.isArray(categoriesData?.result?.items) 
+          ? categoriesData.result.items 
+          : Array.isArray(categoriesData?.result) 
+          ? categoriesData.result 
+          : [];
+        setFilterOptions(prev => ({ ...prev, categories: categories.map(cat => ({ id: cat.id, name: cat.name || cat.categoryName || "" })) }));
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setLoadingFilterOptions(prev => ({ ...prev, categories: false }));
     }
-    const filtered = {};
-    statusConfig.forEach((status) => {
-      filtered[status.value] = ticketsByStatus[status.value].filter((ticket) => {
-        const searchLower = search.toLowerCase();
-        return (
-          ticket.ticketNumber?.toLowerCase().includes(searchLower) ||
-          ticket.subject?.toLowerCase().includes(searchLower) ||
-          ticket.description?.toLowerCase().includes(searchLower) ||
-          ticket.categoryName?.toLowerCase().includes(searchLower) ||
-          (ticket.category?.name && ticket.category.name.toLowerCase().includes(searchLower)) ||
-          ticket.customerName?.toLowerCase().includes(searchLower) ||
-          ticket.customerEmail?.toLowerCase().includes(searchLower) ||
-          ticket.customerPhone?.toLowerCase().includes(searchLower) ||
-          ticket.customerCompany?.toLowerCase().includes(searchLower)
+
+    // Fetch users (assigned to)
+    setLoadingFilterOptions(prev => ({ ...prev, assignedTo: true }));
+    try {
+      const token = localStorage.getItem("token");
+      const usersResponse = await fetch(`${BASE_URL}/User/GetAllUser`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json();
+        const users = Array.isArray(usersData) ? usersData : Array.isArray(usersData?.result) ? usersData.result : [];
+        const assignedToOptions = users.map(user => ({
+          id: user.id,
+          label: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.userName || user.email || `User #${user.id}`,
+        }));
+        setFilterOptions(prev => ({ ...prev, assignedTo: assignedToOptions }));
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoadingFilterOptions(prev => ({ ...prev, assignedTo: false }));
+    }
+
+    // Set status and priority options
+    setFilterOptions(prev => ({
+      ...prev,
+      statuses: statusConfig.map(s => s.label),
+      priorities: Object.values(priorityPalette).map(p => p.label),
+    }));
+  }, [priorityPalette]);
+
+  useEffect(() => {
+    fetchFilterOptions();
+  }, [fetchFilterOptions]);
+
+  // Filter handlers
+  const handleFilterToggle = (group, value) => {
+    setSelectedFilters((prev) => {
+      const currentValues = prev[group];
+      const exists = currentValues.includes(value);
+      return {
+        ...prev,
+        [group]: exists ? currentValues.filter((item) => item !== value) : [...currentValues, value],
+      };
+    });
+  };
+
+  const handleDateChange = (field) => (event) => {
+    const value = event.target.value;
+    setSelectedFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // Filter tickets by search and filters
+  const filteredTicketsByStatus = useMemo(() => {
+    let filtered = { ...ticketsByStatus };
+
+    // Apply status filter
+    if (selectedFilters.statuses.length > 0) {
+      const statusValues = selectedFilters.statuses.map(statusLabel => {
+        const status = statusConfig.find(s => s.label === statusLabel);
+        return status?.value;
+      }).filter(Boolean);
+      const filteredByStatus = {};
+      statusConfig.forEach((status) => {
+        if (statusValues.includes(status.value)) {
+          filteredByStatus[status.value] = filtered[status.value] || [];
+        } else {
+          filteredByStatus[status.value] = [];
+        }
+      });
+      filtered = filteredByStatus;
+    }
+
+    // Apply priority filter
+    if (selectedFilters.priorities.length > 0) {
+      const priorityValues = selectedFilters.priorities.map(priorityLabel => {
+        const priority = Object.entries(priorityPalette).find(([_, p]) => p.label === priorityLabel);
+        return priority ? parseInt(priority[0]) : null;
+      }).filter(p => p !== null);
+      statusConfig.forEach((status) => {
+        filtered[status.value] = (filtered[status.value] || []).filter(ticket => 
+          priorityValues.includes(ticket.priority)
         );
       });
-    });
+    }
+
+    // Apply category filter
+    if (selectedFilters.categories.length > 0) {
+      statusConfig.forEach((status) => {
+        filtered[status.value] = (filtered[status.value] || []).filter(ticket => {
+          const categoryName = ticket.categoryName || ticket.category?.name || "";
+          return selectedFilters.categories.includes(categoryName);
+        });
+      });
+    }
+
+    // Apply assigned to filter
+    if (selectedFilters.assignedTo.length > 0) {
+      statusConfig.forEach((status) => {
+        filtered[status.value] = (filtered[status.value] || []).filter(ticket => {
+          const assignedToName = ticket.assignedToUser
+            ? `${ticket.assignedToUserFirstName || ticket.assignedToUser?.firstName || ""} ${ticket.assignedToUserLastName || ticket.assignedToUser?.lastName || ""}`.trim() ||
+              ticket.assignedToUserEmail ||
+              ticket.assignedToUser?.email ||
+              ticket.assignedToUserName ||
+              ticket.assignedToUser?.userName ||
+              ""
+            : "Unassigned";
+          return selectedFilters.assignedTo.includes(assignedToName);
+        });
+      });
+    }
+
+    // Apply date range filter - filter by ticket created date (createdOn)
+    if (selectedFilters.startDate || selectedFilters.endDate) {
+      const startDate = selectedFilters.startDate ? new Date(selectedFilters.startDate) : null;
+      if (startDate) {
+        startDate.setHours(0, 0, 0, 0);
+      }
+      
+      const endDate = selectedFilters.endDate ? new Date(selectedFilters.endDate) : null;
+      if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+      }
+      
+      statusConfig.forEach((status) => {
+        filtered[status.value] = (filtered[status.value] || []).filter(ticket => {
+          // Filter by ticket created date (createdOn)
+          if (!ticket.createdOn) return false;
+          const created = new Date(ticket.createdOn);
+          if (Number.isNaN(created.getTime())) return false;
+          
+          const createdDate = new Date(created);
+          createdDate.setHours(0, 0, 0, 0);
+          
+          // Check if created date is within range
+          const matchesStart = !startDate || createdDate >= startDate;
+          const matchesEnd = !endDate || createdDate <= endDate;
+          
+          return matchesStart && matchesEnd;
+        });
+      });
+    }
+
+    // Apply search filter
+    if (search && search.trim() !== "") {
+      const searchLower = search.toLowerCase();
+      statusConfig.forEach((status) => {
+        filtered[status.value] = (filtered[status.value] || []).filter((ticket) => {
+          return (
+            ticket.ticketNumber?.toLowerCase().includes(searchLower) ||
+            ticket.subject?.toLowerCase().includes(searchLower) ||
+            ticket.description?.toLowerCase().includes(searchLower) ||
+            ticket.categoryName?.toLowerCase().includes(searchLower) ||
+            (ticket.category?.name && ticket.category.name.toLowerCase().includes(searchLower)) ||
+            ticket.customerName?.toLowerCase().includes(searchLower) ||
+            ticket.customerEmail?.toLowerCase().includes(searchLower) ||
+            ticket.customerPhone?.toLowerCase().includes(searchLower) ||
+            ticket.customerCompany?.toLowerCase().includes(searchLower)
+          );
+        });
+      });
+    }
+
     return filtered;
-  }, [ticketsByStatus, search]);
+  }, [ticketsByStatus, search, selectedFilters, priorityPalette]);
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
@@ -271,6 +517,7 @@ export default function Tickets() {
     }
     e.stopPropagation();
     console.log("Drag started for ticket:", ticket.id, "Status:", ticket.status);
+    setIsDragging(true);
     setDraggedTicket(ticket.id);
     e.dataTransfer.setData("text/plain", ticket.id.toString()); // Use text/plain as fallback
     e.dataTransfer.setData("ticketId", ticket.id.toString());
@@ -279,8 +526,10 @@ export default function Tickets() {
     e.dataTransfer.dropEffect = "move";
   };
 
-  const handleDragEnd = () => {
-    setDraggedTicket(null);
+  const handleDragEnd = (e) => {
+    // Clear drag states immediately
+    setIsDragging(false);
+    // Don't clear draggedTicket here - let handleDrop handle it to prevent glitch
     setDragOverColumn(null);
   };
 
@@ -294,6 +543,33 @@ export default function Tickets() {
     }
   };
 
+  // Clear optimistic updates when ticket list refreshes - only if status matches
+  useEffect(() => {
+    if (ticketList && ticketList.length > 0) {
+      setOptimisticUpdates(prev => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        Object.keys(updated).forEach(ticketId => {
+          const ticket = ticketList.find(t => t.id === parseInt(ticketId));
+          if (ticket) {
+            // Only clear if the status in the new data matches the optimistic update
+            // This means the server has confirmed the change
+            if (ticket.status === updated[ticketId]?.status) {
+              delete updated[ticketId];
+              hasChanges = true;
+            }
+            // If status doesn't match, keep the optimistic update (might be stale data)
+          } else {
+            // Ticket not found, might have been deleted, clear the update
+            delete updated[ticketId];
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? updated : prev;
+      });
+    }
+  }, [ticketList]);
+
   const handleDragLeave = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -306,6 +582,9 @@ export default function Tickets() {
     if (!update) return;
     e.preventDefault();
     e.stopPropagation();
+    
+    // Clear drag states immediately to prevent glitch
+    setIsDragging(false);
     setDragOverColumn(null);
 
     // Use draggedTicket state if available, otherwise use dataTransfer
@@ -325,7 +604,7 @@ export default function Tickets() {
     }
 
     // Find the ticket to verify it exists - try both string and number comparison
-    const ticket = ticketList.find((t) => {
+    const ticket = mergedTicketList.find((t) => {
       const tId = t.id;
       return tId === ticketId || 
              tId === parseInt(ticketId) || 
@@ -349,6 +628,15 @@ export default function Tickets() {
       return;
     }
 
+    // Clear dragged ticket state immediately to prevent visual glitch
+    setDraggedTicket(null);
+    
+    // Optimistically update the UI immediately
+    setOptimisticUpdates(prev => ({
+      ...prev,
+      [actualTicketId]: { status: newStatus }
+    }));
+
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(`${BASE_URL}/HelpDesk/UpdateTicketStatus?ticketId=${actualTicketId}&status=${newStatus}`, {
@@ -362,16 +650,26 @@ export default function Tickets() {
       const data = await response.json();
 
       if (response.ok && (data.status === "SUCCESS" || data.statusCode === 200 || response.status === 200)) {
-        // Update successful - refresh the ticket list silently (no toast messages)
+        // Refresh the ticket list - the optimistic update will be automatically cleared
+        // by the useEffect when the new data arrives and matches the optimistic status
         fetchTicketList(page, search, pageSize);
       } else {
-        // Silently handle error - just log it
+        // Rollback optimistic update on error
+        setOptimisticUpdates(prev => {
+          const updated = { ...prev };
+          delete updated[actualTicketId];
+          return updated;
+        });
         console.error("Update failed:", data);
       }
     } catch (error) {
+      // Rollback optimistic update on error
+      setOptimisticUpdates(prev => {
+        const updated = { ...prev };
+        delete updated[actualTicketId];
+        return updated;
+      });
       console.error("Error updating ticket status:", error);
-    } finally {
-      setDraggedTicket(null);
     }
   };
 
@@ -465,6 +763,20 @@ export default function Tickets() {
                   />
                 </Box>
               )}
+              <IconButton 
+                color="primary" 
+                onClick={() => setFilterDrawer(true)}
+                sx={{
+                  bgcolor: "white",
+                  border: "1px solid #E2E8F0",
+                  "&:hover": {
+                    bgcolor: "#F7FAFC",
+                    borderColor: "#CBD5E0",
+                  },
+                }}
+              >
+                <FilterAltOutlinedIcon />
+              </IconButton>
             </Box>
           </Box>
         </Box>
@@ -592,10 +904,11 @@ export default function Tickets() {
                     overflowY: "auto",
                     overflowX: "hidden",
                     p: isDragOver ? { xs: 0.25, sm: 0.5 } : 0,
-                    transition: "padding 0.2s",
+                    transition: "all 0.2s ease",
                     bgcolor: isDragOver ? `${status.bgColor}60` : "transparent",
                     border: isDragOver ? `2px dashed ${status.color}` : "2px dashed transparent",
                     borderRadius: { xs: 0.75, sm: 1 },
+                    transform: isDragOver ? "scale(1.01)" : "scale(1)",
                     "&::-webkit-scrollbar": {
                       width: { xs: 4, sm: 6 },
                     },
@@ -648,6 +961,10 @@ export default function Tickets() {
                             }
                           }}
                           onClick={(e) => {
+                            // Don't open modal if we just finished dragging
+                            if (isDragging) {
+                              return;
+                            }
                             // Open ticket edit modal on click (but not if clicking menu button)
                             if (!e.target.closest('button') && !e.target.closest('[role="button"]')) {
                               if (update) {
@@ -659,15 +976,20 @@ export default function Tickets() {
                             }
                           }}
                           sx={{
-                            cursor: "pointer",
-                            opacity: isDragging ? 0.5 : 1,
+                            cursor: update ? "grab" : "pointer",
+                            opacity: isDragging ? 0.8 : 1,
                             userSelect: "none",
                             WebkitUserSelect: "none",
                             MozUserSelect: "none",
                             msUserSelect: "none",
                             touchAction: "none",
+                            transition: isDragging ? "opacity 0.2s ease" : "all 0.2s ease",
+                            transform: isDragging ? "scale(0.98)" : "scale(1)",
                             "&:active": {
                               cursor: update ? "grabbing" : "pointer",
+                            },
+                            "&:hover": {
+                              transform: update && !isDragging ? "translateY(-2px)" : "scale(1)",
                             },
                           }}
                         >
@@ -688,7 +1010,7 @@ export default function Tickets() {
                                 : ticket.priority === 3
                                 ? `0 2px 6px ${priorityBorderColor}40`
                                 : "0 1px 3px rgba(0,0,0,0.08)",
-                              transition: ticket.priority === 4 ? "none" : "all 0.2s",
+                              transition: ticket.priority === 4 ? "none" : "all 0.2s ease",
                               pointerEvents: "auto",
                               width: "100%",
                               maxWidth: "100%",
@@ -909,7 +1231,98 @@ export default function Tickets() {
                               pt: { xs: 0.625, sm: 0.75 }, 
                               borderTop: "1px solid #E2E8F0" 
                             }}>
-                              {/* Checklist removed from frontend */}
+                              {/* Checklist Section */}
+                              {ticket.checklist && Array.isArray(ticket.checklist) && ticket.checklist.length > 0 && (
+                                <Box sx={{ mb: { xs: 0.5, sm: 0.75 } }}>
+                                  <Box sx={{ 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    gap: { xs: 0.375, sm: 0.5 },
+                                    mb: { xs: 0.375, sm: 0.5 }
+                                  }}>
+                                    <ListIcon sx={{ 
+                                      fontSize: { xs: "0.75rem", sm: "0.875rem" }, 
+                                      color: "#718096",
+                                      flexShrink: 0,
+                                    }} />
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: "#718096",
+                                        fontSize: { xs: "0.625rem", sm: "0.6875rem" },
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      Checklist
+                                    </Typography>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: "#4A5568",
+                                        fontSize: { xs: "0.625rem", sm: "0.6875rem" },
+                                        fontWeight: 600,
+                                        ml: "auto",
+                                      }}
+                                    >
+                                      {ticket.checklistCompletionPercentage !== null && ticket.checklistCompletionPercentage !== undefined
+                                        ? `${ticket.checklistCompletionPercentage}%`
+                                        : (() => {
+                                            const completed = ticket.checklist.filter(c => c.isCompleted).length;
+                                            const total = ticket.checklist.length;
+                                            return total > 0 ? `${Math.round((completed / total) * 100)}%` : "0%";
+                                          })()}
+                                    </Typography>
+                                  </Box>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={ticket.checklistCompletionPercentage !== null && ticket.checklistCompletionPercentage !== undefined
+                                      ? ticket.checklistCompletionPercentage
+                                      : (() => {
+                                          const completed = ticket.checklist.filter(c => c.isCompleted).length;
+                                          const total = ticket.checklist.length;
+                                          return total > 0 ? Math.round((completed / total) * 100) : 0;
+                                        })()}
+                                    sx={{
+                                      height: { xs: 4, sm: 6 },
+                                      borderRadius: { xs: 2, sm: 3 },
+                                      bgcolor: "#E2E8F0",
+                                      "& .MuiLinearProgress-bar": {
+                                        borderRadius: { xs: 2, sm: 3 },
+                                        bgcolor: (() => {
+                                          const percentage = ticket.checklistCompletionPercentage !== null && ticket.checklistCompletionPercentage !== undefined
+                                            ? ticket.checklistCompletionPercentage
+                                            : (() => {
+                                                const completed = ticket.checklist.filter(c => c.isCompleted).length;
+                                                const total = ticket.checklist.length;
+                                                return total > 0 ? Math.round((completed / total) * 100) : 0;
+                                              })();
+                                          return percentage === 100 ? "#4CAF50" : "#2196F3";
+                                        })(),
+                                      },
+                                    }}
+                                  />
+                                  <Box sx={{ 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    gap: { xs: 0.25, sm: 0.375 },
+                                    mt: { xs: 0.25, sm: 0.375 }
+                                  }}>
+                                    <Typography
+                                      variant="caption"
+                                      sx={{
+                                        color: "#718096",
+                                        fontSize: { xs: "0.5625rem", sm: "0.625rem" },
+                                      }}
+                                    >
+                                      {(() => {
+                                        const completed = ticket.checklist.filter(c => c.isCompleted).length;
+                                        const total = ticket.checklist.length;
+                                        return `${completed}/${total} completed`;
+                                      })()}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              )}
                               <Box sx={{ 
                                 display: "flex", 
                                 justifyContent: "space-between", 
@@ -1041,6 +1454,178 @@ export default function Tickets() {
           }}
         />
       )}
+
+      {/* Filter Drawer */}
+      <Drawer anchor="right" open={filterDrawer} onClose={() => setFilterDrawer(false)}>
+        <Box sx={{ width: { xs: 280, sm: 320 }, p: 3 }}>
+          <Typography variant="h6" fontWeight={600} gutterBottom>
+            Filters
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Narrow the board to focus on specific tickets.
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+
+          {/* Status Filter */}
+          {filterOptions.statuses.length > 0 && (
+            <>
+              <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                Status
+              </Typography>
+              <Stack spacing={1} mb={2}>
+                {filterOptions.statuses.map((statusLabel) => (
+                  <FormControlLabel
+                    key={statusLabel}
+                    control={
+                      <Checkbox
+                        checked={selectedFilters.statuses.includes(statusLabel)}
+                        onChange={() => handleFilterToggle("statuses", statusLabel)}
+                      />
+                    }
+                    label={statusLabel}
+                  />
+                ))}
+              </Stack>
+              <Divider sx={{ mb: 2 }} />
+            </>
+          )}
+
+          {/* Priority Filter */}
+          {filterOptions.priorities.length > 0 && (
+            <>
+              <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                Priority
+              </Typography>
+              <Stack spacing={1} mb={2}>
+                {filterOptions.priorities.map((priorityLabel) => (
+                  <FormControlLabel
+                    key={priorityLabel}
+                    control={
+                      <Checkbox
+                        checked={selectedFilters.priorities.includes(priorityLabel)}
+                        onChange={() => handleFilterToggle("priorities", priorityLabel)}
+                      />
+                    }
+                    label={priorityLabel}
+                  />
+                ))}
+              </Stack>
+              <Divider sx={{ mb: 2 }} />
+            </>
+          )}
+
+          {/* Category Filter */}
+          <Typography variant="subtitle2" fontWeight={600} mb={1}>
+            Category
+          </Typography>
+          <Stack spacing={1} mb={2}>
+            {loadingFilterOptions.categories ? (
+              <Typography color="text.secondary">Loading categories...</Typography>
+            ) : filterOptions.categories.length === 0 ? (
+              <Typography color="text.secondary">No categories available.</Typography>
+            ) : (
+              filterOptions.categories.map((category) => (
+                <FormControlLabel
+                  key={category.id}
+                  control={
+                    <Checkbox
+                      checked={selectedFilters.categories.includes(category.name)}
+                      onChange={() => handleFilterToggle("categories", category.name)}
+                    />
+                  }
+                  label={category.name}
+                />
+              ))
+            )}
+          </Stack>
+          <Divider sx={{ mb: 2 }} />
+
+          {/* Assigned To Filter */}
+          <Typography variant="subtitle2" fontWeight={600} mb={1}>
+            Assigned To
+          </Typography>
+          <Stack spacing={1} mb={2}>
+            {loadingFilterOptions.assignedTo ? (
+              <Typography color="text.secondary">Loading users...</Typography>
+            ) : filterOptions.assignedTo.length === 0 ? (
+              <Typography color="text.secondary">No users available.</Typography>
+            ) : (
+              <>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedFilters.assignedTo.includes("Unassigned")}
+                      onChange={() => handleFilterToggle("assignedTo", "Unassigned")}
+                    />
+                  }
+                  label="Unassigned"
+                />
+                {filterOptions.assignedTo.map((user) => (
+                  <FormControlLabel
+                    key={user.id}
+                    control={
+                      <Checkbox
+                        checked={selectedFilters.assignedTo.includes(user.label)}
+                        onChange={() => handleFilterToggle("assignedTo", user.label)}
+                      />
+                    }
+                    label={user.label}
+                  />
+                ))}
+              </>
+            )}
+          </Stack>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Date Range Filter */}
+          <Typography variant="subtitle2" fontWeight={600} mb={1}>
+            Date Range
+          </Typography>
+          <Stack spacing={1} direction="row" mb={2}>
+            <TextField
+              type="date"
+              size="small"
+              fullWidth
+              label="Start Date"
+              value={selectedFilters.startDate}
+              onChange={handleDateChange("startDate")}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              type="date"
+              size="small"
+              fullWidth
+              label="End Date"
+              value={selectedFilters.endDate}
+              onChange={handleDateChange("endDate")}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Stack>
+
+          <Stack direction="row" spacing={1.5} mt={3}>
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={() =>
+                setSelectedFilters({
+                  statuses: [],
+                  priorities: [],
+                  categories: [],
+                  assignedTo: [],
+                  startDate: "",
+                  endDate: "",
+                })
+              }
+            >
+              Clear
+            </Button>
+            <Button variant="contained" onClick={() => setFilterDrawer(false)}>
+              Apply
+            </Button>
+          </Stack>
+        </Box>
+      </Drawer>
     </>
   );
 }

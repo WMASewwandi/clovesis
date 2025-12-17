@@ -4,8 +4,12 @@ import Grid from "@mui/material/Grid";
 import {
   Box,
   Button,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -25,6 +29,8 @@ import { useRouter } from "next/router";
 import BASE_URL from "Base/api";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import SearchItems from "@/components/utils/SearchItems";
+import SearchCustomer from "@/components/utils/SearchCustomer";
+import SearchProject from "@/components/utils/SearchProject";
 import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 
 const CreateBillOfMaterials = () => {
@@ -40,6 +46,8 @@ const CreateBillOfMaterials = () => {
   const [addedRows, setAddedRows] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDisable, setIsDisable] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const updateBillNo = async () => {
     try {
@@ -66,6 +74,24 @@ const CreateBillOfMaterials = () => {
     updateBillNo();
   }, []);
 
+  // Clear project when customer changes
+  useEffect(() => {
+    if (!selectedCustomer?.id) {
+      setSelectedProject(null);
+    }
+  }, [selectedCustomer]);
+
+  // Recalculate total whenever addedRows changes
+  useEffect(() => {
+    const calculatedTotal = addedRows.reduce((sum, row) => {
+      const rowTotal = parseFloat(row.totalCost) || 0;
+      return sum + (isNaN(rowTotal) ? 0 : rowTotal);
+    }, 0);
+    setTotal(calculatedTotal);
+  }, [addedRows]);
+
+
+
   const handleAddRow = (item) => {
     if (!mainItem) {
       toast.warning("Please Select Product");
@@ -90,8 +116,6 @@ const CreateBillOfMaterials = () => {
       const updatedRows = [...prevRows, newRow];
       return updatedRows;
     });
-
-    setTotal((prevTotal) => prevTotal + parseFloat(newRow.totalCost));
   };
 
   const handleChange = (index, value, name) => {
@@ -115,19 +139,18 @@ const CreateBillOfMaterials = () => {
     }
 
     setAddedRows(updatedRows);
-    setTotal((prevTotal) => prevTotal - oldTotalPrice + (row.totalCost || 0));
   };
-
 
   const handleDeleteRow = (index) => {
     const updatedRows = [...addedRows];
     const row = updatedRows.splice(index, 1)[0];
 
     setAddedRows(updatedRows);
-    setTotal((prevTotal) => prevTotal - row.totalCost);
   };
 
   const handleSubmit = async () => {
+    if (!selectedCustomer) return toast.error("Please select customer");
+    if (!selectedProject) return toast.error("Please select project");
     if (!mainItem) return toast.warning("Please select product");
     if (addedRows.length === 0) return toast.error("At least one item must be added");
     if (addedRows.some((r, i) => !r.averagePrice || !r.quantity))
@@ -141,7 +164,9 @@ const CreateBillOfMaterials = () => {
     {
       DocumentNo: billNo,
       BOMDate: date,
-      Remark: remark,
+      Remark: remark || "",
+      CustomerId: selectedCustomer ? Number(selectedCustomer.id) : null,
+      ProjectId: selectedProject ? Number(selectedProject.id) : null,
       WarehouseId: 1,
       TotalCost: parseFloat(total),
       SellingPrice: parseFloat(mainSellingPrice),
@@ -151,7 +176,7 @@ const CreateBillOfMaterials = () => {
       ProductName: mainItem.name,
       InventoryPeriodId: 1,
       BillOfMaterialLineDetails: addedRows.map((row, index) => ({
-        BomHeaderId: 1,
+        BomHeaderId: 0,
         DocumentNo: billNo,
         WarehouseId: 1,
         ProductId: row.id,
@@ -163,7 +188,6 @@ const CreateBillOfMaterials = () => {
         Wastage: parseFloat(row.wastage) || 0
       })),
     };
-
 
     try {
       setIsSubmitting(true);
@@ -185,7 +209,7 @@ const CreateBillOfMaterials = () => {
         if (jsonResponse.statusCode === 200) {
           toast.success(jsonResponse.message);
           setTimeout(() => {
-            window.location.href = "/production/bom/";
+            window.location.href = "/manufacture/bom/";
           }, 1500);
         } else {
           toast.error(jsonResponse.message);
@@ -202,7 +226,7 @@ const CreateBillOfMaterials = () => {
 
   const navigateToBack = () => {
     router.push({
-      pathname: "/production/bom/",
+      pathname: "/manufacture/bom/",
     });
   };
 
@@ -213,7 +237,7 @@ const CreateBillOfMaterials = () => {
         <h1>Create Bill Of Material</h1>
         <ul>
           <li>
-            <Link href="/production/bom">Bill Of Material</Link>
+            <Link href="/manufacture/bom">Bill Of Material</Link>
           </li>
           <li> Create</li>
         </ul>
@@ -235,6 +259,89 @@ const CreateBillOfMaterials = () => {
               <Button variant="outlined" onClick={() => navigateToBack()}>
                 Go Back
               </Button>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Customer
+              </Typography>
+              <Box sx={{ width: "60%" }}>
+                <SearchCustomer
+                  label="Customer"
+                  placeholder="Search customers by name"
+                  main={true}
+                  mainItem={selectedCustomer?.id || null}
+                  displayValue={selectedCustomer 
+                    ? (selectedCustomer.firstName && selectedCustomer.lastName
+                        ? `${selectedCustomer.firstName} ${selectedCustomer.lastName}`
+                        : selectedCustomer.displayName || selectedCustomer.firstName || "")
+                    : ""}
+                  onSelect={(customer) => {
+                    setSelectedCustomer(customer);
+                  }}
+                  onClear={() => {
+                    setSelectedCustomer(null);
+                    setSelectedProjectId("");
+                  }}
+                />
+              </Box>
+            </Grid>
+            <Grid
+              item
+              xs={12}
+              lg={6}
+              display="flex"
+              justifyContent="space-between"
+              mt={1}
+            >
+              <Typography
+                component="label"
+                sx={{
+                  fontWeight: "500",
+                  p: 1,
+                  fontSize: "14px",
+                  display: "block",
+                  width: "35%",
+                }}
+              >
+                Project
+              </Typography>
+              <Box sx={{ width: "60%" }}>
+                <SearchProject
+                  label="Project"
+                  placeholder="Search projects by name"
+                  main={true}
+                  mainItem={selectedProject?.id || null}
+                  billType={1}
+                  customerId={selectedCustomer?.id || null}
+                  displayValue={selectedProject 
+                    ? (selectedProject.code 
+                        ? `${selectedProject.name} - ${selectedProject.code}`
+                        : selectedProject.name || "")
+                    : ""}
+                  onSelect={(project) => {
+                    setSelectedProject(project);
+                  }}
+                  onClear={() => {
+                    setSelectedProject(null);
+                  }}
+                />
+              </Box>
             </Grid>
             <Grid
               item
@@ -382,7 +489,7 @@ const CreateBillOfMaterials = () => {
                 onChange={(e) => setMainSellingPrice(e.target.value)}
               />
             </Grid>
-            <Grid item xs={12} mt={3} mb={2}>
+            <Grid item xs={12} mt={3} mb={1}>
               <SearchItems
                 label="Search"
                 placeholder="Search Items by name"
@@ -486,3 +593,4 @@ const CreateBillOfMaterials = () => {
 };
 
 export default CreateBillOfMaterials;
+
