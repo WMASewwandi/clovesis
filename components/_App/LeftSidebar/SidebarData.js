@@ -382,6 +382,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             { title: "Quotes", path: "/crm/quotes/", categoryId: 113, isAvailable: true },                     
             { title: "Invoice", path: "/crm/invoice/", categoryId: 137, isAvailable: true },                     
             { title: "Sales Person", path: "/crm/sales-person/", categoryId: 135, isAvailable: true },                     
+            { title: "Meetings", path: "/crm/meeting/", categoryId: 146, isAvailable: true },                     
             //{ title: "Reports", path: "/crm/reports/", categoryId: 114, isAvailable: true },                     
         ],
     });

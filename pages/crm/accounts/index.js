@@ -186,10 +186,27 @@ export default function AccountsList() {
                         <TableCell>{account.accountName || "-"}</TableCell>
                         <TableCell>{account.industry}</TableCell>
                         <TableCell>{account.firstName || "-"}</TableCell>
-                        <TableCell>{account.email || "-"}</TableCell>
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body2">{account.email || "-"}</Typography>
+                            {account.emailVerified === true || account.isEmailVerified === true ? (
+                              <Chip
+                                label="Verified"
+                                color="success"
+                                size="small"
+                                variant="outlined"
+                                sx={{
+                                  height: 20,
+                                  fontSize: "0.7rem",
+                                  fontWeight: 600,
+                                }}
+                              />
+                            ) : null}
+                          </Box>
+                        </TableCell>
                         <TableCell>{account.mobileNo || "-"}</TableCell>
                         <TableCell>
-                          {[account.addressLine1, account.addressLine2, account.addressLine3]
+                          {[account.addressLine1, account.addressLine2, account.addressLine3,account.state,account.country]
                             .filter(Boolean)
                             .join(", ")}
                         </TableCell>

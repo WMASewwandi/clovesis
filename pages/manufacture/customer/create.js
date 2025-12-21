@@ -9,8 +9,13 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Stack from "@mui/material/Stack";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import { countries } from "../../../components/utils/countries";
 
 export default function CreateCustomer({ onCustomerCreated }) {
   const [open, setOpen] = React.useState(false);
@@ -236,13 +241,20 @@ export default function CreateCustomer({ onCustomerCreated }) {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Country"
-                  fullWidth
-                  size="small"
-                  value={formValues.country}
-                  onChange={handleChange("country")}
-                />
+                <FormControl fullWidth size="small">
+                  <InputLabel>Country</InputLabel>
+                  <Select
+                    value={formValues.country}
+                    label="Country"
+                    onChange={handleChange("country")}
+                  >
+                    {countries.map((country) => (
+                      <MenuItem key={country.code} value={country.label}>
+                        {country.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
           </Box>

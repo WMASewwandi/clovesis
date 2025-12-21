@@ -87,7 +87,7 @@ function a11yProps(index) {
   };
 }
 
-export default function UpdateReservation({ reservation, fetchItems }) {
+export default function UpdateReservation({ reservation, fetchItems, approve1 }) {
   const [open, setOpen] = useState(false);
   const [isGoingAway, setIsGoingAway] = useState(
     reservation.reservationDetails.isGoingAway
@@ -95,11 +95,16 @@ export default function UpdateReservation({ reservation, fetchItems }) {
   const [isHomeComing, setIsHomeComing] = useState(
     reservation.reservationDetails.isHomeComing
   );
+
   const handleOpen = () => setOpen(true);
   const theme = useTheme();
   const [homeComingBridalTypeValue, setHomeComingBridalTypeValue] = useState(1);
   const [homeComingLocationValue, setHomeComingLocationValue] = useState(1);
   const [homeComingPreferedTimeValue, setHomeComingPreferedTimeValue] = useState();
+  const [paymentCode, setPaymentCode] = useState(reservation?.paymentCode || "");
+  const [initialPaymentDate, setInitialPaymentDate] = useState(
+    reservation?.initialPaymentDate ? formatDate(reservation.initialPaymentDate) : ""
+  );
   const textFieldRef = useRef(null);
   const [value, setValue] = useState(0);
   const [dressingRows, setDressingRows] = useState(() => {
@@ -284,7 +289,6 @@ export default function UpdateReservation({ reservation, fetchItems }) {
         return;
       }
     }
-    setOpen(false);
     const postData = {
       Id: reservation.id,
       DocumentNo: reservation.documentNo,
@@ -303,6 +307,8 @@ export default function UpdateReservation({ reservation, fetchItems }) {
       IsExpire: reservation.isExpire,
       ExpireProcessDate: null,
       NextAppointmentType: nextAppointment,
+      PaymentCode: paymentCode || "",
+      InitialPaymentDate: initialPaymentDate || null,
       HomeComingDate: isHomeComing ? values.ReservationDetails.HomeComingDate : null,
       HomeComingBridleType: isHomeComing ? values.HomeComingBridleType : null,
       HomeComingLocation: isHomeComing ? values.HomeComingLocation : null,
@@ -373,14 +379,16 @@ export default function UpdateReservation({ reservation, fetchItems }) {
 
       const responseData = await response.json();
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch");
-      } else {
-        toast.success(responseData.message);
+      if (responseData.statusCode === 200) {
+        toast.success(responseData.message || responseData.result?.message || "Success");
+        setOpen(false);
         fetchItems();
+      } else {
+        toast.error(responseData.message || responseData.result?.message || "An error occurred");
       }
     } catch (error) {
       console.error("Error fetching customers:", error);
+      toast.error("An error occurred while processing the request");
     }
   };
 
@@ -542,6 +550,24 @@ export default function UpdateReservation({ reservation, fetchItems }) {
                     <TabPanel value={value} index={0} dir={theme.direction}>
                       <Grid container spacing={1}>
                         <Grid item xs={12} lg={6} mb={1}>
+                          <Typography>Payment Code</Typography>
+                          <TextField
+                            value={paymentCode}
+                            disabled={!approve1}
+                            onChange={(e) => setPaymentCode(e.target.value)}
+                            fullWidth
+                          />
+                        </Grid>
+                        <Grid item xs={12} lg={6} mb={1}>
+                          <Typography>Initial Payment Date</Typography>
+                          <TextField
+                            type="date"
+                            value={initialPaymentDate}
+                            disabled
+                            fullWidth
+                          />
+                        </Grid>
+                        <Grid item xs={12} lg={6} mb={1}>
                           <Typography>Wedding Date</Typography>
                           <Field
                             as={TextField}
@@ -569,7 +595,6 @@ export default function UpdateReservation({ reservation, fetchItems }) {
                             </Field>
                           </FormControl>
                         </Grid>
-
                         <Grid item xs={12} lg={6} mb={1}>
                           <Typography>Name of Bride</Typography>
                           <Field

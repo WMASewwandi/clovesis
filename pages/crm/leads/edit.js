@@ -19,6 +19,7 @@ import Stack from "@mui/material/Stack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import CircularProgress from "@mui/material/CircularProgress";
 import FormHelperText from "@mui/material/FormHelperText";
+import Chip from "@mui/material/Chip";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import useCRMAccounts from "hooks/useCRMAccounts";
@@ -292,7 +293,25 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
                   >
                     {accounts.map((account) => (
                       <MenuItem key={account.id} value={getAccountValue(account)}>
-                        {account.accountName || account.accountId || getAccountValue(account)}
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                          <Typography variant="body2">
+                            {account.accountName || account.accountId || getAccountValue(account)}
+                          </Typography>
+                          {account.emailVerified === true || account.isEmailVerified === true ? (
+                            <Chip
+                              label="Verified"
+                              color="success"
+                              size="small"
+                              variant="outlined"
+                              sx={{
+                                height: 20,
+                                fontSize: "0.7rem",
+                                fontWeight: 600,
+                                ml: 1,
+                              }}
+                            />
+                          ) : null}
+                        </Box>
                       </MenuItem>
                     ))}
                   </Select>

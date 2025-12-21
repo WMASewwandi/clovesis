@@ -9,7 +9,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Box, Tabs, Tab } from "@mui/material";
+import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Box, Tabs, Tab, Chip } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
@@ -34,36 +34,58 @@ export default function Approval() {
   const [totalCount, setTotalCount] = useState(0);
   const [tabIndex, setTabIndex] = useState(0);
 
+  const getReservationTypeParams = (tabIdx) => {
+    if (tabIdx === 0) {
+      // Pending Approval: reservationType = 3, isRejected = false
+      return { reservationType: 3, isRejected: false };
+    } else if (tabIdx === 1) {
+      // Balance: reservationType = 10
+      return { reservationType: 10, isRejected: null };
+    } else if (tabIdx === 2) {
+      // Rejected: reservationType = 1, isRejected = true
+      return { reservationType: 1, isRejected: true };
+    }
+    return { reservationType: null, isRejected: null };
+  };
+
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
     setPage(1);
-    fetchResList(1, searchTerm, pageSize);
+    const params = getReservationTypeParams(newValue);
+    fetchResList(1, searchTerm, pageSize, params.reservationType, params.isRejected);
   };
 
   const handleSearchChange = (event) => {
     const value = event.target.value;
     setSearchTerm(value);
     setPage(1);
-    fetchResList(1, value, pageSize);
+    const params = getReservationTypeParams(tabIndex);
+    fetchResList(1, value, pageSize, params.reservationType, params.isRejected);
   };
 
   const handlePageChange = (event, value) => {
     setPage(value);
-    fetchResList(value, searchTerm, pageSize);
+    const params = getReservationTypeParams(tabIndex);
+    fetchResList(value, searchTerm, pageSize, params.reservationType, params.isRejected);
   };
 
   const handlePageSizeChange = (event) => {
     const newSize = event.target.value;
     setPageSize(newSize);
     setPage(1);
-    fetchResList(1, searchTerm, newSize);
+    const params = getReservationTypeParams(tabIndex);
+    fetchResList(1, searchTerm, newSize, params.reservationType, params.isRejected);
   };
 
-  const fetchResList = async (page = 1, search = "", size = pageSize) => {
+  const fetchResList = async (page = 1, search = "", size = pageSize, reservationType = null, isRejected = null) => {
     try {
       const token = localStorage.getItem("token");
       const skip = (page - 1) * size;
-      const query = `${BASE_URL}/ReservationApproval/GetAllReservationApproval?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&isInitailPaymentDone=${false}`;
+      let query = `${BASE_URL}/ReservationApproval/GetAllReservationApproval?SkipCount=${skip}&MaxResultCount=${size}&Search=${search || "null"}&isInitailPaymentDone=${false}`;
+
+      if (reservationType !== null) {
+        query += `&reservationType=${reservationType}`;
+      }
 
       const response = await fetch(query, {
         method: "GET",
@@ -84,19 +106,14 @@ export default function Approval() {
   };
 
   useEffect(() => {
-    fetchResList();
+    const params = getReservationTypeParams(tabIndex);
+    fetchResList(1, searchTerm, pageSize, params.reservationType, params.isRejected);
   }, []);
 
   if (!navigate) {
     return <AccessDenied />;
   }
 
-  const filteredData = resList.filter(
-    (item) =>
-      (tabIndex === 0 && item.reservationType === 3 && item.isRejected === false) ||
-      (tabIndex === 1 && item.reservationType === 10) ||
-      (tabIndex === 2 && item.reservationType === 1 && item.isRejected === true)
-  );
 
   return (
     <>
@@ -130,7 +147,10 @@ export default function Approval() {
             date={new Date().toISOString().split("T")[0]}
             type={3}
           />
-          {create ? <ReservationPayment fetchItems={() => fetchResList()} /> : ""}
+          {create ? <ReservationPayment fetchItems={() => {
+            const params = getReservationTypeParams(tabIndex);
+            fetchResList(page, searchTerm, pageSize, params.reservationType, params.isRejected);
+          }} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -139,13 +159,14 @@ export default function Approval() {
                 <TableRow>
                   <TableCell>Doc. No</TableCell>
                   <TableCell>Payment Code</TableCell>
-                  <TableCell>Wedding&nbsp;Date</TableCell>
+
                   {tabIndex === 0 || tabIndex === 2 ? (
                     <TableCell>Payment&nbsp;Date</TableCell>
                   ) : (
                     ""
                   )}
                   <TableCell>Customer&nbsp;Name</TableCell>
+                  <TableCell>Wedding&nbsp;Date</TableCell>
                   <TableCell>Mobile No</TableCell>
                   <TableCell>NIC/Passport</TableCell>
                   <TableCell>Description</TableCell>
@@ -167,7 +188,7 @@ export default function Approval() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredData.length === 0 ? (
+                {resList.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={13} align="center">
                       <Typography color="error">
@@ -176,11 +197,11 @@ export default function Approval() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((item, index) => (
+                  resList.map((item, index) => (
                     <TableRow key={index} sx={{ background: item.isFinalPaymentDone ? '#F8F8E1' : "" }}>
                       <TableCell>{item.documentNo}</TableCell>
                       <TableCell>{item.paymentCode}</TableCell>
-                      <TableCell>{formatDate(item.weddingDate)}</TableCell>
+
                       {tabIndex === 0 || tabIndex === 2 ? (
                         <TableCell>{formatDate(item.paymentDate)}</TableCell>
                       ) : (
@@ -188,6 +209,19 @@ export default function Approval() {
                       )}
                       <TableCell>
                         {item.customerName}
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(item.weddingDate)} <br />
+                        {item.reservationFunctionType === 3 ? (
+                          <Chip
+                            label={`HC : ${formatDate(item.homeComingDate)}`}
+                            size="small"
+                            variant="filled"
+                            sx={{ backgroundColor: '#FFF57E' }}
+                          />
+                        ) : (
+                          <></>
+                        )}
                       </TableCell>
                       <TableCell>{item.mobileNo}</TableCell>
                       <TableCell>{item.nic}</TableCell>
@@ -223,12 +257,21 @@ export default function Approval() {
                         <TableCell align="right">
                           {tabIndex === 0 ? (
                             <Box display="flex" gap={1} justifyContent="end">
-                              {update ? <EditApproval item={item} fetchItems={() => fetchResList()} /> : ""}
+                              {update ? <EditApproval item={item} fetchItems={() => {
+                                const params = getReservationTypeParams(tabIndex);
+                                fetchResList(page, searchTerm, pageSize, params.reservationType, params.isRejected);
+                              }} /> : ""}
                               {approve1 ? <PaymentApproval
                                 item={item}
-                                fetchItems={() => fetchResList()}
+                                fetchItems={() => {
+                                  const params = getReservationTypeParams(tabIndex);
+                                  fetchResList(page, searchTerm, pageSize, params.reservationType, params.isRejected);
+                                }}
                               /> : ""}
-                              {remove ? <RejectById id={item.paymentApprovalId} fetchItems={() => fetchResList()} /> : ""}
+                              {remove ? <RejectById id={item.paymentApprovalId} fetchItems={() => {
+                                const params = getReservationTypeParams(tabIndex);
+                                fetchResList(page, searchTerm, pageSize, params.reservationType, params.isRejected);
+                              }} /> : ""}
                             </Box>
                           ) : tabIndex === 1 && create ? (
                             <MakePayment

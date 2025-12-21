@@ -21,6 +21,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import { countries } from "../../../components/utils/countries";
 
 const initialFormValues = {
   name: "",
@@ -36,6 +37,8 @@ const initialFormValues = {
   addressLine2: "",
   addressLine3: "",
   postalCode: "",
+  state: "",
+  country: "",
   employeeCount: "",
   accountType: "",
   notes: "",
@@ -64,6 +67,8 @@ export default function EditAccountModal({ account, onAccountUpdated }) {
         addressLine2: account.addressLine2 || "",
         addressLine3: account.addressLine3 || "",
         postalCode: account.postalCode || "",
+        state: account.state || "",
+        country: account.country || "",
         employeeCount: account.employeeCount != null ? String(account.employeeCount) : "",
         accountType:
           account.accountType != null ? String(account.accountType) : "",
@@ -136,6 +141,10 @@ export default function EditAccountModal({ account, onAccountUpdated }) {
       return;
     }
 
+    // Construct verification link with actual account ID
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const verificationLink = `${baseUrl}/verified`;
+
     const payload = {
       Id: account?.id,
       AccountName: formValues.name.trim(),
@@ -151,11 +160,14 @@ export default function EditAccountModal({ account, onAccountUpdated }) {
       AddressLine2: formValues.addressLine2.trim() || "",
       AddressLine3: formValues.addressLine3.trim() || "",
       PostalCode: formValues.postalCode.trim() || "",
+      State: formValues.state.trim() || "",
+      Country: formValues.country.trim() || "",
       AnnualRevenue: 0,
       EmployeeCount: parseDecimal(formValues.employeeCount),
       AccountType: Number(formValues.accountType),
       Description: formValues.notes.trim() || "",
       IsActive: formValues.isActive,
+      VerificationLink: verificationLink,
     };
 
     try {
@@ -361,7 +373,7 @@ export default function EditAccountModal({ account, onAccountUpdated }) {
 
             <Grid item xs={12} lg={6}>
               <TextField
-                label="Address Line 3"
+                label="City"
                 fullWidth
                 size="small"
                 value={formValues.addressLine3}
@@ -377,6 +389,33 @@ export default function EditAccountModal({ account, onAccountUpdated }) {
                 value={formValues.postalCode}
                 onChange={handleFieldChange("postalCode")}
               />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                label="State/Province"
+                fullWidth
+                size="small"
+                value={formValues.state}
+                onChange={handleFieldChange("state")}
+              />
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Country</InputLabel>
+                <Select
+                  value={formValues.country}
+                  label="Country"
+                  onChange={handleFieldChange("country")}
+                >
+                  {countries.map((country) => (
+                    <MenuItem key={country.code} value={country.label}>
+                      {country.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12}>

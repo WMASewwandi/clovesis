@@ -106,6 +106,7 @@ export default function PaymentHistory() {
               <TableHead>
                 <TableRow>
                   <TableCell>Document No</TableCell>
+                  <TableCell>Payment Code</TableCell>
                   <TableCell>Wedding Date</TableCell>
                   <TableCell>Customer Details</TableCell>
                   <TableCell>Phone Number</TableCell>
@@ -124,6 +125,7 @@ export default function PaymentHistory() {
                   invoiceList.map((invoice, index) => (
                     <TableRow key={index}>
                       <TableCell>{invoice.documentNo}</TableCell>
+                      <TableCell>{invoice.paymentCode}</TableCell>
                       <TableCell>{formatDate(invoice.weddingDate)}</TableCell>
                       <TableCell>
                         <span>{invoice.customerName}</span><br />

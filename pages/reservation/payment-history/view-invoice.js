@@ -77,13 +77,15 @@ export default function ViewInvoices({ reservation }) {
               <Grid item xs={12}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
                   <Typography variant="h5" fontWeight="bold">
-                    Payment History
+                    Payment History                     
                   </Typography>
                   <Typography variant="h6" fontWeight="bold" sx={{ textAlign: 'right' }}>
                     {reservation.documentNo}<br />
                     {reservation.customerName} - {reservation.nic}
                   </Typography>
+                  
                 </Box>
+                <Typography color="primary">Payment Code : {reservation.paymentCode}</Typography>
               </Grid>
               <Grid item xs={12} mt={2}>
                 <TableContainer>

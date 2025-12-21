@@ -82,7 +82,7 @@ function a11yProps(index) {
   };
 }
 
-export default function AddReservation({ fetchItems, documentNo }) {
+export default function AddReservation({ fetchItems, documentNo ,approve1}) {
   const [open, setOpen] = useState(false);
   const [isGoingAway, setIsGoingAway] = useState(false);
   const [isHomeComing, setIsHomeComing] = useState(false);
@@ -99,6 +99,8 @@ export default function AddReservation({ fetchItems, documentNo }) {
   const [searchValue, setSearchValue] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [textFieldWidth, setTextFieldWidth] = useState(0);
+  const [paymentCode, setPaymentCode] = useState("");
+  const [paymentDate, setPaymentDate] = useState("");
   const { data, getCustomersByName } = useGetList();
   const [dressingRows, setDressingRows] = useState([
     { DressingType: 1, label: "Bride", StartTime: "", EndTime: "", Remark: "" },
@@ -239,6 +241,7 @@ export default function AddReservation({ fetchItems, documentNo }) {
       MobileNo: selectedCustomer.mobileNo,
       EmergencyContactNo: values.EmergencyContactNo.toString(),
       NIC: selectedCustomer.nic,
+      PaymentCode: paymentCode,
       PreferdTime: values.PreferdTime ? values.PreferdTime : selectedCustomer.preferdTime,
       BridleType: values.BridleType ? values.BridleType : selectedCustomer.bridleType,
       Location: values.Location ? values.Location : selectedCustomer.location,
@@ -251,6 +254,7 @@ export default function AddReservation({ fetchItems, documentNo }) {
       IsExpire: selectedCustomer.isExpire,
       ExpireProcessDate: selectedCustomer.ExpireProcessDate,
       NextAppointmentType: nextAppointment,
+      PaymentCode: paymentCode || "",
       ReservationDetails: {
         WeddingVenue: values.ReservationDetails.WeddingVenue || null,
         DressingVenue: values.ReservationDetails.DressingVenue || null,
@@ -318,16 +322,17 @@ export default function AddReservation({ fetchItems, documentNo }) {
 
       const responseData = await response.json();
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch");
-      } else {
-        toast.success(responseData.message);
+      if (responseData.statusCode === 200) {
+        toast.success(responseData.message || responseData.result?.message || "Success");
         setOpen(false);
         setSelectedCustomer(null);
         fetchItems();
+      } else {
+        toast.error(responseData.message || responseData.result?.message || "An error occurred");
       }
     } catch (error) {
       console.error("Error fetching customers:", error);
+      toast.error("An error occurred while processing the request");
     }
   };
 
@@ -360,6 +365,8 @@ export default function AddReservation({ fetchItems, documentNo }) {
     setCustomers([]);
     setSelectedCustomer(null);
     setShowDropdown(false);
+    setPaymentCode("");
+    setPaymentDate("");
   };
 
   const handleCustomerSelect = (customer) => {
@@ -374,6 +381,8 @@ export default function AddReservation({ fetchItems, documentNo }) {
     setHomeComingBridalTypeValue(bridal);
     setHomeComingLocationValue(location);
     setHomeComingPreferedTimeValue(pref);
+    setPaymentCode(customer.paymentCode || "");
+    setPaymentDate(customer.initialPaymentDate ? formatDate(customer.initialPaymentDate) : "");
     setShowDropdown(false);
     setSearchValue(customer.customerName);
   };
@@ -542,6 +551,24 @@ export default function AddReservation({ fetchItems, documentNo }) {
                   <Box sx={tabPanelStyle}>
                     <TabPanel value={value} index={0} dir={theme.direction}>
                       <Grid container spacing={1}>
+                        <Grid item xs={12} lg={6} mb={1}>
+                          <Typography>Payment Code</Typography>
+                          <TextField
+                            value={paymentCode}
+                            disabled={!approve1}
+                            onChange={(e) => setPaymentCode(e.target.value)}
+                            fullWidth
+                          />
+                        </Grid>
+                        <Grid item xs={12} lg={6} mb={1}>
+                          <Typography>Payment Date</Typography>
+                          <TextField
+                            type="date"
+                            value={paymentDate}
+                            disabled
+                            fullWidth
+                          />
+                        </Grid>
                         <Grid item xs={12} lg={6} mb={1}>
                           <Typography>Wedding Date</Typography>
                           <Field

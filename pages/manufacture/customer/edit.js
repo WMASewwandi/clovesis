@@ -12,8 +12,13 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Stack from "@mui/material/Stack";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
+import { countries } from "../../../components/utils/countries";
 
 export default function EditCustomerModal({ customer, onCustomerUpdated }) {
   const [open, setOpen] = React.useState(false);
@@ -255,13 +260,20 @@ export default function EditCustomerModal({ customer, onCustomerUpdated }) {
                 />
               </Grid>
               <Grid item xs={12}>
-                <TextField
-                  label="Country"
-                  fullWidth
-                  size="small"
-                  value={formValues.country}
-                  onChange={handleChange("country")}
-                />
+                <FormControl fullWidth size="small">
+                  <InputLabel>Country</InputLabel>
+                  <Select
+                    value={formValues.country}
+                    label="Country"
+                    onChange={handleChange("country")}
+                  >
+                    {countries.map((country) => (
+                      <MenuItem key={country.code} value={country.label}>
+                        {country.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
           </Box>

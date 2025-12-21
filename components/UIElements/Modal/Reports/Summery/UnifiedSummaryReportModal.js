@@ -174,7 +174,7 @@ const reportConfigs = {
     },
   },
   ReservationTypeReport: {
-    title: "Reservation Type Report",
+    title: "Reservation Status Report",
     fields: {
       reservationType: {
         enabled: true,
@@ -200,7 +200,9 @@ const reportConfigs = {
   },
   ReservationSalesReport: {
     title: "Reservation Sales Report",
-    fields: {},
+    fields: {
+      reservation: { enabled: true, required: false, label: "Select Reservation", paramName: "reservationId", allowAll: true },
+    },
   },
   FiscalPeriodReport: {
     title: "Fiscal Period Report",
@@ -219,6 +221,15 @@ const reportConfigs = {
     fields: {
       user: { enabled: true, required: false, label: "Select User", paramName: "userId", allowAll: true },
       terminal: { enabled: true, required: false, label: "Select Terminal", paramName: "terminalId", allowAll: true },
+    },
+  },
+  StockMovementReport: {
+    title: "Stock Movement Summary Report",
+    fields: {
+      supplier: { enabled: true, required: false, label: "Select Supplier", paramName: "supplier", allowAll: true },
+      category: { enabled: true, required: false, label: "Select Category", paramName: "category", allowAll: true },
+      subCategory: { enabled: true, required: false, label: "Select Sub Category", paramName: "subCategory", allowAll: true },
+      item: { enabled: true, required: false, label: "Select Item", paramName: "item", allowAll: true },
     },
   },
 };
@@ -261,6 +272,8 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
   const [cashType, setCashType] = useState(config.fields.cashType?.defaultValue || 0);
   const [terminals, setTerminals] = useState([]);
   const [terminalId, setTerminalId] = useState(config.fields.terminal?.defaultValue || 0);
+  const [reservations, setReservations] = useState([]);
+  const [reservationId, setReservationId] = useState(config.fields.reservation?.defaultValue || 0);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
@@ -284,6 +297,7 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     setCashFlowTypeId(config.fields.cashFlowType?.defaultValue || 0);
     setCashType(config.fields.cashType?.defaultValue || 0);
     setTerminalId(config.fields.terminal?.defaultValue || 0);
+    setReservationId(config.fields.reservation?.defaultValue || 0);
   };
 
   const { data: customerList } = useApi("/Customer/GetAllCustomer");
@@ -331,6 +345,9 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     }
     if (terminalList && config.fields.terminal?.enabled) {
       setTerminals(terminalList);
+    }
+    if (config.fields.reservation?.enabled) {
+      fetchReservations();
     }
   }, [terminalList, customerList, itemList, supplierList, categoryList, doctorList, bankList, fiscalPeriodList, userList, cashFlowTypeList, config]);
 
@@ -406,6 +423,27 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     }
   };
 
+  const fetchReservations = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const query = `${BASE_URL}/Reservation/GetAllReservationSkipAndTake?SkipCount=0&MaxResultCount=1000&Search=null`;
+      const response = await fetch(query, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch reservations");
+
+      const data = await response.json();
+      setReservations(data.result?.items || []);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
   const handleSelectCustomer = (id) => {
     setCustomerId(id);
     if (config.fields.invoice?.enabled && id) {
@@ -472,6 +510,9 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
     }
     if (config.fields.terminal?.enabled) {
       params.append(config.fields.terminal.paramName || "terminalId", terminalId);
+    }
+    if (config.fields.reservation?.enabled) {
+      params.append(config.fields.reservation.paramName || "reservationId", reservationId);
     }
 
     return params.toString();
@@ -938,6 +979,32 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
                 terminals.map((terminal) => (
                   <MenuItem key={terminal.id} value={terminal.id}>
                     {terminal.name} ({terminal.code})
+                  </MenuItem>
+                ))
+              )}
+            </Select>
+          </Grid>
+        );
+
+      case "reservation":
+        return (
+          <Grid item {...gridSize} key={fieldName}>
+            <Typography as="h5" sx={{ fontWeight: "500", fontSize: "14px", mb: "12px" }}>
+              {fieldConfig.label || "Select Reservation"}
+            </Typography>
+            <Select
+              fullWidth
+              size="small"
+              value={reservationId}
+              onChange={(e) => setReservationId(e.target.value)}
+            >
+              {fieldConfig.allowAll !== false && <MenuItem value={0}>All</MenuItem>}
+              {reservations.length === 0 ? (
+                <MenuItem value="">No Reservations Available</MenuItem>
+              ) : (
+                reservations.map((reservation) => (
+                  <MenuItem key={reservation.id} value={reservation.id}>
+                    {reservation.documentNo || reservation.id} - {reservation.customerName || ""}
                   </MenuItem>
                 ))
               )}

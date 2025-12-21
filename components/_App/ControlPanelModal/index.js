@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import IconButton from '@mui/material/IconButton';
@@ -14,27 +14,35 @@ import OnlyTopNavbarDark from '@/components/_App/ControlPanelModal/OnlyTopNavbar
 
 export default function ControlPanelModal() {
 
-  const [isActiveSearchModal, setActiveSearchModal] = useState("false");
+  const [isActiveSearchModal, setActiveSearchModal] = useState(false);
+  
   const handleToggleSearchModal = () => {
     setActiveSearchModal(!isActiveSearchModal);
   };
+
+  useEffect(() => {
+    const handleOpenControlPanel = () => {
+      setActiveSearchModal(true);
+    };
+
+    window.addEventListener('openControlPanel', handleOpenControlPanel);
+    return () => {
+      window.removeEventListener('openControlPanel', handleOpenControlPanel);
+    };
+  }, []);
 
   return (
     <>
       <div
         className={`control-panel-modal ${
-          isActiveSearchModal ? "" : "show"
+          isActiveSearchModal ? "show" : ""
         }`}
-      > 
- 
-        <Tooltip title="Control Panel" placement="left" arrow>
-          <div 
-            className='settings-btn' 
-            onClick={handleToggleSearchModal}
-          >
-            <i className="ri-settings-3-line"></i>
-          </div>
-        </Tooltip>
+        onClick={(e) => {
+          if (e.target.classList.contains('control-panel-modal')) {
+            handleToggleSearchModal();
+          }
+        }}
+      >
 
         <div
           className="control-panel-dialog"

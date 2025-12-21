@@ -18,6 +18,7 @@ import CompanyWiseProfit from "@/components/UIElements/Modal/Reports/Summery/Com
 import ProfitabilityReport from "@/components/UIElements/Modal/Reports/Summery/ProfitabilityReport";
 import OutstandingReport from "@/components/UIElements/Modal/Reports/Summery/OutstandingReport";
 import StockBalance from "@/components/UIElements/Modal/Reports/Summery/StockBalance";
+import ReservationSalesReport from "@/components/UIElements/Modal/Reports/Summery/ReservationSalesReport";
 
 const componentMap = {
   CompanyWiseProfit,
@@ -27,7 +28,7 @@ const componentMap = {
   SalesSummaryReport: UnifiedSummaryReportModal,
   ReservationAppointmentTypeReport: UnifiedSummaryReportModal,
   ReservationTypeReport: UnifiedSummaryReportModal,
-  ReservationSalesReport: UnifiedSummaryReportModal,
+  ReservationSalesReport,
   FiscalPeriodReport: UnifiedSummaryReportModal,
   CashFlowSummaryReport: UnifiedSummaryReportModal,
   CustomerPaymentSummaryReport: UnifiedSummaryReportModal,
@@ -39,6 +40,7 @@ const componentMap = {
   DailyDepositSummary: UnifiedSummaryReportModal,
   BankHistoryReport: UnifiedSummaryReportModal,
   ShiftSummaryReport: UnifiedSummaryReportModal,
+  StockMovementReport: UnifiedSummaryReportModal,
 };
 
 const SummeryReports = () => {

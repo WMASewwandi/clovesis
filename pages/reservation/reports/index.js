@@ -9,18 +9,19 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
-import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Tooltip, IconButton,Box } from "@mui/material";
+import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Tooltip, IconButton, Box } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
-import { getEventType } from "@/components/types/types";
+import { getEventType, getPaymentMethods } from "@/components/types/types";
 import { Report } from "Base/report";
 import { Catelogue } from "Base/catelogue";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import DownloadIcon from '@mui/icons-material/Download';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -84,42 +85,87 @@ export default function Items() {
     fetchResList();
   }, []);
 
-  const handleExcelDownload = (reservation) => {
+  const handleExcelDownload = async (reservation) => {
     const address = [
       reservation?.reservationDetails?.addressLine1,
       reservation?.reservationDetails?.addressLine2,
       reservation?.reservationDetails?.addressLine3
     ].filter(line => !!line).join(', ');
 
-    const data = [
-      ["RESERVATION REPORT", ""],
-      ["", ""],
-      ["ADVANCE PAID DATE", formatDate(reservation?.reservationDetails?.advancePaymentDate)],
-      ["ADVANCE (LKR)", formatCurrency(reservation?.paidAmount ?? 0)],
-      ["WEDDING DATE", formatDate(reservation?.reservationDate)],
-      ["HOME COMING DATE", formatDate(reservation?.reservationDetails?.homeComingDate)],
-      ["EVENT DATE", "-"],
-      ["NAME OF BRIDE (CLIENT)", reservation?.customerName ?? "-"],
-      ["NIC/PASSPORT NO :", reservation?.nic ?? "-"],
-      ["ADDRESS", address || "-"],
-      ["CONTACT NUMBER :", reservation?.mobileNo ?? "-"],
-      ["WEDDING VENUE :", reservation?.reservationDetails?.weddingVenue ?? "-"],
-      ["HOME COMING :", reservation?.reservationDetails?.homeComingVenue ?? "-"],
-      ["EVENT VENUE :", "-"],
+    // Create a new workbook and worksheet using ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Reservation');
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 }, // First column (Field labels)
+      { width: 50 }  // Second column (Values)
     ];
 
+    // Add title row
+    const titleRow = worksheet.addRow(['RESERVATION REPORT', '']);
+    titleRow.height = 25;
 
-    const worksheet = XLSX.utils.aoa_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Reservation");
+    // Merge cells for title (A1 to B1)
+    worksheet.mergeCells('A1:B1');
 
-    XLSX.writeFile(workbook, `Reservation-${reservation.customerName}.xlsx`);
+    // Style the title cell - bold and center aligned
+    const titleCell = worksheet.getCell('A1');
+    titleCell.font = { bold: true, size: 14 };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+    // Add empty row for spacing
+    worksheet.addRow(['', '']);
+
+    // Add data rows
+    const dataRows = [
+      ["RESERVATION CODE", reservation?.paymentCode ?? "-"],
+      ["ADVANCE PAID DATE", formatDate(reservation?.reservationDetails?.advancePaymentDate) || "-"],
+      ["ADVANCE (LKR)", formatCurrency(reservation?.paidAmount ?? 0)],
+      ["ADVANCE RECEIVED METHOD", getPaymentMethods(reservation?.reservationDetails?.initialPaymentType) || "-"],
+      ["", ""],
+      ["WEDDING DATE", formatDate(reservation?.reservationDate) || "-"],
+      ["HOME COMING DATE", formatDate(reservation?.reservationDetails?.homeComingDate) || "-"],
+      ["EVENT DATE", "-"],
+      ["", ""],
+      ["NAME OF BRIDE (CLIENT)", reservation?.customerName ?? "-"],
+      ["NIC/PASSPORT NO", reservation?.nic ?? "-"],
+      ["ADDRESS", address || "-"],
+      ["CONTACT NUMBER", reservation?.mobileNo ?? "-"],
+      ["WEDDING VENUE", reservation?.reservationDetails?.weddingVenue ?? "-"],
+      ["HOME COMING VENUE", reservation?.reservationDetails?.homeComingVenue ?? "-"],
+      ["EVENT VENUE", "-"],
+    ];
+
+    // Add data rows with styling
+    dataRows.forEach((rowData) => {
+      const row = worksheet.addRow(rowData);
+      row.height = 20;
+
+      // Style the first column (field labels) - bold
+      const labelCell = row.getCell(1);
+      labelCell.font = { bold: true };
+      labelCell.alignment = { vertical: 'middle' };
+
+      // Style the second column (values)
+      const valueCell = row.getCell(2);
+      valueCell.alignment = { vertical: 'middle' };
+    });
+
+    // Generate buffer and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Reservation-${reservation.documentNo || reservation.customerName}.xlsx`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   };
 
   if (!navigate) {
     return <AccessDenied />;
   }
-
   return (
     <>
       <ToastContainer />

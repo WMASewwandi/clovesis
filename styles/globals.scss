@@ -1017,25 +1017,7 @@ img {
   }
 
   .settings-btn {
-    position: fixed;
-    bottom: 70px;
-    right: 15px;
-    background-color: var(--dangerColor);
-    color: #fff;
-    z-index: 1290;
-    width: 50px;
-    height: 50px;
-    text-align: center;
-    line-height: 50px;
-    border-radius: 100%;
-    font-size: 25px;
-    cursor: pointer;
-    transition: var(--transition);
-    animation: rotate 2s linear infinite;
-   
-    &:hover {
-      background-color: #d32979;
-    }
+    display: none; // Hidden - settings button moved to top navbar
   }
 }
 @keyframes rotate {

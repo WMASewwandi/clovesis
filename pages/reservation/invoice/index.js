@@ -113,13 +113,14 @@ export default function ReservationInvoice() {
               <TableHead>
                 <TableRow>
                   <TableCell>Doc. No</TableCell>
-                  <TableCell>Payment&nbsp;Code</TableCell>
-                  <TableCell>Wedding&nbsp;Date</TableCell>
+                  <TableCell>Payment&nbsp;Code</TableCell>                  
                   <TableCell>Payment&nbsp;Date</TableCell>
+                  <TableCell>Payment&nbsp;Type</TableCell>
+                  <TableCell>Wedding&nbsp;Date</TableCell>
                   <TableCell>Customer&nbsp;Details</TableCell>
                   <TableCell>Phone&nbsp;Number</TableCell>
                   <TableCell>Description</TableCell>
-                  <TableCell>Payment&nbsp;Type</TableCell>
+                  
                   <TableCell>Cash&nbsp;Amount</TableCell>
                   <TableCell>Card&nbsp;Amount</TableCell>
                   <TableCell>Bank&nbsp;Amount</TableCell>
@@ -140,9 +141,10 @@ export default function ReservationInvoice() {
                   invoiceList.map((invoice, index) => (
                     <TableRow key={index}>
                       <TableCell>{invoice.documentNo}</TableCell>
-                      <TableCell>{invoice.paymentCode}</TableCell>
-                      <TableCell>{formatDate(invoice.weddingDate)}</TableCell>
+                      <TableCell>{invoice.paymentCode}</TableCell>                      
                       <TableCell>{formatDate(invoice.paymentDate)}</TableCell>
+                      <TableCell>{getPaymentMethods(invoice.paymentType)}</TableCell>
+                      <TableCell>{formatDate(invoice.weddingDate)}</TableCell>
                       <TableCell>
                         <span>{invoice.customerName}</span><br />
                         <Typography color="primary" sx={{ fontSize: '12px' }}>{invoice.nic}</Typography>
@@ -151,7 +153,7 @@ export default function ReservationInvoice() {
                       <TableCell>
                         {invoice.paymentDescription}
                       </TableCell>
-                      <TableCell>{getPaymentMethods(invoice.paymentType)}</TableCell>
+                      
                       <TableCell>{formatCurrency(invoice.cashAmount)}</TableCell>
                       <TableCell>{formatCurrency(invoice.cardAmount)}</TableCell>
                       <TableCell>{formatCurrency(invoice.bankAmount)}</TableCell>

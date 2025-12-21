@@ -16,6 +16,7 @@ import Link from "next/link";
 import BASE_URL from "Base/api";
 import { ProjectNo } from "Base/catelogue";
 import GridViewIcon from "@mui/icons-material/GridView";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useRouter } from "next/router";
 import styles from "./TopNavbar.module.css";
 import { TopbarContext } from "../TopbarContext";
@@ -179,6 +180,23 @@ const TopNavbar = ({
 
               {/* CurrentDate */}
               <CurrentDate />
+
+              {/* Settings */}
+              <Tooltip title="Settings" arrow>
+                <IconButton
+                  size="small"
+                  edge="end"
+                  color="inherit"
+                  sx={{ width: 40, height: 40 }}
+                  className={styles.actionButton}
+                  onClick={() => {
+                    const event = new CustomEvent('openControlPanel');
+                    window.dispatchEvent(event);
+                  }}
+                >
+                  <SettingsIcon />
+                </IconButton>
+              </Tooltip>
 
               {/* Notification */}
               <Email />

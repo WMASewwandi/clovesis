@@ -27,7 +27,7 @@ import RecreateConfirmation from "./RecreateConfirmation";
 
 export default function Reservation() {
   const cId = sessionStorage.getItem("category")
-  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
+  const { navigate, create, update, remove, print, approve1 } = IsPermissionEnabled(cId);
   const { create: chargeSheetCreate } = IsPermissionEnabled(46);
   const { create: galleryCreate } = IsPermissionEnabled(44);
   const [resList, setResList] = useState([]);
@@ -113,7 +113,7 @@ export default function Reservation() {
   const defaultColSpan = 14;
   const tableColSpan = defaultColSpan + (tabIndex === 1 ? 1 : 0) - (tabIndex === 3 ? 3 : 0);
 
-  
+
   return (
     <>
       <ToastContainer />
@@ -143,7 +143,7 @@ export default function Reservation() {
           </Search>
         </Grid>
         <Grid item xs={12} lg={8} mb={1} display="flex" justifyContent="end" order={{ xs: 1, lg: 2 }}>
-          {create ? <AddReservation fetchItems={fetchResList} documentNo={docnumber} /> : ""}
+          {create ? <AddReservation fetchItems={fetchResList} documentNo={docnumber} approve1={approve1} /> : ""}
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
@@ -151,8 +151,10 @@ export default function Reservation() {
               <TableHead>
                 <TableRow>
                   <TableCell>Doc. No</TableCell>
-                  <TableCell>Wedding&nbsp;Date</TableCell>
+                  <TableCell>Payment Code</TableCell>
+                  <TableCell>Payment Date</TableCell>                  
                   <TableCell>Event&nbsp;Type</TableCell>
+                  <TableCell>Wedding&nbsp;Date</TableCell>
                   <TableCell>Name</TableCell>
                   <TableCell>Groom&nbsp;Name</TableCell>
                   <TableCell>NIC/Passport No</TableCell>
@@ -163,7 +165,7 @@ export default function Reservation() {
                   {tabIndex !== 3 ? <TableCell>Next&nbsp;Appointment</TableCell> : null}
                   {tabIndex !== 3 ? <TableCell>Status</TableCell> : null}
                   <TableCell>Remark</TableCell>
-                  {tabIndex === 1 ? <TableCell>Canceled&nbsp;Reason</TableCell> : ""}
+                  {tabIndex === 1 ? <TableCell>Canceled&nbsp;Reason</TableCell> : ""}                  
                   <TableCell>Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -178,8 +180,22 @@ export default function Reservation() {
                   filteredData.map((reservation, index) => (
                     <TableRow key={index} sx={{ background: reservation.status === 2 ? "#FFFECE" : "" }}>
                       <TableCell>{reservation.documentNo}</TableCell>
-                      <TableCell>{formatDate(reservation.reservationDate)}</TableCell>
+                      <TableCell>{reservation.paymentCode}</TableCell>
+                      <TableCell>{formatDate(reservation.initialPaymentDate)}</TableCell>                      
                       <TableCell>{getEventType(reservation.reservationFunctionType)}</TableCell>
+                      <TableCell>{formatDate(reservation.reservationDate)}
+                        <br />
+                        {reservation.reservationFunctionType === 3 ? (
+                          <Chip
+                            label={`HC : ${formatDate(reservation.homeComingDate)}`}
+                            size="small"
+                            variant="filled"
+                            sx={{ backgroundColor: '#FFF57E' }}
+                          />
+                        ) : (
+                          <></>
+                        )}
+                      </TableCell>
                       <TableCell>{reservation.customerName}</TableCell>
                       <TableCell>{reservation.groomName}</TableCell>
                       <TableCell>{reservation.nic}</TableCell>
@@ -206,15 +222,16 @@ export default function Reservation() {
                             </>
                           ) : (reservation.status === 3 ?
                             <Chip size="small" label="Canceled" color="error" /> : (reservation.status === 4 ? <Chip size="small" label="Complete" color="success" /> : <Chip size="small" label="Ongoing" color="primary" />)
-  
+
                           )}
                         </TableCell>
                       ) : null}
                       <TableCell>{reservation.reservationDetails.remark}</TableCell>
                       {tabIndex === 1 ? <TableCell>{reservation.canceledReason}</TableCell> : ""}
+                      
                       <TableCell>
                         <Box display="flex" gap={1}>
-                          {update && tabIndex == 0 ? <UpdateReservation reservation={reservation} fetchItems={fetchResList} /> : ""}
+                          {update && tabIndex == 0 ? <UpdateReservation reservation={reservation} fetchItems={fetchResList} approve1={approve1} /> : ""}
                           {galleryCreate ? <ReservationMedia id={reservation.id} /> : ""}
                           {tabIndex == 0 && remove ? <CancelConfirmation id={reservation.id} fetchItems={fetchResList} /> : ""}
                           {tabIndex == 1 && update ? <RecreateConfirmation id={reservation.id} fetchItems={fetchResList} /> : ""}
