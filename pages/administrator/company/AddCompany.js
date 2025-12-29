@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Grid, Typography, MenuItem } from "@mui/material";
+import { Grid, Typography, MenuItem, Tabs, Tab, CircularProgress } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
@@ -50,10 +50,18 @@ export default function AddCompany({ fetchItems }) {
   const [image, setImage] = useState("");
   const [open, setOpen] = useState(false);
   const [logo, setLogo] = useState(null);
+  const [tabIndex, setTabIndex] = useState(0);
+  const [letterheadImage, setLetterheadImage] = useState("");
+  const [letterheadFile, setLetterheadFile] = useState(null);
+  const [loading, setLoading] = useState(false);
   const handleOpen = async () => {
     setOpen(true);
   };
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setTabIndex(0);
+  };
+  const handleTabChange = (event, newValue) => setTabIndex(newValue);
 
   const inputRef = useRef(null);
 
@@ -67,7 +75,49 @@ export default function AddCompany({ fetchItems }) {
     }
   }, [open]);
 
-  const handleSubmit = (values) => {
+  const validateA4Size = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const width = img.width;
+        const height = img.height;
+        // A4 aspect ratio: 210mm x 297mm = 0.707 (width/height)
+        // Allow ±5% tolerance
+        const aspectRatio = width / height;
+        const a4Ratio = 210 / 297; // 0.707
+        const tolerance = 0.05;
+        
+        if (Math.abs(aspectRatio - a4Ratio) <= tolerance) {
+          resolve(true);
+        } else {
+          reject(new Error(`Image must be A4 size (210mm x 297mm / 2480 x 3508 px at 300 DPI). Current dimensions: ${width} x ${height}px`));
+        }
+      };
+      img.onerror = () => reject(new Error("Invalid image file"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleLetterheadChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    try {
+      await validateA4Size(file);
+      setLetterheadFile(file);
+      setLetterheadImage(URL.createObjectURL(file));
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleSubmit = async (values) => {
     const formData = new FormData();
 
     formData.append("Code", values.Code);
@@ -76,30 +126,34 @@ export default function AddCompany({ fetchItems }) {
     formData.append("ContactPerson", values.ContactPerson);
     formData.append("ContactNumber", values.ContactNumber);
     formData.append("CompanyLogo", logo ? logo : null);
+    formData.append("LetterHeadImage", letterheadFile ? letterheadFile : null);
     formData.append("LandingPage", values.LandingPage);
 
-    const token = localStorage.getItem("token");
+    try {
+      setLoading(true);
+      const token = localStorage.getItem("token");
 
-    fetch(`${BASE_URL}/Company/CreateCompany`, {
-      method: "POST",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.statusCode == 200) {
-          toast.success(data.message);
-          setOpen(false);
-          fetchItems();
-        } else {
-          toast.error(data.message);
-        }
-      })
-      .catch((error) => {
-        toast.error(error.message || "");
+      const response = await fetch(`${BASE_URL}/Company/CreateCompany`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
+
+      const data = await response.json();
+      if (data.statusCode == 200) {
+        toast.success(data.message);
+        setOpen(false);
+        fetchItems();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message || "");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -114,6 +168,10 @@ export default function AddCompany({ fetchItems }) {
         aria-describedby="modal-modal-description"
       >
         <Box sx={style} className="bg-black">
+          <Tabs value={tabIndex} onChange={handleTabChange} sx={{ mb: 2 }}>
+            <Tab label="Basic" />
+            <Tab label="Letterhead" />
+          </Tabs>
           <Formik
             initialValues={{
               Name: "",
@@ -128,18 +186,20 @@ export default function AddCompany({ fetchItems }) {
           >
             {({ errors, touched, values, setFieldValue }) => (
               <Form>
-                <Box>
-                  <Typography
-                    variant="h5"
-                    sx={{
-                      fontWeight: "500",
-                      mb: "12px",
-                    }}
-                  >
-                    Add Company
-                  </Typography>
-                </Box>
-                <Box sx={{ height: "60vh", overflowY: "scroll" }} my={2}>
+                {tabIndex === 0 && (
+                  <>
+                    <Box>
+                      <Typography
+                        variant="h5"
+                        sx={{
+                          fontWeight: "500",
+                          mb: "12px",
+                        }}
+                      >
+                        Add Company
+                      </Typography>
+                    </Box>
+                    <Box sx={{ height: "60vh", overflowY: "scroll" }} my={2}>
                   <Grid spacing={1} container>
                     <Grid item xs={12} mt={1}>
                       <Typography
@@ -264,50 +324,124 @@ export default function AddCompany({ fetchItems }) {
                         size="small"
                       />
                     </Grid>
-                    
-                  </Grid>
-                  <Grid item xs={12} my={1}>
-                    <Typography>Logo Upload</Typography>
-                    <Button
-                      component="label"
-                      role={undefined}
-                      variant="contained"
-                      fullWidth
-                      tabIndex={-1}
-                      startIcon={<CloudUploadIcon />}
-                    >
-                      Upload files
-                      <VisuallyHiddenInput
-                        type="file"
-                        onChange={(event) => {
-                          var file = event.target.files[0]
-                          setLogo(file);
-                          setImage(URL.createObjectURL(file));
-                        }}
-                        multiple
-                      />
-                    </Button>
-                  </Grid>
+                    <Grid item xs={12} my={1}>
+                      <Typography>Logo Upload</Typography>
+                      <Button
+                        component="label"
+                        role={undefined}
+                        variant="contained"
+                        fullWidth
+                        tabIndex={-1}
+                        startIcon={<CloudUploadIcon />}
+                      >
+                        Upload files
+                        <VisuallyHiddenInput
+                          type="file"
+                          onChange={(event) => {
+                            var file = event.target.files[0]
+                            setLogo(file);
+                            setImage(URL.createObjectURL(file));
+                          }}
+                          multiple
+                        />
+                      </Button>
+                    </Grid>
 
-                  <Grid item xs={12} my={1}>
-                    {image != "" ?
-                      <Box sx={{ width: "100%", height: 200, backgroundSize: 'cover', backgroundImage: `url(${image})` }}></Box>
-                      : ""}
+                    <Grid item xs={12} my={1}>
+                      {image != "" ?
+                        <Box sx={{ width: "100%", height: 200, backgroundSize: 'cover', backgroundImage: `url(${image})` }}></Box>
+                        : ""}
+                    </Grid>
                   </Grid>
-                </Box>
-                <Box display="flex" justifyContent="space-between">
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={handleClose}
-                    size="small"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="contained" size="small">
-                    Save
-                  </Button>
-                </Box>
+                    </Box>
+                    <Box display="flex" justifyContent="space-between">
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleClose}
+                        size="small"
+                        disabled={loading}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        variant="contained" 
+                        size="small"
+                        disabled={loading}
+                        startIcon={loading ? <CircularProgress size={16} /> : null}
+                      >
+                        {loading ? "Saving..." : "Save"}
+                      </Button>
+                    </Box>
+                  </>
+                )}
+
+                {tabIndex === 1 && (
+                  <Box sx={{ height: "60vh", overflowY: "scroll" }} my={2}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Upload Letterhead Image (A4 size: 210mm x 297mm / 2480 x 3508 px at 300 DPI)
+                        </Typography>
+                        <Button
+                          component="label"
+                          role={undefined}
+                          variant="contained"
+                          fullWidth
+                          tabIndex={-1}
+                          startIcon={<CloudUploadIcon />}
+                        >
+                          Upload Letterhead
+                          <VisuallyHiddenInput
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLetterheadChange}
+                          />
+                        </Button>
+                      </Grid>
+                      <Grid item xs={12}>
+                        {letterheadImage && (
+                          <Box 
+                            sx={{
+                              width: "100%",
+                              height: 400,
+                              backgroundSize: 'contain',
+                              backgroundRepeat: 'no-repeat',
+                              backgroundPosition: 'center',
+                              backgroundImage: `url(${letterheadImage})`,
+                              border: '1px solid #ddd',
+                              borderRadius: 1
+                            }}
+                          />
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+
+                {tabIndex === 1 && (
+                  <Box display="flex" justifyContent="space-between" mt={2}>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      onClick={handleClose}
+                      size="small"
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      variant="contained" 
+                      size="small"
+                      disabled={loading}
+                      startIcon={loading ? <CircularProgress size={16} /> : null}
+                    >
+                      {loading ? "Saving..." : "Save"}
+                    </Button>
+                  </Box>
+                )}
               </Form>
             )}
           </Formik>

@@ -109,6 +109,9 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
   const handleClose = () => {
     setOpen(false);
   };
+  
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const verificationLink = `${baseUrl}/userverified`;
 
   const handleSubmit = (values) => {
     fetch(`${BASE_URL}/User/UpdateUser`, {
@@ -163,6 +166,7 @@ export default function EditUserDialog({ item, fetchItems, warehouses, roles }) 
               EmailConfirmed: 0,
               WarehouseId: item.warehouseId || "",
               SalesPersonId: item.salesPersonId || null,
+              VerifyLink: verificationLink
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

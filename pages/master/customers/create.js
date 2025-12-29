@@ -19,8 +19,9 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import * as Yup from "yup";
 import BASE_URL from "Base/api";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
-const validationSchema = Yup.object().shape({
+const getValidationSchema = (isCustomerNICRequired) => Yup.object().shape({
   Title: Yup.string().required("Title is required"),
   FirstName: Yup.string().required("First Name is required"),
   LastName: Yup.string(),
@@ -29,11 +30,24 @@ const validationSchema = Yup.object().shape({
   AddressLine3: Yup.string(),
   Designation: Yup.string(),
   Company: Yup.string(),
-  NIC: Yup.string().matches(
-    /^\d{9}(\d{3})?$/,
-    "NIC must be either 9 or 12 digits long"
-  ).required("NIC is required"),
-  DateOfBirth: Yup.date(),
+  NIC: Yup.string().test(
+    "nic-format",
+    function (value) {
+      if (!value || value.trim() === "") {
+        // If NIC is required, show error; otherwise allow empty
+        if (isCustomerNICRequired) {
+          return this.createError({ message: "NIC is required" });
+        }
+        return true; // Allow empty NIC
+      }
+      // Validate format if value is provided
+      if (!/^\d{9}(\d{3})?$/.test(value)) {
+        return this.createError({ message: "NIC must be either 9 or 12 digits long" });
+      }
+      return true;
+    }
+  ),
+  DateOfBirth: Yup.date().nullable(),
   CustomerContactDetails: Yup.array().of(
     Yup.object().shape({
       ContactName: Yup.string().required("Contact Name is required"),
@@ -51,6 +65,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
   const [open, setOpen] = React.useState(false);
   const [scroll, setScroll] = React.useState("paper");
   const [titleList, setTitleList] = useState([]);
+  const { data: isCustomerNICRequired } = IsAppSettingEnabled("IsCustomerNICRequired");
   const [contacts, setContacts] = useState([
     { ContactName: "", ContactNo: "", EmailAddress: "" },
   ]);
@@ -112,7 +127,8 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
   }, [open]);
 
   const handleSubmit = (values) => {
-    values.DateOfBirth = birthdate ? birthdate : "1000-01-01";
+    values.NIC = values.NIC || "";
+    values.DateOfBirth = birthdate || null;
     values.LastName = values.LastName ? values.LastName : "-";
     const token = localStorage.getItem("token");
     fetch(`${BASE_URL}/Customer/CreateCustomer`, {
@@ -236,7 +252,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                   ContactNo: "",
                 })),
               }}
-              validationSchema={validationSchema}
+              validationSchema={getValidationSchema(isCustomerNICRequired)}
               onSubmit={handleSubmit}
             >
               {({ errors, touched, values, setFieldValue }) => (

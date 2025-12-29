@@ -368,7 +368,7 @@ function MyApp({ Component, pageProps }) {
   }
 
   // Exclude customer/quote and customer/invoice pages from layout and token check
-  const noLayoutRoutes = ["/crm/customer/quote", "/crm/customer/invoice", "/verified"];
+  const noLayoutRoutes = ["/crm/customer/quote", "/crm/customer/invoice", "/verified", "/userverified"];
   const shouldUseLayout = !noLayoutRoutes.includes(router.pathname);
   const shouldCheckToken = !noLayoutRoutes.includes(router.pathname);
 

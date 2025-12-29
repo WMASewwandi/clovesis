@@ -17,6 +17,7 @@ import BASE_URL from "Base/api";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
+import useLoggedUserCompanyLetterhead from "@/hooks/useLoggedUserCompanyLetterhead";
 
 export default function CustomerQuote() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function CustomerQuote() {
   const [loadingQuote, setLoadingQuote] = useState(true);
   const canvasRef = useRef(null);
   const fileInputRef = useRef(null);
+  const { letterheadImage } = useLoggedUserCompanyLetterhead();
 
 
   useEffect(() => {
@@ -377,7 +379,9 @@ export default function CustomerQuote() {
             marginBottom: 4,
             position: "relative",
             backgroundColor: "white",
-            backgroundImage: { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
+            backgroundImage: letterheadImage 
+              ? { xs: "none", sm: `url('${letterheadImage}')` }
+              : { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",

@@ -41,7 +41,7 @@ const validationSchema = Yup.object().shape({
   ),
 });
 
-export default function AddCustomerDialog({ fetchItems }) {
+export default function AddCustomerDialog({ fetchItems, showIconOnly = false }) {
   const [open, setOpen] = React.useState(false);
   const [scroll, setScroll] = React.useState("paper");
   const [titleList, setTitleList] = useState([]);
@@ -195,9 +195,9 @@ export default function AddCustomerDialog({ fetchItems }) {
             position: "relative",
             top: "-2px",
           }}
-          className="mr-5px"
-        />{" "}
-        Create New Customer
+          className={showIconOnly ? "" : "mr-5px"}
+        />
+        {!showIconOnly && " Create New Customer"}
       </Button>
 
       <Dialog

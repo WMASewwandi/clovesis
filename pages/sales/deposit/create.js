@@ -11,7 +11,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider, CircularProgress, Tooltip as MuiTooltip } from "@mui/material";
+import { Box, Button, IconButton, MenuItem, Select, TextField, Typography, Divider, CircularProgress, Tooltip as MuiTooltip, Tabs, Tab } from "@mui/material";
 import { toast, ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -57,12 +57,16 @@ export default function CreateDailyDeposit() {
   });
   const [invoiceLineDetailsModalOpen, setInvoiceLineDetailsModalOpen] = useState(false);
   const [invoiceLineDetails, setInvoiceLineDetails] = useState([]);
+  const [selectedSalesPersonTab, setSelectedSalesPersonTab] = useState(0);
   const [loadingInvoiceDetails, setLoadingInvoiceDetails] = useState(false);
   const [selectedSupplierForDetails, setSelectedSupplierForDetails] = useState(null);
   const [bankAssignmentModalOpen, setBankAssignmentModalOpen] = useState(false);
   const [supplierNeedingBank, setSupplierNeedingBank] = useState(null);
   const [selectedBankForAssignment, setSelectedBankForAssignment] = useState(null);
   const [profitBreakdownModalOpen, setProfitBreakdownModalOpen] = useState(false);
+  const [salesPersonBankSelection, setSalesPersonBankSelection] = useState({}); // { salesPersonName: bankId }
+  const [supplierInvoiceLineDetails, setSupplierInvoiceLineDetails] = useState({}); // { supplierKey: invoiceLineDetails[] }
+  const [supplierSalesPersonBanks, setSupplierSalesPersonBanks] = useState({}); // { supplierKey: { salesPersonName: bankId } }
 
 
   const fetchDepositSummary = async (date) => {
@@ -105,6 +109,8 @@ export default function CreateDailyDeposit() {
           totalInvoice: data.result.totalInvoice || 0,
           totalInvoiceCash: data.result.totalInvoiceCash || 0,
           totalInvoiceCard: data.result.totalInvoiceCard || 0,
+          totalInvoiceBankTransfer: data.result.totalInvoiceBankTransfer || 0,
+          totalInvoiceCheque: data.result.totalInvoiceCheque || 0,
           totalInvoiceCredit: data.result.totalInvoiceCredit || 0
         };
         setDepositSummary(mappedData);
@@ -188,6 +194,9 @@ export default function CreateDailyDeposit() {
 
   useEffect(() => {
     if (selectedDate) {
+      // Clear stored invoice line details when fetching new deposit summary
+      setSupplierInvoiceLineDetails({});
+      setSupplierSalesPersonBanks({});
       fetchDepositSummary(selectedDate);
       fetchSummaryTotals(selectedDate);
     } else {
@@ -296,9 +305,57 @@ export default function CreateDailyDeposit() {
 
       if (data.result) {
         setInvoiceLineDetails(data.result);
+        setSelectedSalesPersonTab(0);
+        
+        // Store invoice line details for this supplier
+        const supplierKey = getSupplierKey(item);
+        setSupplierInvoiceLineDetails(prev => ({
+          ...prev,
+          [supplierKey]: data.result
+        }));
+        
+        // Initialize bank selection for each sales person from the supplier's bank
+        const groupedBySalesPerson = data.result.reduce((acc, detail) => {
+          const salesPersonName = detail.salesPersonName || "N/A";
+          if (!acc[salesPersonName]) {
+            acc[salesPersonName] = [];
+          }
+          acc[salesPersonName].push(detail);
+          return acc;
+        }, {});
+        
+        const initialBankSelection = {};
+        Object.keys(groupedBySalesPerson).forEach(salesPersonName => {
+          // Use the supplier's current bank if available
+          if (item.bankId && item.bankId > 0) {
+            initialBankSelection[salesPersonName] = item.bankId;
+          }
+        });
+        setSalesPersonBankSelection(initialBankSelection);
+        
+        // Store bank selections for this supplier
+        setSupplierSalesPersonBanks(prev => ({
+          ...prev,
+          [supplierKey]: initialBankSelection
+        }));
+        
         setInvoiceLineDetailsModalOpen(true);
       } else {
         setInvoiceLineDetails([]);
+        setSelectedSalesPersonTab(0);
+        setSalesPersonBankSelection({});
+        
+        // Store empty invoice line details
+        const supplierKey = getSupplierKey(item);
+        setSupplierInvoiceLineDetails(prev => ({
+          ...prev,
+          [supplierKey]: []
+        }));
+        setSupplierSalesPersonBanks(prev => ({
+          ...prev,
+          [supplierKey]: {}
+        }));
+        
         setInvoiceLineDetailsModalOpen(true);
       }
     } catch (error) {
@@ -540,7 +597,9 @@ export default function CreateDailyDeposit() {
   const invoiceChartData = [
     { name: "Cash", value: depositSummary?.totalInvoiceCash || 0, color: "#16A34A" },
     { name: "Card", value: depositSummary?.totalInvoiceCard || 0, color: "#2563EB" },
-    { name: "Credit", value: depositSummary?.totalInvoiceCredit || 0, color: "#D97706" }
+    { name: "Bank Transfer", value: depositSummary?.totalInvoiceBankTransfer || 0, color: "#D97706" },
+    { name: "Cheque", value: depositSummary?.totalInvoiceCheque || 0, color: "#DB2777" },
+    { name: "Credit", value: depositSummary?.totalInvoiceCredit || 0, color: "#F59E0B" }
   ].filter(item => item.value > 0);
 
   const availableSuppliers = depositSummary?.supplierDetails?.filter(
@@ -581,59 +640,12 @@ export default function CreateDailyDeposit() {
     );
   };
 
-  // Render bank selection cell
-  const renderBankCell = (item) => {
-    const supplierIndex = findSupplierIndex(item);
-    const hasBank = item.bankId && item.bankId > 0;
-
-    return (
-      <TableCell
-        sx={{ color: "#6B7280", py: 1, fontSize: "0.8125rem" }}
-        onClick={(e) => e.stopPropagation()}
-        onDoubleClick={(e) => e.stopPropagation()}
-      >
-        <Select
-          value={item.bankId || ""}
-          onChange={(e) => {
-            e.stopPropagation();
-            const selectedBankId = e.target.value;
-            const bank = banks.find(b => b.id === selectedBankId);
-            if (bank && supplierIndex >= 0) {
-              updateSupplierBank(
-                supplierIndex,
-                bank.id,
-                bank.name,
-                bank.accountNo || "",
-                bank.accountUsername || ""
-              );
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-          displayEmpty
-          size="small"
-          sx={{
-            minWidth: 120,
-            fontSize: "0.8125rem",
-            height: "32px",
-            "& .MuiSelect-select": {
-              py: 0.5,
-              color: hasBank ? "#111827" : "#EF4444",
-              fontWeight: hasBank ? 400 : 500
-            }
-          }}
-        >
-          <MenuItem value="">
-            <em style={{ color: "#EF4444" }}>Select Bank</em>
-          </MenuItem>
-          {banks.map((bank) => (
-            <MenuItem key={bank.id} value={bank.id}>
-              {bank.name}
-            </MenuItem>
-          ))}
-        </Select>
-      </TableCell>
-    );
+  // Helper function to generate a unique key for a supplier
+  const getSupplierKey = (item) => {
+    if (!item) return "";
+    return `${item.supplierId}_${item.itemType || 1}_${item.isFromReceipt ? 'R' : 'I'}_${item.isProfitAccount ? 'P' : 'N'}_${item.receiptNumber || ''}`;
   };
+
 
   const handleSubmitAllSuppliers = async () => {
     if (!depositSummary?.supplierDetails || depositSummary.supplierDetails.length === 0) {
@@ -641,37 +653,105 @@ export default function CreateDailyDeposit() {
       return;
     }
 
-    // Validate that all entries have a bank assigned
     const allSuppliers = depositSummary.supplierDetails;
-    const entriesWithoutBank = allSuppliers.filter((item) => {
-      const hasAmount = ((item.totalCost || 0) + (item.totalProfit || 0) + (item.cashAmount || 0)) > 0;
-      const hasBank = item.bankId && item.bankId > 0;
-      return hasAmount && !hasBank;
-    });
+    const depositLineDetails = [];
 
-    if (entriesWithoutBank.length > 0) {
-      const entryNames = entriesWithoutBank.map(e => e.supplierName).join(", ");
-      toast.error(`Please assign a bank for: ${entryNames}`);
-      return;
-    }
+    // Process each supplier
+    for (const row of allSuppliers) {
+      const supplierKey = getSupplierKey(row);
+      const invoiceDetails = supplierInvoiceLineDetails[supplierKey] || [];
+      const salesPersonBanks = supplierSalesPersonBanks[supplierKey] || {};
 
-    // Calculate total amount from all suppliers (Cost + Profit only)
-    const calculatedTotalAmount = allSuppliers.reduce((sum, item) => {
-      const itemTotal = (item.totalCost || 0) + (item.totalProfit || 0);
-      return sum + itemTotal;
-    }, 0);
+      // Check if this supplier has invoice line details with multiple sales persons
+      if (invoiceDetails && invoiceDetails.length > 0) {
+        // Group invoice details by sales person
+        const groupedBySalesPerson = invoiceDetails.reduce((acc, detail) => {
+          const salesPersonName = detail.salesPersonName || "N/A";
+          if (!acc[salesPersonName]) {
+            acc[salesPersonName] = [];
+          }
+          acc[salesPersonName].push(detail);
+          return acc;
+        }, {});
 
-  
+        const salesPersonNames = Object.keys(groupedBySalesPerson);
 
-    // Prepare data for all suppliers
-    const data = {
-      DepositDate: formatDate(selectedDate),
-      TotalAmount: parseFloat(calculatedTotalAmount),
-      DailyDepositLineDetails: allSuppliers.map((row) => {
-        // Calculate amount for this row (Cost + Profit only)
+        // If multiple sales persons, create separate lines for each
+        if (salesPersonNames.length > 1) {
+          for (const salesPersonName of salesPersonNames) {
+            const detailsForSalesPerson = groupedBySalesPerson[salesPersonName];
+            const bankId = salesPersonBanks[salesPersonName];
+
+            // Validate bank selection for this sales person
+            if (!bankId || bankId === 0 || bankId === "") {
+              toast.error(`Please assign a bank for ${row.supplierName} - ${salesPersonName} tab`);
+              return;
+            }
+
+            // Calculate amounts for this sales person tab
+            const lineTotal = detailsForSalesPerson.reduce((sum, d) => sum + (d.lineTotal || 0), 0);
+            const costPrice = detailsForSalesPerson.reduce((sum, d) => sum + (d.costPrice || 0), 0);
+            const profit = detailsForSalesPerson.reduce((sum, d) => sum + (d.profit || 0), 0);
+            const amount = lineTotal; // Use lineTotal as the amount
+
+            // Get bank details
+            const bank = banks.find(b => b.id === bankId);
+
+            // Create description with sales person information
+            const description = `Sales Person: ${salesPersonName} | Items: ${detailsForSalesPerson.length} | Line Total: ${formatCurrency(lineTotal)} | Cost: ${formatCurrency(costPrice)} | Profit: ${formatCurrency(profit)}`;
+
+            depositLineDetails.push({
+              SupplierId: String(row.supplierId || 0).startsWith('SUMMARY_') || row.isProfitAccount ? 0 : (row.supplierId || 0),
+              Supplier: `${row.supplierName} - ${salesPersonName}`,
+              Amount: amount,
+              BankId: bankId,
+              BankAccountNumber: bank?.accountNo || "",
+              CashAmount: 0,
+              CardAmount: 0,
+              BankTransferAmount: 0,
+              ChequeAmount: 0,
+              Description: description,
+            });
+          }
+        } else {
+          // Single sales person or no sales person grouping - use existing logic
+          const salesPersonName = salesPersonNames[0] || "N/A";
+          const bankId = salesPersonBanks[salesPersonName] || row.bankId;
+
+          // Validate bank selection
+          if (!bankId || bankId === 0 || bankId === "") {
+            toast.error(`Please assign a bank for: ${row.supplierName}`);
+            return;
+          }
+
+          const rowAmount = (row.totalCost || 0) + (row.totalProfit || 0);
+          const bank = banks.find(b => b.id === bankId);
+
+          depositLineDetails.push({
+            SupplierId: String(row.supplierId || 0).startsWith('SUMMARY_') || row.isProfitAccount ? 0 : (row.supplierId || 0),
+            Supplier: row.supplierName || "",
+            Amount: rowAmount,
+            BankId: bankId,
+            BankAccountNumber: bank?.accountNo || "",
+            CashAmount: row.cashAmount || 0,
+            CardAmount: 0,
+            BankTransferAmount: 0,
+            ChequeAmount: 0,
+          });
+        }
+      } else {
+        // No invoice line details - use existing logic
+        const hasAmount = ((row.totalCost || 0) + (row.totalProfit || 0) + (row.cashAmount || 0)) > 0;
+        const hasBank = row.bankId && row.bankId > 0;
+
+        if (hasAmount && !hasBank) {
+          toast.error(`Please assign a bank for: ${row.supplierName}`);
+          return;
+        }
+
         const rowAmount = (row.totalCost || 0) + (row.totalProfit || 0);
 
-        return {
+        depositLineDetails.push({
           SupplierId: String(row.supplierId || 0).startsWith('SUMMARY_') || row.isProfitAccount ? 0 : (row.supplierId || 0),
           Supplier: row.supplierName || "",
           Amount: rowAmount,
@@ -681,8 +761,18 @@ export default function CreateDailyDeposit() {
           CardAmount: 0,
           BankTransferAmount: 0,
           ChequeAmount: 0,
-        };
-      }),
+        });
+      }
+    }
+
+    // Calculate total amount from all deposit lines
+    const calculatedTotalAmount = depositLineDetails.reduce((sum, line) => sum + (line.Amount || 0), 0);
+
+    // Prepare data for submission
+    const data = {
+      DepositDate: formatDate(selectedDate),
+      TotalAmount: parseFloat(calculatedTotalAmount),
+      DailyDepositLineDetails: depositLineDetails,
     };
 
     try {
@@ -727,9 +817,15 @@ export default function CreateDailyDeposit() {
       const result = await response.json();
       if (result) {
         setSelectedDate(date);
+        // Clear stored invoice line details when date changes
+        setSupplierInvoiceLineDetails({});
+        setSupplierSalesPersonBanks({});
       } else {
         toast.info("Unable to proceed — day end not completed for " + formatDate(date));
         setSelectedDate(null);
+        // Clear stored invoice line details when date is cleared
+        setSupplierInvoiceLineDetails({});
+        setSupplierSalesPersonBanks({});
         return;
       }
       return result;
@@ -786,7 +882,7 @@ export default function CreateDailyDeposit() {
               <CardContent sx={{ p: 0, display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                 <Box
                   sx={{
-                    p: 1.5,
+                    p: 1,
                     borderBottom: "1px solid #E5E7EB",
                     bgcolor: "#FAFBFC",
                     flexShrink: 0
@@ -797,7 +893,7 @@ export default function CreateDailyDeposit() {
                     sx={{
                       fontWeight: 600,
                       color: "#1F2937",
-                      fontSize: "0.9375rem"
+                      fontSize: "0.875rem"
                     }}
                   >
                     Supplier-wise Totals
@@ -811,12 +907,14 @@ export default function CreateDailyDeposit() {
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
                           color: "#374151",
-                          fontSize: "0.7rem",
+                          fontSize: "0.65rem",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "40px"
+                          py: 0.5,
+                          px: 1,
+                          width: "35px",
+                          minWidth: "35px"
                         }}>
                           #
                         </TableCell>
@@ -824,37 +922,27 @@ export default function CreateDailyDeposit() {
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
                           color: "#374151",
-                          fontSize: "0.7rem",
+                          fontSize: "0.65rem",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           borderBottom: "2px solid #E5E7EB",
-                          py: 1
+                          py: 0.5,
+                          px: 1
                         }}>
                           Supplier Name
-                        </TableCell>
-                        <TableCell sx={{
-                          fontWeight: 600,
-                          bgcolor: "#F9FAFB",
-                          color: "#374151",
-                          fontSize: "0.7rem",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                          borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "120px"
-                        }}>
-                          Sales Person
                         </TableCell>
                         <TableCell align="right" sx={{
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
                           color: "#374151",
-                          fontSize: "0.7rem",
+                          fontSize: "0.65rem",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "100px"
+                          py: 0.5,
+                          px: 1,
+                          width: "90px",
+                          minWidth: "90px"
                         }}>
                           Cost
                         </TableCell>
@@ -862,12 +950,14 @@ export default function CreateDailyDeposit() {
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
                           color: "#374151",
-                          fontSize: "0.7rem",
+                          fontSize: "0.65rem",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "100px"
+                          py: 0.5,
+                          px: 1,
+                          width: "90px",
+                          minWidth: "90px"
                         }}>
                           Profit
                         </TableCell>
@@ -875,48 +965,37 @@ export default function CreateDailyDeposit() {
                           fontWeight: 600,
                           bgcolor: "#F9FAFB",
                           color: "#374151",
-                          fontSize: "0.7rem",
+                          fontSize: "0.65rem",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                           borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "120px"
+                          py: 0.5,
+                          px: 1,
+                          width: "100px",
+                          minWidth: "100px"
                         }}>
                           Total
-                        </TableCell>
-                        <TableCell sx={{
-                          fontWeight: 600,
-                          bgcolor: "#F9FAFB",
-                          color: "#374151",
-                          fontSize: "0.7rem",
-                          textTransform: "uppercase",
-                          letterSpacing: "0.5px",
-                          borderBottom: "2px solid #E5E7EB",
-                          py: 1,
-                          width: "100px"
-                        }}>
-                          Bank
                         </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {!selectedDate ? (
                         <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                            <Typography color="textSecondary">Please select a deposit date.</Typography>
+                          <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                            <Typography color="textSecondary" sx={{ fontSize: "0.75rem" }}>Please select a deposit date.</Typography>
                           </TableCell>
                         </TableRow>
                       ) : !depositSummary ? (
                         <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                            <CircularProgress size={24} sx={{ mr: 1 }} />
-                            <Typography color="textSecondary">Loading...</Typography>
+                          <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                            <CircularProgress size={20} sx={{ mr: 1 }} />
+                            <Typography color="textSecondary" sx={{ fontSize: "0.75rem" }}>Loading...</Typography>
                           </TableCell>
                         </TableRow>
                       ) : depositSummary.supplierDetails?.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                            <Typography color="textSecondary">No supplier data found for the selected date.</Typography>
+                          <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                            <Typography color="textSecondary" sx={{ fontSize: "0.75rem" }}>No supplier data found for the selected date.</Typography>
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -944,14 +1023,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Items
@@ -974,23 +1054,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName}
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
-                                            {item.salesPersonName || "N/A"}
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalProfit || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1002,14 +1078,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Outlets
@@ -1032,23 +1109,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName}
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
-                                            {item.salesPersonName || "N/A"}
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalProfit || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1060,14 +1133,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#F3F4F6",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         DBR
@@ -1092,23 +1166,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName}
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: "#9CA3AF" }}>
-                                            -
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalProfit || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1120,14 +1190,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Receipt Items
@@ -1150,23 +1221,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName} (Receipt: {item.receiptNumber})
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
-                                            {item.salesPersonName || "N/A"}
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalProfit || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1178,14 +1245,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Receipt Outlets
@@ -1208,23 +1276,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName} (Receipt: {item.receiptNumber})
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: item.salesPersonName ? "#10B981" : "#9CA3AF", fontStyle: item.salesPersonName ? "normal" : "italic" }}>
-                                            {item.salesPersonName || "N/A"}
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalProfit || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1236,14 +1300,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#FEF3C7",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Receipt DBR
@@ -1284,7 +1349,6 @@ export default function CreateDailyDeposit() {
                                           <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
                                             {formatCurrency(total)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -1296,14 +1360,15 @@ export default function CreateDailyDeposit() {
                                   <>
                                     <TableRow>
                                       <TableCell
-                                        colSpan={7}
+                                        colSpan={5}
                                         sx={{
                                           bgcolor: "#DBEAFE",
                                           fontWeight: 600,
                                           color: "#1F2937",
-                                          py: 0.75,
+                                          py: 0.5,
+                                          px: 1,
                                           borderBottom: "2px solid #E5E7EB",
-                                          fontSize: "0.8125rem"
+                                          fontSize: "0.75rem"
                                         }}
                                       >
                                         Profit Accounts
@@ -1328,23 +1393,19 @@ export default function CreateDailyDeposit() {
                                             }
                                           }}
                                         >
-                                          <TableCell sx={{ py: 1, color: "#6B7280", fontSize: "0.8125rem" }}>{rowIndex}</TableCell>
-                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell sx={{ py: 0.5, px: 1, color: "#6B7280", fontSize: "0.75rem" }}>{rowIndex}</TableCell>
+                                          <TableCell sx={{ fontWeight: 500, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {item.supplierName}
                                           </TableCell>
-                                          <TableCell sx={{ py: 1, fontSize: "0.8125rem", color: "#9CA3AF" }}>
-                                            -
-                                          </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(item.totalCost || 0)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ color: "#374151", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ color: "#374151", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(adjustedProfit)}
                                           </TableCell>
-                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 1, fontSize: "0.8125rem" }}>
+                                          <TableCell align="right" sx={{ fontWeight: 600, color: "#111827", py: 0.5, px: 1, fontSize: "0.75rem" }}>
                                             {formatCurrency(adjustedTotal)}
                                           </TableCell>
-                                          {renderBankCell(item)}
                                         </TableRow>
                                       );
                                     })}
@@ -2588,7 +2649,11 @@ export default function CreateDailyDeposit() {
       {/* Invoice Line Details Modal */}
       <Modal
         open={invoiceLineDetailsModalOpen}
-        onClose={() => setInvoiceLineDetailsModalOpen(false)}
+        onClose={() => {
+          setInvoiceLineDetailsModalOpen(false);
+          // Optionally clear bank selection when modal closes
+          // setSalesPersonBankSelection({});
+        }}
         aria-labelledby="invoice-line-details-modal"
         aria-describedby="invoice-line-details-description"
       >
@@ -2644,7 +2709,7 @@ export default function CreateDailyDeposit() {
             </IconButton>
           </Box>
 
-          <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {loadingInvoiceDetails ? (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "200px" }}>
                 <CircularProgress />
@@ -2653,60 +2718,211 @@ export default function CreateDailyDeposit() {
               <Box sx={{ textAlign: "center", py: 4 }}>
                 <Typography color="textSecondary">No invoice line details found.</Typography>
               </Box>
-            ) : (
-              <TableContainer>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>#</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Invoice Number</TableCell>
-                      <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Item Name</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Quantity</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Line Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Cost Price</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Profit</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {invoiceLineDetails.map((detail, index) => (
-                      <TableRow
-                        key={index}
+            ) : (() => {
+              // Group invoice line details by sales person
+              const groupedBySalesPerson = invoiceLineDetails.reduce((acc, detail) => {
+                const salesPersonName = detail.salesPersonName || "N/A";
+                if (!acc[salesPersonName]) {
+                  acc[salesPersonName] = [];
+                }
+                acc[salesPersonName].push(detail);
+                return acc;
+              }, {});
+
+              const salesPersonNames = Object.keys(groupedBySalesPerson).sort((a, b) => {
+                if (a === "N/A") return 1;
+                if (b === "N/A") return -1;
+                return a.localeCompare(b);
+              });
+
+              // Ensure selected tab index is valid
+              const validTabIndex = Math.min(Math.max(0, selectedSalesPersonTab), salesPersonNames.length - 1);
+
+              const currentSalesPersonName = salesPersonNames[validTabIndex] || salesPersonNames[0];
+              const currentDetails = groupedBySalesPerson[currentSalesPersonName] || [];
+
+              return (
+                <>
+                  <Box sx={{ borderBottom: 1, borderColor: "divider", bgcolor: "#FAFBFC" }}>
+                    <Tabs
+                      value={validTabIndex}
+                      onChange={(e, newValue) => setSelectedSalesPersonTab(newValue)}
+                      variant="scrollable"
+                      scrollButtons="auto"
+                      sx={{
+                        "& .MuiTab-root": {
+                          textTransform: "none",
+                          fontWeight: 500,
+                          minHeight: 48,
+                          color: "#6B7280",
+                          "&.Mui-selected": {
+                            color: "#10B981",
+                            fontWeight: 600
+                          }
+                        },
+                        "& .MuiTabs-indicator": {
+                          backgroundColor: "#10B981"
+                        }
+                      }}
+                    >
+                      {salesPersonNames.map((name, index) => (
+                        <Tab
+                          key={name}
+                          label={
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Typography variant="body2" sx={{ fontWeight: "inherit" }}>
+                                {name}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  bgcolor: name === "N/A" ? "#9CA3AF" : "#10B981",
+                                  color: "white",
+                                  px: 1,
+                                  py: 0.25,
+                                  borderRadius: 1,
+                                  fontSize: "0.7rem"
+                                }}
+                              >
+                                {groupedBySalesPerson[name].length}
+                              </Typography>
+                            </Box>
+                          }
+                        />
+                      ))}
+                    </Tabs>
+                  </Box>
+                  {/* Bank Selection for Current Tab */}
+                  <Box sx={{ px: 3, py: 2, borderBottom: "1px solid #E5E7EB", bgcolor: "#FAFBFC" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Typography
+                        variant="body2"
                         sx={{
-                          "&:hover": {
-                            bgcolor: "#F9FAFB"
+                          fontWeight: 600,
+                          color: "#374151",
+                          minWidth: "80px"
+                        }}
+                      >
+                        Select Bank:
+                      </Typography>
+                      <Select
+                        value={salesPersonBankSelection[currentSalesPersonName] || ""}
+                        onChange={(e) => {
+                          const selectedBankId = e.target.value;
+                          const bank = banks.find(b => b.id === selectedBankId);
+                          
+                          // Update the bank selection state
+                          setSalesPersonBankSelection(prev => ({
+                            ...prev,
+                            [currentSalesPersonName]: selectedBankId
+                          }));
+                          
+                          // Store bank selection for this supplier and sales person
+                          if (selectedSupplierForDetails && bank && selectedBankId) {
+                            const supplierKey = getSupplierKey(selectedSupplierForDetails);
+                            setSupplierSalesPersonBanks(prev => ({
+                              ...prev,
+                              [supplierKey]: {
+                                ...(prev[supplierKey] || {}),
+                                [currentSalesPersonName]: selectedBankId
+                              }
+                            }));
+                          }
+                        }}
+                        displayEmpty
+                        size="small"
+                        sx={{
+                          minWidth: 250,
+                          fontSize: "0.875rem",
+                          "& .MuiSelect-select": {
+                            py: 0.75,
+                            color: salesPersonBankSelection[currentSalesPersonName] ? "#111827" : "#EF4444",
+                            fontWeight: salesPersonBankSelection[currentSalesPersonName] ? 400 : 500
                           }
                         }}
                       >
-                        <TableCell sx={{ color: "#6B7280" }}>{index + 1}</TableCell>
-                        <TableCell sx={{ fontWeight: 500, color: "#111827" }}>{detail.invoiceNumber}</TableCell>
-                        <TableCell sx={{ color: "#374151" }}>{detail.itemName}</TableCell>
-                        <TableCell align="right" sx={{ color: "#374151" }}>{detail.quantity.toFixed(2)}</TableCell>
-                        <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.lineTotal)}</TableCell>
-                        <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.costPrice)}</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 600, color: detail.profit >= 0 ? "#10B981" : "#EF4444" }}>
-                          {formatCurrency(detail.profit)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow sx={{ bgcolor: "#F9FAFB", fontWeight: 600 }}>
-                      <TableCell colSpan={3} sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
-                        {invoiceLineDetails.reduce((sum, d) => sum + d.quantity, 0).toFixed(2)}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
-                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.lineTotal, 0))}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
-                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.costPrice, 0))}
-                      </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
-                        {formatCurrency(invoiceLineDetails.reduce((sum, d) => sum + d.profit, 0))}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                        <MenuItem value="">
+                          <em style={{ color: "#EF4444" }}>Select Bank</em>
+                        </MenuItem>
+                        {banks.map((bank) => (
+                          <MenuItem key={bank.id} value={bank.id}>
+                            {bank.name} {bank.accountNo ? `- ${bank.accountNo}` : ""}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      {salesPersonBankSelection[currentSalesPersonName] && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#10B981",
+                            fontWeight: 500,
+                            ml: "auto"
+                          }}
+                        >
+                          ✓ Bank Selected
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                  <Box sx={{ flex: 1, overflow: "auto", p: 3 }}>
+                    <TableContainer>
+                      <Table stickyHeader>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>#</TableCell>
+                            <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Invoice Number</TableCell>
+                            <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>GRN Document Number</TableCell>
+                            <TableCell sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Item Name</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Quantity</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Line Total</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Cost Price</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, bgcolor: "#F9FAFB", color: "#374151", fontSize: "0.8125rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Profit</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {currentDetails.map((detail, index) => (
+                            <TableRow
+                              key={index}
+                              sx={{
+                                "&:hover": {
+                                  bgcolor: "#F9FAFB"
+                                }
+                              }}
+                            >
+                              <TableCell sx={{ color: "#6B7280" }}>{index + 1}</TableCell>
+                              <TableCell sx={{ fontWeight: 500, color: "#111827" }}>{detail.invoiceNumber}</TableCell>
+                              <TableCell sx={{ color: "#374151" }}>{detail.grnDocumentNumber || "N/A"}</TableCell>
+                              <TableCell sx={{ color: "#374151" }}>{detail.itemName}</TableCell>
+                              <TableCell align="right" sx={{ color: "#374151" }}>{detail.quantity.toFixed(2)}</TableCell>
+                              <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.lineTotal)}</TableCell>
+                              <TableCell align="right" sx={{ color: "#374151" }}>{formatCurrency(detail.costPrice)}</TableCell>
+                              <TableCell align="right" sx={{ fontWeight: 600, color: detail.profit >= 0 ? "#10B981" : "#EF4444" }}>
+                                {formatCurrency(detail.profit)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow sx={{ bgcolor: "#F9FAFB", fontWeight: 600 }}>
+                            <TableCell colSpan={4} sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>Total</TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                              {currentDetails.reduce((sum, d) => sum + d.quantity, 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                              {formatCurrency(currentDetails.reduce((sum, d) => sum + d.lineTotal, 0))}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                              {formatCurrency(currentDetails.reduce((sum, d) => sum + d.costPrice, 0))}
+                            </TableCell>
+                            <TableCell align="right" sx={{ fontWeight: 600, color: "#1F2937", py: 2 }}>
+                              {formatCurrency(currentDetails.reduce((sum, d) => sum + d.profit, 0))}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                </>
+              );
+            })()}
           </Box>
         </Box>
       </Modal>

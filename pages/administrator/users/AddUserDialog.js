@@ -74,7 +74,11 @@ export default function AddUserDialog({ fetchItems, warehouses, roles }) {
     setOpen(false);
   };
 
+  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+  const verificationLink = `${baseUrl}/userverified`;
+
   const handleSubmit = (values) => {
+
     fetch(`${BASE_URL}/User/SignUp`, {
       method: "POST",
       body: JSON.stringify(values),
@@ -211,6 +215,7 @@ export default function AddUserDialog({ fetchItems, warehouses, roles }) {
               WarehouseId: "",
               SalesPersonId: null,
               CustomerId: null,
+              VerifyLink: verificationLink
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}

@@ -35,6 +35,7 @@ import BASE_URL from "Base/api";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 export default function HelpDeskWorkOrder() {
   useEffect(() => {
@@ -47,6 +48,7 @@ export default function HelpDeskWorkOrder() {
   const [ticketSearch, setTicketSearch] = useState("");
   const [tickets, setTickets] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const { data: IsProfessionalWorkOrderEnabled } = IsAppSettingEnabled(`IsProfessionalWorkOrderEnabled`);
 
   useEffect(() => {
     const fetchTickets = async () => {
@@ -97,6 +99,13 @@ export default function HelpDeskWorkOrder() {
     router.push(`/help-desk/work-order/view?id=${id}`);
   };
 
+  const navigateToViewPdf = (workOrderId, workOrderIssueDate) => {
+    router.push({
+      pathname: '/help-desk/work-order/viewPdf',
+      query: { workOrderId, workOrderIssueDate }
+    });
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this work order?")) {
       return;
@@ -128,6 +137,7 @@ export default function HelpDeskWorkOrder() {
     }
   };
 
+
   const handlePrint = async (id) => {
     try {
       const token = localStorage.getItem("token");
@@ -137,7 +147,7 @@ export default function HelpDeskWorkOrder() {
       }
 
       const url = `${BASE_URL}/HelpDesk/GenerateWorkOrderPdf?workOrderId=${id}`;
-      
+
       // Fetch PDF with authorization header
       const response = await fetch(url, {
         method: "GET",
@@ -149,12 +159,12 @@ export default function HelpDeskWorkOrder() {
 
       if (response.ok) {
         const blob = await response.blob();
-        
+
         // Check if the response is actually a PDF
         if (blob.type === "application/pdf" || blob.type === "") {
           const pdfUrl = window.URL.createObjectURL(blob);
           const newWindow = window.open(pdfUrl, "_blank");
-          
+
           if (!newWindow) {
             // If popup blocked, create download link
             const link = document.createElement("a");
@@ -165,7 +175,7 @@ export default function HelpDeskWorkOrder() {
             document.body.removeChild(link);
             toast.info("PDF downloaded. Please check your downloads folder.");
           }
-          
+
           // Clean up the URL after a delay
           setTimeout(() => window.URL.revokeObjectURL(pdfUrl), 1000);
         } else {
@@ -310,28 +320,38 @@ export default function HelpDeskWorkOrder() {
                           <TableCell>{formatDate(item.workOrderIssueDate)}</TableCell>
                           <TableCell>
                             {item.requiredArrivalDate
-                              ? `${formatDate(item.requiredArrivalDate)} ${
-                                  item.requiredArrivalTime
-                                    ? new Date(`2000-01-01T${item.requiredArrivalTime}`).toLocaleTimeString(
-                                        "en-US",
-                                        { hour: "2-digit", minute: "2-digit" }
-                                      )
-                                    : ""
-                                }`
+                              ? `${formatDate(item.requiredArrivalDate)} ${item.requiredArrivalTime
+                                ? new Date(`2000-01-01T${item.requiredArrivalTime}`).toLocaleTimeString(
+                                  "en-US",
+                                  { hour: "2-digit", minute: "2-digit" }
+                                )
+                                : ""
+                              }`
                               : "N/A"}
                           </TableCell>
                           <TableCell>{item.jobSiteClientName || "N/A"}</TableCell>
                           <TableCell align="right">
                             <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1 }}>
-                              <Tooltip title="View">
-                                <IconButton
-                                  size="small"
-                                  color="primary"
-                                  onClick={() => navigateToView(item.id)}
-                                >
-                                  <VisibilityIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
+                              {!IsProfessionalWorkOrderEnabled ?
+                                <Tooltip title="View Details">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => navigateToView(item.id)}
+                                  >
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip> :
+                                <Tooltip title="View Details">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => navigateToViewPdf(item.id, item.workOrderIssueDate)}
+                                  >
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              }
                               {canPrint && (
                                 <Tooltip title="Print">
                                   <IconButton

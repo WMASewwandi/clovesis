@@ -28,7 +28,7 @@ import useContactsByAccount from "../../../hooks/useContactsByAccount";
 import useLeads from "../../../hooks/useLeads";
 import useQuoteStatuses from "../../../hooks/useQuoteStatuses";
 import BASE_URL from "Base/api";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { Report } from "Base/report";
 import { Catelogue } from "Base/catelogue";
 
@@ -84,10 +84,10 @@ const calculateDiscount = (amount, discountType, discountInput) => {
   if (!discountInput || discountInput === "" || discountInput === 0) {
     return 0;
   }
-  
+
   const inputValue = parseNumber(discountInput, 0);
   const type = String(discountType);
-  
+
   if (type === "2") {
     const percentageValue = (amount * inputValue) / 100;
     return Math.min(percentageValue, amount);
@@ -292,13 +292,13 @@ export default function EditQuote() {
       const leadData = selectedLead.meta;
       const leadAccountId = leadData.accountId ?? leadData.AccountId ?? null;
       const leadContactId = leadData.contactId ?? leadData.ContactId ?? null;
-      
+
       if (leadAccountId != null) {
         setAccountId(String(leadAccountId));
       } else {
         setAccountId("");
       }
-      
+
       if (leadContactId != null) {
         setContactId(String(leadContactId));
       } else {
@@ -501,9 +501,12 @@ export default function EditQuote() {
       if (!response.ok) {
         throw new Error(data?.message || "Failed to update quote");
       }
-
-      toast.success(data?.message || "Quote updated successfully.");
-      router.push("/crm/quotes");
+      if (data.statusCode === 200) {
+        toast.success(data?.message || "Quote updated successfully.");
+        router.push("/crm/quotes");
+      } else {
+        toast.error(data?.message);
+      }
     } catch (error) {
       toast.error(error.message || "Unable to update quote");
     } finally {
@@ -513,6 +516,7 @@ export default function EditQuote() {
 
   return (
     <>
+      <ToastContainer />
       <div className={styles.pageTitle}>
         <h1>{quoteDetails?.quoteNumber ? `Quote #${quoteDetails.quoteNumber}` : "Edit Quote"}</h1>
         <ul>
@@ -608,8 +612,8 @@ export default function EditQuote() {
             <Grid item xs={12}>
               <Box display="flex" alignItems="center" justifyContent="space-between" mt={1} mb={1}>
                 <Typography variant="h6" fontWeight={600}>
-                Quote Items
-              </Typography>
+                  Quote Items
+                </Typography>
                 <Button variant="outlined" startIcon={<AddCircleOutlineIcon />} onClick={handleAddLineItem}>
                   Add Item
                 </Button>
@@ -650,7 +654,7 @@ export default function EditQuote() {
                               </span>
                             </Tooltip>
                           </TableCell>
-                      <TableCell sx={{ px: 1 }}>
+                          <TableCell sx={{ px: 1 }}>
                             <TextField
                               placeholder="Line item description"
                               size="small"
@@ -658,8 +662,8 @@ export default function EditQuote() {
                               value={item.description}
                               onChange={handleLineItemChange(index, "description")}
                             />
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
                             <TextField
                               type="number"
                               size="small"
@@ -669,8 +673,8 @@ export default function EditQuote() {
                               value={item.qty}
                               onChange={handleLineItemChange(index, "qty")}
                             />
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
                             <TextField
                               type="number"
                               size="small"
@@ -680,8 +684,8 @@ export default function EditQuote() {
                               value={item.price}
                               onChange={handleLineItemChange(index, "price")}
                             />
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
+                          </TableCell>
+                          <TableCell sx={{ px: 1 }}>
                             <FormControl fullWidth size="small">
                               <Select
                                 value={item.discountType}
@@ -708,7 +712,7 @@ export default function EditQuote() {
                             {formatCurrency(discountValue)}
                           </TableCell>
                           <TableCell align="right" sx={{ px: 1 }}>{formatCurrency(lineTotal)}</TableCell>
-                    </TableRow>
+                        </TableRow>
                       );
                     })}
                   </TableBody>

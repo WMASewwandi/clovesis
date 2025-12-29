@@ -18,6 +18,7 @@ import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import SendIcon from "@mui/icons-material/Send";
 import Button from "@mui/material/Button";
 import { Box, FormControl, InputLabel, MenuItem, Pagination, Select } from "@mui/material";
 import Chip from "@mui/material/Chip";
@@ -47,6 +48,9 @@ export default function AccountsList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [selectedAccount, setSelectedAccount] = React.useState(null);
   const [deleteLoading, setDeleteLoading] = React.useState(false);
+  const [isVerificationDialogOpen, setIsVerificationDialogOpen] = React.useState(false);
+  const [selectedAccountForVerification, setSelectedAccountForVerification] = React.useState(null);
+  const [verificationLoading, setVerificationLoading] = React.useState(false);
 
   const accountTypeMap = React.useMemo(() => {
     const map = {};
@@ -121,6 +125,56 @@ export default function AccountsList() {
       toast.error(error.message || "Unable to delete account");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleSendVerificationClick = (account) => {
+    setSelectedAccountForVerification(account);
+    setIsVerificationDialogOpen(true);
+  };
+
+  const handleCloseVerificationDialog = () => {
+    setIsVerificationDialogOpen(false);
+    setSelectedAccountForVerification(null);
+  };
+
+  const handleConfirmSendVerification = async () => {
+    if (!selectedAccountForVerification?.email) {
+      toast.error("Unable to determine account email for verification.");
+      return;
+    }
+
+    try {
+      setVerificationLoading(true);
+      
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+      const verificationLink = `${baseUrl}/verified?accountId=${selectedAccountForVerification.id}`;
+      const email = selectedAccountForVerification.email;
+      const accountName = selectedAccountForVerification.accountName || "";
+      
+      const apiUrl = `${BASE_URL}/Email/SendAccountVerificationEmail?email=${encodeURIComponent(email)}&accountName=${encodeURIComponent(accountName)}&verificationLink=${encodeURIComponent(verificationLink)}`;
+      
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to send verification email");
+      }
+
+      toast.success(data?.message || "Verification email sent successfully.");
+      handleCloseVerificationDialog();
+      refreshAccounts(page);
+    } catch (error) {
+      toast.error(error.message || "Unable to send verification email");
+    } finally {
+      setVerificationLoading(false);
     }
   };
 
@@ -224,6 +278,16 @@ export default function AccountsList() {
                             account={account}
                             onAccountUpdated={() => refreshAccounts(page)}
                           />
+                          <Tooltip title="Send Verification">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              aria-label="send verification"
+                              onClick={() => handleSendVerificationClick(account)}
+                            >
+                              <SendIcon fontSize="inherit" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"
@@ -276,6 +340,24 @@ export default function AccountsList() {
           </Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleteLoading}>
             {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={isVerificationDialogOpen} onClose={handleCloseVerificationDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Send Verification Email</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText>
+            Are you sure you want to send a verification email to{" "}
+            <strong>{selectedAccountForVerification ? selectedAccountForVerification.email || selectedAccountForVerification.accountName : "this account"}</strong>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseVerificationDialog} color="inherit" disabled={verificationLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmSendVerification} color="primary" variant="contained" disabled={verificationLoading}>
+            {verificationLoading ? "Sending..." : "Send"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -18,6 +18,7 @@ import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import { useRouter } from "next/router";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import useShiftCheck from "@/components/utils/useShiftCheck";
+import { getPaymentMethods } from "@/components/types/types";
 
 export default function SalesReturn() {
     const cId = sessionStorage.getItem("category")
@@ -125,13 +126,14 @@ export default function SalesReturn() {
                                     <TableCell>Return No</TableCell>
                                     <TableCell>Customer Name</TableCell>
                                     <TableCell>Invoice No</TableCell>
+                                    <TableCell>Payment Type</TableCell>
                                     <TableCell>Return Amount</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {salesReturnList.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={5} align="center">
+                                        <TableCell colSpan={6} align="center">
                                             <Typography color="error">No Sales Returns Available</Typography>
                                         </TableCell>
                                     </TableRow>
@@ -142,6 +144,7 @@ export default function SalesReturn() {
                                             <TableCell>{item.documentNo}</TableCell>
                                             <TableCell>{item.customerName}</TableCell>
                                             <TableCell>{item.invoiceNo}</TableCell>
+                                            <TableCell>{getPaymentMethods(item.paymentType)}</TableCell>
                                             <TableCell>{formatCurrency(item.returnAmount)}</TableCell>
                                         </TableRow>
                                     ))

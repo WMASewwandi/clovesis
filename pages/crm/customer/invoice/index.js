@@ -10,6 +10,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { formatDate } from "@/components/utils/formatHelper";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import useLoggedUserCompanyLetterhead from "@/hooks/useLoggedUserCompanyLetterhead";
 
 export default function CustomerInvoice() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function CustomerInvoice() {
   const [invoiceData, setInvoiceData] = useState(null);
   const [loadingInvoice, setLoadingInvoice] = useState(true);
   const [quoteData, setQuoteData] = useState(null);
+  const { letterheadImage } = useLoggedUserCompanyLetterhead();
 
   useEffect(() => {
     const fetchInvoiceData = async () => {
@@ -221,7 +223,9 @@ export default function CustomerInvoice() {
             marginBottom: { xs: 2, sm: 4 },
             position: "relative",
             backgroundColor: "white",
-            backgroundImage: { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
+            backgroundImage: letterheadImage 
+              ? { xs: "none", sm: `url('${letterheadImage}')` }
+              : { xs: "none", sm: "url('/images/quotation/cbassletter.jpg')" },
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",

@@ -119,6 +119,11 @@ export default function EditCashFlowType({ item, fetchItems }) {
                         control={<Radio />}
                         label="Cash Out"
                       />
+                      <FormControlLabel
+                        value={3}
+                        control={<Radio />}
+                        label="Bank"
+                      />
                     </RadioGroup>
                   </Grid>
                   <Grid item xs={12} mt={2}>

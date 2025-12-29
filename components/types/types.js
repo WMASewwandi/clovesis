@@ -208,6 +208,8 @@ export const getCashType = (type) => {
       return "Cash In";
     case 2:
       return "Cash Out";
+    case 3:
+      return "Bank";
     default:
       return "N/A";
   }

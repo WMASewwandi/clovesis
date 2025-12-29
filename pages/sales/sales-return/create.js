@@ -13,6 +13,8 @@ import {
   TableRow,
   TableCell,
   Checkbox,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import Link from "next/link";
 import styles from "@/styles/PageTitle.module.css";
@@ -65,6 +67,9 @@ const Salesreturn = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [isProductLoading, setIsProductLoading] = useState(false);
+  const [paymentType, setPaymentType] = useState(null);
+  const [bankId, setBankId] = useState(null);
+  const [banks, setBanks] = useState([]);
 
   const fetchProducts = debounce(async (query) => {
     if (!query) {
@@ -116,6 +121,8 @@ const Salesreturn = () => {
     loading: salesPersonLoading,
     error: salesPersonError,
   } = useApi("/SalesPerson/GetAllSalesPerson");
+
+  const { data: bankList } = useApi("/Bank/GetAllBanks");
 
   const { data: invoiceNo } = getNext(`10`);
 
@@ -232,6 +239,17 @@ const handleDeleteRow = (index) => {
       toast.error("Please select a salesPerson.");
       return;
     }
+
+    if (!paymentType) {
+      toast.error("Please select a payment type.");
+      return;
+    }
+
+    // Validate bank selection for Card (2) or Bank Transfer (4)
+    if ((paymentType === 2 || paymentType === 4) && !bankId) {
+      toast.error("Please select a bank.");
+      return;
+    }
     // // Validate return quantity only when the return type is Invoice
     
    
@@ -307,6 +325,8 @@ const handleDeleteRow = (index) => {
         returnType === "invoice" ? selectedInvoice.grossTotal : 0,
       FiscalPeriodId: 202501,
       InvoiceType: returnType === "invoice" ? 1 : 2,
+      PaymentType: paymentType,
+      BankId: (paymentType === 2 || paymentType === 4) ? bankId : null,
       SalesReturnLineDetails: selectedRows.map((row) => ({
         DocumentNo: returnType === "invoice" ? invoiceNo : "NONINV-0001",
         Reason: remark,
@@ -535,6 +555,19 @@ const handleDeleteRow = (index) => {
       setCustomers(customerList);
     }
   }, [invoiceNo, customerList]);
+
+  useEffect(() => {
+    if (bankList) {
+      setBanks(bankList);
+    }
+  }, [bankList]);
+
+  // Reset bank selection when payment type changes
+  useEffect(() => {
+    if (paymentType !== 2 && paymentType !== 4) {
+      setBankId(null);
+    }
+  }, [paymentType]);
 
 
   return (
@@ -906,6 +939,94 @@ const handleDeleteRow = (index) => {
                     }}
                   />
                 </Grid>
+
+                <Grid
+                  item
+                  xs={12}
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  mt={0}
+                  mb={1}
+                >
+                  <Typography
+                    component="label"
+                    sx={{
+                      fontWeight: "500",
+                      p: 1,
+                      fontSize: "14px",
+                      display: "block",
+                      width: "35%",
+                    }}
+                  >
+                    Payment Type <span style={{ color: "red" }}>*</span>
+                  </Typography>
+                  <Select
+                    value={paymentType || ""}
+                    onChange={(e) => setPaymentType(e.target.value)}
+                    sx={{ width: "60%" }}
+                    size="small"
+                    disabled={!customer}
+                    error={!paymentType && customer ? true : false}
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      Select Payment Type
+                    </MenuItem>
+                    <MenuItem value={1}>Cash</MenuItem>
+                    <MenuItem value={2}>Card</MenuItem>
+                    <MenuItem value={4}>Bank Transfer</MenuItem>
+                    <MenuItem value={7}>Credit</MenuItem>
+                  </Select>
+                </Grid>
+
+                {(paymentType === 2 || paymentType === 4) && (
+                  <Grid
+                    item
+                    xs={12}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    mt={0}
+                    mb={1}
+                  >
+                    <Typography
+                      component="label"
+                      sx={{
+                        fontWeight: "500",
+                        p: 1,
+                        fontSize: "14px",
+                        display: "block",
+                        width: "35%",
+                      }}
+                    >
+                      Bank <span style={{ color: "red" }}>*</span>
+                    </Typography>
+                    <Select
+                      value={bankId || ""}
+                      onChange={(e) => setBankId(e.target.value)}
+                      sx={{ width: "60%" }}
+                      size="small"
+                      error={!bankId ? true : false}
+                      displayEmpty
+                    >
+                      <MenuItem value="" disabled>
+                        Select Bank
+                      </MenuItem>
+                      {banks.length === 0 ? (
+                        <MenuItem value="" disabled>
+                          No Banks Available
+                        </MenuItem>
+                      ) : (
+                        banks.map((bank) => (
+                          <MenuItem key={bank.id} value={bank.id}>
+                            {bank.name} - {bank.accountNo}
+                          </MenuItem>
+                        ))
+                      )}
+                    </Select>
+                  </Grid>
+                )}
 
                 {returnType === "invoice" && (
                   <Grid

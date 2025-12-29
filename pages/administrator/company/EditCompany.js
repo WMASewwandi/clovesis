@@ -7,6 +7,7 @@ import {
   Typography,
   Tabs,
   Tab,
+  CircularProgress,
 } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -18,6 +19,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BASE_URL from "Base/api";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
+import DeleteIcon from "@mui/icons-material/Delete";
 import getNext from "@/components/utils/getNext";
 import Modules from "./modules";
 import { styled } from "@mui/material/styles";
@@ -64,12 +66,22 @@ export default function EditCompany({ item, fetchItems }) {
   const [warehouseCode, setWarehouseCode] = useState(null);
   const [tabIndex, setTabIndex] = useState(0);
   const [logo, setLogo] = useState(null);
+  const [letterheadImage, setLetterheadImage] = useState("");
+  const [letterheadFile, setLetterheadFile] = useState(null);
+  const [deleteLetterhead, setDeleteLetterhead] = useState(false);
+  const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => {
     setOpen(false);
     setTabIndex(0);
+    setDeleteLetterhead(false);
+    // Reset letterhead state when closing if not saved
+    if (item) {
+      setLetterheadImage(item.letterHeadImage || "");
+      setLetterheadFile(null);
+    }
   };
   const handleTabChange = (event, newValue) => setTabIndex(newValue);
 
@@ -88,8 +100,60 @@ export default function EditCompany({ item, fetchItems }) {
 
     if(item){
       setImage(item.companyLogo);
+      setLetterheadImage(item.letterHeadImage || "");
+      setDeleteLetterhead(false);
+      setLetterheadFile(null);
     }
   }, [code,item]);
+
+  const validateA4Size = (file) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const width = img.width;
+        const height = img.height;
+        // A4 aspect ratio: 210mm x 297mm = 0.707 (width/height)
+        // Allow ±5% tolerance
+        const aspectRatio = width / height;
+        const a4Ratio = 210 / 297; // 0.707
+        const tolerance = 0.05;
+        
+        if (Math.abs(aspectRatio - a4Ratio) <= tolerance) {
+          resolve(true);
+        } else {
+          reject(new Error(`Image must be A4 size (210mm x 297mm / 2480 x 3508 px at 300 DPI). Current dimensions: ${width} x ${height}px`));
+        }
+      };
+      img.onerror = () => reject(new Error("Invalid image file"));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleLetterheadChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    try {
+      await validateA4Size(file);
+      setLetterheadFile(file);
+      setLetterheadImage(URL.createObjectURL(file));
+      setDeleteLetterhead(false);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleDeleteLetterhead = () => {
+    setLetterheadImage("");
+    setLetterheadFile(null);
+    setDeleteLetterhead(true);
+  };
 
 
   const handleSubmit = async (values) => {
@@ -102,9 +166,15 @@ export default function EditCompany({ item, fetchItems }) {
     formData.append("ContactPerson", values.ContactPerson);
     formData.append("ContactNumber", values.ContactNumber);
     formData.append("CompanyLogo", logo ? logo : null);
+    if (deleteLetterhead) {
+      formData.append("LetterHeadImage", null);
+    } else {
+      formData.append("LetterHeadImage", letterheadFile ? letterheadFile : null);
+    }
     formData.append("LandingPage", values.LandingPage);
     // append fields
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
       const response = await fetch(`${BASE_URL}/Company/UpdateCompany`, {
         method: "POST",
@@ -115,12 +185,16 @@ export default function EditCompany({ item, fetchItems }) {
       if (data.statusCode === 200) {
         toast.success(data.message);
         setOpen(false);
+        setDeleteLetterhead(false);
+        setLetterheadFile(null);
         fetchItems();
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message || "");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -138,6 +212,7 @@ export default function EditCompany({ item, fetchItems }) {
           <Tabs value={tabIndex} onChange={handleTabChange}>
             <Tab label="Basic" />
             <Tab label="Modules" />
+            <Tab label="Letterhead" />
           </Tabs>
 
           <Formik
@@ -269,18 +344,87 @@ export default function EditCompany({ item, fetchItems }) {
                 {tabIndex === 1 && (
                   <Modules handleClose={handleClose} item={item.id} />
                 )}
-                {tabIndex === 0 && (
+
+                {tabIndex === 2 && (
+                  <Box sx={{ maxHeight: "55vh", overflowY: "auto", my: 2 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          Upload Letterhead Image (A4 size: 210mm x 297mm / 2480 x 3508 px at 300 DPI)
+                        </Typography>
+                        <Button
+                          component="label"
+                          role={undefined}
+                          variant="contained"
+                          fullWidth
+                          tabIndex={-1}
+                          startIcon={<CloudUploadIcon />}
+                        >
+                          Upload Letterhead
+                          <VisuallyHiddenInput
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLetterheadChange}
+                          />
+                        </Button>
+                      </Grid>
+                      <Grid item xs={12}>
+                        {letterheadImage && (
+                          <Box sx={{ position: "relative" }}>
+                            <Box 
+                              sx={{
+                                width: "100%",
+                                height: 400,
+                                backgroundSize: 'contain',
+                                backgroundRepeat: 'no-repeat',
+                                backgroundPosition: 'center',
+                                backgroundImage: `url(${letterheadImage})`,
+                                border: '1px solid #ddd',
+                                borderRadius: 1
+                              }}
+                            />
+                            <IconButton
+                              onClick={handleDeleteLetterhead}
+                              sx={{
+                                position: "absolute",
+                                top: 8,
+                                right: 8,
+                                bgcolor: "error.main",
+                                color: "white",
+                                "&:hover": {
+                                  bgcolor: "error.dark",
+                                },
+                              }}
+                              size="small"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        )}
+                      </Grid>
+                    </Grid>
+                  </Box>
+                )}
+
+                {(tabIndex === 0 || tabIndex === 2) && (
                   <Box display="flex" justifyContent="space-between" mt={2}>
                     <Button
                       variant="outlined"
                       color="error"
                       onClick={handleClose}
                       size="small"
+                      disabled={loading}
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" variant="contained" size="small">
-                      Save
+                    <Button 
+                      type="submit" 
+                      variant="contained" 
+                      size="small"
+                      disabled={loading}
+                      startIcon={loading ? <CircularProgress size={16} /> : null}
+                    >
+                      {loading ? "Saving..." : "Save"}
                     </Button>
                   </Box>
                 )}

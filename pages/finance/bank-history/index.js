@@ -8,8 +8,9 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import CreateBankHistory from "./create";
+import EditBankHistory from "./edit";
 import { FormControl, InputLabel, MenuItem, Pagination, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { formatCurrency } from "@/components/utils/formatHelper";
+import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import useApi from "@/components/utils/useApi";
 
 export default function BankHistory() {
@@ -121,17 +122,20 @@ export default function BankHistory() {
               <TableHead>
                 <TableRow>
                   <TableCell>Code</TableCell>
+                  <TableCell>Created Date</TableCell>
                   <TableCell>Description</TableCell>
+                  <TableCell>Category</TableCell>
                   <TableCell>Cheque Payment</TableCell>
                   <TableCell>Deposit</TableCell>
                   <TableCell>Withdrawal</TableCell>
-                  <TableCell align="right">Remaining Balance</TableCell>
+                  <TableCell>Remaining Balance</TableCell>
+                  <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {bankHistory.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6}>
+                    <TableCell colSpan={9}>
                       <Typography color="error">No Records Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -141,7 +145,9 @@ export default function BankHistory() {
                       <TableCell>
                         {item.documentNo}
                       </TableCell>
+                      <TableCell>{formatDate(item.createdOn)}</TableCell>
                       <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.cashFlowTypeName || "-"}</TableCell>
                       <TableCell >
                         {item.isCheque ? (
                           <span className="successBadge">Yes</span>
@@ -151,8 +157,10 @@ export default function BankHistory() {
                       </TableCell>
                       <TableCell>{formatCurrency(item.transactionType === 1 ? item.amount : "")}</TableCell>
                       <TableCell>{formatCurrency(item.transactionType === 2 ? item.amount : "")}</TableCell>
-                      <TableCell align="right">{formatCurrency(item.remainingBalance)}</TableCell>
-
+                      <TableCell>{formatCurrency(item.remainingBalance)}</TableCell>
+                      <TableCell align="right">
+                        {update ? <EditBankHistory item={item} fetchItems={() => fetchBankHistory(page, searchTerm, pageSize, bankId)} /> : ""}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

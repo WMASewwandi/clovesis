@@ -39,6 +39,20 @@ const reportConfigs = {
       category: { enabled: true, required: false, label: "Select Category", paramName: "category", allowAll: true },
       subCategory: { enabled: true, required: false, label: "Select Sub Category", paramName: "subCategory", allowAll: true },
       item: { enabled: true, required: false, label: "Select Item", paramName: "item", allowAll: true },
+      paymentType: {
+        enabled: true,
+        required: false,
+        label: "Select Payment Type",
+        paramName: "paymentType",
+        allowAll: true,
+        options: [
+          { value: 1, label: "Cash" },
+          { value: 2, label: "Card" },
+          { value: 3, label: "Cash & Card" },
+          { value: 4, label: "Bank Transfer" },
+          { value: 5, label: "Cheque" },
+        ],
+      },
     },
   },
   CashBookSummaryReport: {
@@ -214,6 +228,7 @@ const reportConfigs = {
     title: "Bank History Report",
     fields: {
       bank: { enabled: true, required: true, label: "Select Bank", paramName: "bankId", allowAll: false },
+      cashFlowType: { enabled: true, required: false, label: "Select Category", paramName: "cashFlowTypeId", allowAll: true, bankTypeOnly: true },
     },
   },
   ShiftSummaryReport: {
@@ -340,8 +355,12 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
       );
       setUsers(filteredUsers);
     }
-    if (cashFlowTypeList && config.fields.cashFlowType?.enabled) {
-      setCashFlowTypes(Array.isArray(cashFlowTypeList) ? cashFlowTypeList : cashFlowTypeList?.result || []);
+    if (config.fields.cashFlowType?.enabled) {
+      if (config.fields.cashFlowType.bankTypeOnly) {
+        fetchBankTypeCashFlowTypes();
+      } else if (cashFlowTypeList) {
+        setCashFlowTypes(Array.isArray(cashFlowTypeList) ? cashFlowTypeList : cashFlowTypeList?.result || []);
+      }
     }
     if (terminalList && config.fields.terminal?.enabled) {
       setTerminals(terminalList);
@@ -439,6 +458,27 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
 
       const data = await response.json();
       setReservations(data.result?.items || []);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const fetchBankTypeCashFlowTypes = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const query = `${BASE_URL}/CashFlowType/GetCashFlowTypesByType?cashType=3`;
+      const response = await fetch(query, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch bank cash flow types");
+
+      const data = await response.json();
+      setCashFlowTypes(Array.isArray(data.result) ? data.result : []);
     } catch (error) {
       console.error("Error:", error);
     }

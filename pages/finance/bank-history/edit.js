@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Grid, MenuItem, Select, Typography } from "@mui/material";
+import { Grid, IconButton, MenuItem, Select, Tooltip, Typography } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
@@ -10,6 +10,7 @@ import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import useApi from "@/components/utils/useApi";
+import BorderColorIcon from "@mui/icons-material/BorderColor";
 
 const style = {
   position: "absolute",
@@ -27,17 +28,16 @@ const validationSchema = Yup.object().shape({
   Description: Yup.string().required("Description is required"),
 });
 
-export default function CreateBankHistory({ banks, fetchItems }) {
+export default function EditBankHistory({ item, fetchItems }) {
   const [open, setOpen] = React.useState(false);
-  const [transactionType, setTransactionType] = useState(1);
   const handleClose = () => setOpen(false);
   const inputRef = useRef(null);
-  const [bankId, setBankId] = useState(null);
-  const [cashFlowTypeId, setCashFlowTypeId] = useState(null);
+  const [cashFlowTypeId, setCashFlowTypeId] = useState(item.cashFlowTypeId || null);
   const { data: cashFlowTypeList } = useApi("/CashFlowType/GetCashFlowTypesByType?cashType=3");
   const [cashFlowTypes, setCashFlowTypes] = useState([]);
 
   const handleOpen = async () => {
+    setCashFlowTypeId(item.cashFlowTypeId || null);
     setOpen(true);
   };
 
@@ -58,28 +58,17 @@ export default function CreateBankHistory({ banks, fetchItems }) {
   }, [cashFlowTypeList]);
 
   const handleSubmit = (values) => {
-    if(!bankId){
-      toast.error("Please Select Bank");
-      return;
-    }
     if(!cashFlowTypeId){
       toast.error("Please Select Category");
       return;
     }
     const payload = {
+      Id: item.id,
       Amount: values.Amount,
       Description: values.Description,
-      RemainingBalance: null,
-      TransactionType: transactionType,
-      IsCheque: false,
-      DocumentNo: "",
-      WarehouseId: null,
-      BankId : bankId,
-      Status : 2,
       CashFlowTypeId: cashFlowTypeId,
-      CreatedOn: values.ReferenceDate ? new Date(values.ReferenceDate).toISOString() : null,
     }
-    fetch(`${BASE_URL}/BankHistory/CreateBankHistory`, {
+    fetch(`${BASE_URL}/BankHistory/UpdateBankHistory`, {
       method: "POST",
       body: JSON.stringify(payload),
       headers: {
@@ -104,9 +93,11 @@ export default function CreateBankHistory({ banks, fetchItems }) {
 
   return (
     <>
-      <Button variant="outlined" onClick={handleOpen}>
-        + Cash Deposit/Withdrawal
-      </Button>
+      <Tooltip title="Edit" placement="top">
+        <IconButton onClick={handleOpen} aria-label="edit" size="small">
+          <BorderColorIcon color="primary" fontSize="inherit" />
+        </IconButton>
+      </Tooltip>
       <Modal
         open={open}
         onClose={handleClose}
@@ -116,9 +107,8 @@ export default function CreateBankHistory({ banks, fetchItems }) {
         <Box sx={style} className="bg-black">
           <Formik
             initialValues={{
-              Description: "",
-              Amount: "",
-              ReferenceDate: new Date().toISOString().split('T')[0],
+              Description: item.description || "",
+              Amount: item.amount || "",
             }}
             validationSchema={validationSchema}
             onSubmit={handleSubmit}
@@ -134,7 +124,7 @@ export default function CreateBankHistory({ banks, fetchItems }) {
                         mb: "5px",
                       }}
                     >
-                      Cash Deposit/Withdrawal
+                      Edit Bank History
                     </Typography>
                   </Grid>
                   <Grid item xs={12}>
@@ -150,25 +140,10 @@ export default function CreateBankHistory({ banks, fetchItems }) {
                       as={TextField}
                       fullWidth
                       name="Description"
+                      inputRef={inputRef}
                       error={touched.Description && Boolean(errors.Description)}
                       helperText={touched.Description && errors.Description}
                     />
-                  </Grid>
-                  <Grid item xs={12} mt={1}>
-                    <Typography
-                      sx={{
-                        fontWeight: "500",
-                        mb: "5px",
-                      }}
-                    >
-                      Bank
-                    </Typography>
-                    <Select value={bankId} onChange={(e) => setBankId(e.target.value)} fullWidth>
-                      {banks.length === 0 ? <MenuItem value="">No Data Available</MenuItem> :
-                        (banks.map((bank, i) => (
-                          <MenuItem key={i} value={bank.id}>{bank.name} - {bank.accountNo}</MenuItem>
-                        )))}
-                    </Select>
                   </Grid>
                   <Grid item xs={12} mt={1}>
                     <Typography
@@ -185,43 +160,6 @@ export default function CreateBankHistory({ banks, fetchItems }) {
                           <MenuItem key={i} value={type.id}>{type.name}</MenuItem>
                         )))}
                     </Select>
-                  </Grid>
-                  <Grid item xs={12} mt={1}>
-                    <Typography
-                      sx={{
-                        fontWeight: "500",
-                        mb: "5px",
-                      }}
-                    >
-                      Transaction Type
-                    </Typography>
-                    <Select fullWidth value={transactionType} onChange={(e) => setTransactionType(e.target.value)}>
-                      <MenuItem value={1}>Credit</MenuItem>
-                      <MenuItem value={2}>Debit</MenuItem>
-                    </Select>
-                  </Grid>
-                  <Grid item xs={12} mt={1}>
-                    <Typography
-                      sx={{
-                        fontWeight: "500",
-                        mb: "5px",
-                      }}
-                    >
-                      Reference Date
-                    </Typography>
-                    <Field
-                      as={TextField}
-                      fullWidth
-                      name="ReferenceDate"
-                      type="date"
-                      value={values.ReferenceDate || new Date().toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        setFieldValue("ReferenceDate", e.target.value);
-                      }}
-                      InputLabelProps={{
-                        shrink: true,
-                      }}
-                    />
                   </Grid>
                   <Grid item xs={12} mt={1}>
                     <Typography

@@ -24,17 +24,24 @@ export default function ApproveCheque({ id, fetchItems }) {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const [bankId, setBankId] = useState(null);
+  const [cashFlowTypeId, setCashFlowTypeId] = useState(null);
   const { data: bankList } = useApi("/Bank/GetAllBanks");
+  const { data: cashFlowTypeList } = useApi("/CashFlowType/GetCashFlowTypesByType?cashType=3");
   const [banks, setBanks] = useState([]);
+  const [cashFlowTypes, setCashFlowTypes] = useState([]);
 
   const handleSubmit = () => {
     if (bankId == null) {
       toast.warning("Please Select Bank");
       return;
     }
+    if (cashFlowTypeId == null) {
+      toast.warning("Please Select Cash Flow Type");
+      return;
+    }
     const token = localStorage.getItem("token");
     fetch(
-      `${BASE_URL}/BankHistory/ApproveChequePaymentAsync?chequeId=${id}&bankId=${bankId}`,
+      `${BASE_URL}/BankHistory/ApproveChequePaymentAsync?chequeId=${id}&bankId=${bankId}&cashFlowTypeId=${cashFlowTypeId}`,
       {
         method: "POST",
         headers: {
@@ -63,6 +70,12 @@ export default function ApproveCheque({ id, fetchItems }) {
       setBanks(bankList);
     }
   }, [bankList]);
+
+  useEffect(() => {
+    if (cashFlowTypeList) {
+      setCashFlowTypes(cashFlowTypeList.filter(x => x.isActive));
+    }
+  }, [cashFlowTypeList]);
   return (
     <>
       <Button onClick={handleOpen} color="success" variant="outlined">
@@ -89,13 +102,24 @@ export default function ApproveCheque({ id, fetchItems }) {
                   Are you sure you want to approve this ?
                 </Typography>
               </Grid>
-              <Grid item xs={12} mb={3}>
+              <Grid item xs={12} mb={2}>
                 <Box mt={1}>
                   <Typography component="label">Select Bank</Typography>
                   <Select value={bankId} onChange={(e) => setBankId(e.target.value)} fullWidth size="small">
                     {banks.length === 0 ? <MenuItem value="">No Data Available</MenuItem> :
                       (banks.map((bank, i) => (
                         <MenuItem key={i} value={bank.id}>{bank.name} - {bank.accountNo}</MenuItem>
+                      )))}
+                  </Select>
+                </Box>
+              </Grid>
+              <Grid item xs={12} mb={3}>
+                <Box mt={1}>
+                  <Typography component="label">Select Category</Typography>
+                  <Select value={cashFlowTypeId} onChange={(e) => setCashFlowTypeId(e.target.value)} fullWidth size="small">
+                    {cashFlowTypes.length === 0 ? <MenuItem value="">No Data Available</MenuItem> :
+                      (cashFlowTypes.map((type, i) => (
+                        <MenuItem key={i} value={type.id}>{type.name}</MenuItem>
                       )))}
                   </Select>
                 </Box>

@@ -189,6 +189,7 @@ export default function BankPayments() {
                 <TableRow>
                   <TableCell>Shift</TableCell>
                   <TableCell>Description</TableCell>
+                  <TableCell>Bank</TableCell>
                   <TableCell>Warehouse</TableCell>
                   <TableCell>Created By</TableCell>
                   <TableCell>Status</TableCell>
@@ -199,7 +200,7 @@ export default function BankPayments() {
               <TableBody>
                 {bankPayments.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7}>
+                    <TableCell colSpan={8}>
                       <Typography color="error">No Data Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -208,6 +209,7 @@ export default function BankPayments() {
                     <TableRow key={index}>
                       <TableCell>{item.shiftCode}</TableCell>
                       <TableCell>{item.description}</TableCell>
+                      <TableCell>{item.bankName || "-"}</TableCell>
                       <TableCell>{item.warehouseName}</TableCell>
                       <TableCell>{item.createdUser}</TableCell>
                       <TableCell>

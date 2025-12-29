@@ -41,6 +41,7 @@ import SearchPackageByName from "@/components/utils/SearchPackageByName";
 import { Report } from "Base/report";
 import { Catelogue } from "Base/catelogue";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
+import AddCustomerDialog from "@/components/UIElements/Modal/AddCustomerDialog";
 
 const InvoiceCreate = () => {
   const today = new Date();
@@ -125,6 +126,31 @@ const InvoiceCreate = () => {
   } = useApi("/Customer/GetAllCustomer");
 
   const { data: doctorsList } = useApi("/Doctors/GetAll");
+
+  // Function to refetch customers after creating a new one
+  const fetchCustomers = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${BASE_URL}/Customer/GetAllCustomer`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch customers");
+      }
+
+      const data = await response.json();
+      const customersData = Array.isArray(data) ? data : data?.result || [];
+      setCustomers(customersData);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+      toast.error("Failed to refresh customer list");
+    }
+  };
 
 
   const fetchStockList = async (id) => {
@@ -703,32 +729,35 @@ const InvoiceCreate = () => {
                 >
                   Customer
                 </Typography>
-                <Autocomplete
-                  sx={{ width: "60%" }}
-                  options={customers || []}
-                  getOptionLabel={(option) => option.firstName || ""}
-                  value={customer}
-                  onChange={(event, newValue) => {
-                    setCustomer(newValue);
-                    if (newValue) {
-                      setAddress1(newValue.addressLine1 || "");
-                      setAddress2(newValue.addressLine2 || "");
-                      setAddress3(newValue.addressLine3 || "");
-                    } else {
-                      setAddress1("");
-                      setAddress2("");
-                      setAddress3("");
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      size="small"
-                      fullWidth
-                      placeholder="Search Customer"
-                    />
-                  )}
-                />
+                <Box sx={{ width: "60%", display: "flex", gap: 1 }}>
+                  <Autocomplete
+                    sx={{ flex: 1 }}
+                    options={customers || []}
+                    getOptionLabel={(option) => option.firstName || ""}
+                    value={customer}
+                    onChange={(event, newValue) => {
+                      setCustomer(newValue);
+                      if (newValue) {
+                        setAddress1(newValue.addressLine1 || "");
+                        setAddress2(newValue.addressLine2 || "");
+                        setAddress3(newValue.addressLine3 || "");
+                      } else {
+                        setAddress1("");
+                        setAddress2("");
+                        setAddress3("");
+                      }
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        fullWidth
+                        placeholder="Search Customer"
+                      />
+                    )}
+                  />
+                  <AddCustomerDialog fetchItems={fetchCustomers} showIconOnly={true} />
+                </Box>
               </Grid>
               <Grid item xs={12} display="flex" flexDirection="column" mt={1}>
                 <Grid
