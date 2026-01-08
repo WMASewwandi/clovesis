@@ -10,6 +10,9 @@ import HidableButtons from "../Dashboard/eCommerce/HidableButtons";
 import AccessDenied from "../UIElements/Permission/AccessDenied";
 import { TopbarContext } from "./TopbarContext";
 import { CurrencyProvider } from "@/components/HR/CurrencyContext";
+import SnowEffect from "./SnowEffect";
+import NewYearEffect from "./NewYearEffect";
+import HolidayGreeting from "./HolidayGreeting";
 import BASE_URL from "Base/api";
 
 const Layout = ({ children }) => {
@@ -222,6 +225,11 @@ const Layout = ({ children }) => {
 
         {/* ScrollToTop */}
         <ScrollToTop />
+
+        {/* Theme Effects */}
+        <SnowEffect />
+        <NewYearEffect />
+        <HolidayGreeting />
 
         {!(
           router.pathname === "/authentication/sign-in" ||

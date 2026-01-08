@@ -37,7 +37,7 @@ const style = {
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required("Project name is required"),
   description: Yup.string().trim(),
-  status: Yup.string().trim(),
+  status: Yup.number().required("Status is required"),
   customerId: Yup.number().nullable(),
 });
 
@@ -154,7 +154,7 @@ export default function EditProjectModal({ open, onClose, project, fetchItems })
           id: project.id,
           name: values.name,
           description: values.description || null,
-          status: values.status || "Open",
+          status: Number(values.status) || 1,
           customerId: values.customerId || null,
           assignedToCustomerId: values.customerId || null,
           customerName: customerName || null,
@@ -197,7 +197,7 @@ export default function EditProjectModal({ open, onClose, project, fetchItems })
           initialValues={{
             name: project.name || "",
             description: project.description || "",
-            status: project.status || "Open",
+            status: project.status !== undefined && project.status !== null ? Number(project.status) : 1,
             customerId: extractInitialCustomerId(project),
           }}
           validationSchema={validationSchema}
@@ -239,12 +239,13 @@ export default function EditProjectModal({ open, onClose, project, fetchItems })
                       name="status"
                       label="Status"
                       value={values.status}
-                      onChange={(e) => setFieldValue("status", e.target.value)}
+                      onChange={(e) => setFieldValue("status", Number(e.target.value))}
                     >
-                      <MenuItem value="Open">Open</MenuItem>
-                      <MenuItem value="In Progress">In Progress</MenuItem>
-                      <MenuItem value="Completed">Completed</MenuItem>
-                      <MenuItem value="Closed">Closed</MenuItem>
+                      <MenuItem value={1}>Open</MenuItem>
+                      <MenuItem value={2}>Closed</MenuItem>
+                      <MenuItem value={3}>In Progress</MenuItem>
+                      <MenuItem value={4}>Completed</MenuItem>
+                      <MenuItem value={5}>Cancelled</MenuItem>
                     </Field>
                   </FormControl>
                 </Grid>

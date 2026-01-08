@@ -75,6 +75,7 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
    const { data: isCustomerNICRequired } = IsAppSettingEnabled("IsCustomerNICRequired");
   const [scroll, setScroll] = React.useState("paper");
   const [titleList, setTitleList] = useState([]);
+  const [currencyList, setCurrencyList] = useState([]);
   const initialLength = item.customerContactDetails.length;
   const initialContacts = Array.from({ length: initialLength }, (_, index) => ({
     ContactName: item.customerContactDetails[index]?.contactName || "",
@@ -105,8 +106,39 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
     }
   };
 
+  const fetchCurrencyList = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/Currency/GetAllCurrency?SkipCount=0&MaxResultCount=1000&Search=null`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch Currency List");
+      }
+
+      const data = await response.json();
+      // Extract currencies from paginated response
+      let currencies = [];
+      if (data.result && data.result.items) {
+        currencies = data.result.items;
+      } else if (Array.isArray(data.result)) {
+        currencies = data.result;
+      }
+      
+      // Filter only active currencies
+      setCurrencyList(currencies.filter(currency => currency.isActive !== false));
+    } catch (error) {
+      console.error("Error fetching Currency List:", error);
+    }
+  };
+
   useEffect(() => {
     fetchTitleList();
+    fetchCurrencyList();
   }, []);
 
   const handleAddContact = () => {
@@ -124,6 +156,8 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
     setOpen(true);
     setScroll(scrollType);
     setContacts(initialContacts);
+    fetchTitleList();
+    fetchCurrencyList();
   };
 
   const handleClose = () => {
@@ -261,6 +295,7 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
                 Company: item.company || "",
                 NIC: item.nic || "",
                 ReceivableAccount: item.receivableAccount || null,
+                CurrencyId: item.currencyId || null,
                 DateOfBirth: formatDate(item.dateofBirth) || "",
                 CustomerContactDetails: contacts.map((contact) => ({
                   ContactName: contact.ContactName,
@@ -517,6 +552,42 @@ export default function EditCustomerDialog({ fetchItems, item, chartOfAccounts }
                             chartOfAccounts.map((acc, index) => (
                               <MenuItem key={index} value={acc.id}>
                                 {acc.code} - {acc.description}
+                              </MenuItem>
+                            ))
+                          )}
+                        </Field>
+                      </FormControl>
+                    </Grid>
+                    <Grid lg={6} item xs={12}>
+                      <Typography
+                        component="label"
+                        sx={{
+                          fontWeight: "500",
+                          fontSize: "14px",
+                          mb: "10px",
+                          display: "block",
+                        }}
+                      >
+                        Select Currency
+                      </Typography>
+                      <FormControl fullWidth>
+                        <Field
+                          as={TextField}
+                          select
+                          fullWidth
+                          name="CurrencyId"
+                          onChange={(e) => {
+                            setFieldValue("CurrencyId", e.target.value);
+                          }}
+                        >
+                          {currencyList.length === 0 ? (
+                            <MenuItem disabled>
+                              No Currencies Available
+                            </MenuItem>
+                          ) : (
+                            currencyList.map((currency, index) => (
+                              <MenuItem key={index} value={currency.id}>
+                                {currency.code} - {currency.name}
                               </MenuItem>
                             ))
                           )}

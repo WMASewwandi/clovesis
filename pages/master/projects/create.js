@@ -37,7 +37,7 @@ const style = {
 const validationSchema = Yup.object().shape({
   name: Yup.string().trim().required("Project name is required"),
   description: Yup.string().trim(),
-  status: Yup.string().trim(),
+  status: Yup.number().required("Status is required"),
   customerId: Yup.number().nullable(),
 });
 
@@ -187,7 +187,7 @@ export default function CreateProjectModal({ open, onClose, fetchItems }) {
           initialValues={{
             name: "",
             description: "",
-            status: "Open",
+            status: 1,
             customerId: null,
           }}
           validationSchema={validationSchema}
@@ -228,12 +228,13 @@ export default function CreateProjectModal({ open, onClose, fetchItems }) {
                       name="status"
                       label="Status"
                       value={values.status}
-                      onChange={(e) => setFieldValue("status", e.target.value)}
+                      onChange={(e) => setFieldValue("status", Number(e.target.value))}
                     >
-                      <MenuItem value="Open">Open</MenuItem>
-                      <MenuItem value="InProgress">In Progress</MenuItem>
-                      <MenuItem value="Completed">Completed</MenuItem>
-                      <MenuItem value="Closed">Closed</MenuItem>
+                      <MenuItem value={1}>Open</MenuItem>
+                      <MenuItem value={3}>In Progress</MenuItem>
+                      <MenuItem value={4}>Completed</MenuItem>
+                      <MenuItem value={2}>Closed</MenuItem>
+                      <MenuItem value={5}>Canceled</MenuItem>
                     </Field>
                   </FormControl>
                 </Grid>

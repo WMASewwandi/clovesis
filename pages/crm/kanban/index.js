@@ -12,6 +12,11 @@ import Divider from "@mui/material/Divider";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import TextField from "@mui/material/TextField";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
+import DialogActions from "@mui/material/DialogActions";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 import KanbanColumn from "./column";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
@@ -46,6 +51,8 @@ export default function KanbanBoard() {
   const [ownersError, setOwnersError] = React.useState(null);
   const [loadingRecords, setLoadingRecords] = React.useState(false);
   const [recordsError, setRecordsError] = React.useState(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false);
+  const [pendingMove, setPendingMove] = React.useState(null);
   const [filterOptions, setFilterOptions] = React.useState({
     stages: [],
     owners: [],
@@ -258,6 +265,11 @@ export default function KanbanBoard() {
 
     const lead = card.raw;
 
+    const currentStatus = lead.leadStatus ?? lead.status;
+    if (currentStatus === 8 || currentStatus === "8") {
+      return { success: false, error: "Status cannot be updated when create project" };
+    }
+
     const payload = {
       Id: lead.id,
       LeadName: lead.leadName || lead.name || "Unnamed Lead",
@@ -294,10 +306,10 @@ export default function KanbanBoard() {
         prevRecords.map((record) =>
           record.id === lead.id
             ? {
-                ...record,
-                leadStatus: Number(statusValue),
-                leadStatusName: statusLabel,
-              }
+              ...record,
+              leadStatus: Number(statusValue),
+              leadStatusName: statusLabel,
+            }
             : record
         )
       );
@@ -440,34 +452,71 @@ export default function KanbanBoard() {
   };
 
   const handleDragStart = (sourceStageId, itemId) => {
+    // Find the card being dragged
+    const sourceStage = boardData.find((stage) => stage.id === sourceStageId);
+    const card = sourceStage?.items?.find((item) => item.id === itemId);
+
+    if (card?.raw) {
+      const currentStatus = card.raw.leadStatus ?? card.raw.status;
+      if (currentStatus === 8 || currentStatus === "8") {
+        toast.error("Status cannot be updated when project created");
+        return;
+      }
+    }
+
     setDraggedItem({ sourceStageId, itemId });
   };
 
   const handleDropCard = async (targetStageId) => {
     if (!draggedItem) return;
 
+    // Store original board data before any changes
     const originalBoardData = boardData;
-    let movedCard = null;
-    let sourceStageId = draggedItem.sourceStageId;
 
+    // Check if target stage is the last column
+    const isLastColumn = stageDefinitions.length > 0 &&
+      targetStageId === stageDefinitions[stageDefinitions.length - 1].id;
+
+    if (isLastColumn) {
+      // Store the pending move data
+      setPendingMove({
+        targetStageId,
+        originalBoardData,
+        draggedItem: { ...draggedItem },
+      });
+      // Revert board to original state immediately (card goes back)
+      setBoardData(originalBoardData);
+      setConfirmDialogOpen(true);
+      return;
+    }
+
+    // Proceed with normal move if not last column
+    await proceedWithMove(targetStageId, originalBoardData);
+  };
+
+  const proceedWithMove = async (targetStageId, originalBoardData, draggedItemToUse = null) => {
+    const itemToMove = draggedItemToUse || draggedItem;
+    if (!itemToMove) return;
+
+    // Get the card from original board data before updating state
+    const sourceStage = originalBoardData.find((stage) => stage.id === itemToMove.sourceStageId);
+    const movedCard = sourceStage?.items?.find((item) => item.id === itemToMove.itemId);
+
+    if (!movedCard) {
+      toast.error("Card not found");
+      setDraggedItem(null);
+      return;
+    }
+
+    // Update board visually
     setBoardData((prevStages) => {
       const stagesWithoutCard = prevStages.map((stage) => {
-        if (stage.id === draggedItem.sourceStageId) {
-          const remaining = stage.items.filter((item) => {
-            if (item.id === draggedItem.itemId) {
-              movedCard = item;
-              return false;
-            }
-            return true;
-          });
+        if (stage.id === itemToMove.sourceStageId) {
+          const remaining = stage.items.filter((item) => item.id !== itemToMove.itemId);
           return { ...stage, items: remaining };
         }
         return stage;
       });
-
-      if (!movedCard) {
-        return prevStages;
-      }
 
       const updatedStages = stagesWithoutCard.map((stage) => {
         if (stage.id === targetStageId) {
@@ -499,25 +548,43 @@ export default function KanbanBoard() {
       return updatedStages;
     });
 
+    // Get target stage info
     const targetStage = originalBoardData.find((stage) => stage.id === targetStageId);
     const stageValue = targetStageId.replace("stage-", "");
     const stageLabel = targetStage?.title || stageValue;
-
-    const recordId = movedCard?.id?.split("-")[1];
     const targetStatusValue = Number(stageValue);
 
-    if (recordId && movedCard) {
-      const result = await updateLeadStatus(movedCard, targetStatusValue, stageLabel);
-      
-      if (!result || !result.success) {
-        setBoardData(originalBoardData);
-        toast.error(result?.error || "Failed to update lead status");
-        setDraggedItem(null);
-        return;
-      }
+    // Call updateLeadStatus API
+    const result = await updateLeadStatus(movedCard, targetStatusValue, stageLabel);
+
+    if (!result || !result.success) {
+      // Revert board on error
+      setBoardData(originalBoardData);
+      toast.error(result?.error || "Failed to update lead status");
+      setDraggedItem(null);
+      return;
     }
 
     setDraggedItem(null);
+  };
+
+  const handleConfirmMove = async () => {
+    setConfirmDialogOpen(false);
+    if (pendingMove) {
+      setDraggedItem(pendingMove.draggedItem);
+      await proceedWithMove(pendingMove.targetStageId, pendingMove.originalBoardData, pendingMove.draggedItem);
+      setPendingMove(null);
+    }
+  };
+
+  const handleCancelMove = () => {
+    setConfirmDialogOpen(false);
+    if (pendingMove) {
+      // Revert to original board data and clear dragged item
+      setBoardData(pendingMove.originalBoardData);
+      setDraggedItem(null);
+      setPendingMove(null);
+    }
   };
 
   const handleDragEnd = () => {
@@ -526,7 +593,7 @@ export default function KanbanBoard() {
 
   return (
     <>
-    <ToastContainer/>
+      <ToastContainer />
       <div className={styles.pageTitle}>
         <h1>CRM Kanban Board</h1>
         <ul>
@@ -557,7 +624,7 @@ export default function KanbanBoard() {
         alignItems={{ xs: "stretch", md: "center" }}
       >
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, flexGrow: 1 }}>
-          <Search className="search-form" sx={{ flexGrow: 1}}>
+          <Search className="search-form" sx={{ flexGrow: 1 }}>
             <StyledInputBase
               placeholder="Search leads..."
               value={searchValue}
@@ -761,6 +828,25 @@ export default function KanbanBoard() {
           </Stack>
         </Box>
       </Drawer>
+
+      <Dialog open={confirmDialogOpen} onClose={handleCancelMove} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirm Status Update</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText>
+            Cannot update again. Are you sure you want to move this lead to the last column? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelMove} color="inherit">
+            No
+          </Button>
+          <Button onClick={handleConfirmMove} color="primary" variant="contained">
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <ToastContainer />
     </>
   );
 }

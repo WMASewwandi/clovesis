@@ -12,6 +12,7 @@ import Slider from "@mui/material/Slider";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
+import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
@@ -48,6 +49,8 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
   const [loadingSources, setLoadingSources] = React.useState(false);
   const [sourceError, setSourceError] = React.useState(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = React.useState(null);
   const { accounts, isLoading: accountsLoading, error: accountsError } = useCRMAccounts();
   const { contacts: accountContacts, isLoading: contactsLoading, error: contactsError } = useContactsByAccount(formValues.accountId);
 
@@ -140,6 +143,17 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
     sourceError,
   ]);
 
+  const isStatusLocked = React.useMemo(() => {
+    if (!lead) return false;
+    const normalizedStatus =
+      lead.status !== undefined && lead.status !== null
+        ? lead.status
+        : lead.leadStatus !== undefined && lead.leadStatus !== null
+        ? lead.leadStatus
+        : null;
+    return normalizedStatus === 8 || normalizedStatus === "8";
+  }, [lead]);
+
   React.useEffect(() => {
     if (open && lead) {
       const normalizedStatus =
@@ -165,14 +179,23 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
   }, [lead, open]);
 
   const handleChange = (field) => (event) => {
+    const newValue = event.target.value;
+    
+    // Check if status is being changed to 8
+    if (field === "status" && (newValue === "8" || newValue === 8)) {
+      // Store the pending status change and show confirmation dialog
+      setPendingStatusChange(newValue);
+      setConfirmDialogOpen(true);
+      return;
+    }
+    
     setFormValues((prev) => {
       const newValues = {
         ...prev,
-        [field]: event.target.value,
+        [field]: newValue,
       };
       if (field === "accountId") {
-        const selectedAccount = accounts.find(acc => getAccountValue(acc) === event.target.value);
-        console.log("Selected account:", selectedAccount);
+        const selectedAccount = accounts.find(acc => getAccountValue(acc) === newValue);
         if (selectedAccount) {
           newValues.contactId = selectedAccount.contactId ? String(selectedAccount.contactId) : "";
           const fullName = [selectedAccount.firstName, selectedAccount.lastName].filter(Boolean).join(" ");
@@ -190,6 +213,22 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
       }
       return newValues;
     });
+  };
+
+  const handleConfirmStatusChange = () => {
+    if (pendingStatusChange !== null) {
+      setFormValues((prev) => ({
+        ...prev,
+        status: String(pendingStatusChange),
+      }));
+      setPendingStatusChange(null);
+    }
+    setConfirmDialogOpen(false);
+  };
+
+  const handleCancelStatusChange = () => {
+    setPendingStatusChange(null);
+    setConfirmDialogOpen(false);
   };
 
   const handleSubmit = async (event) => {
@@ -376,7 +415,7 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
                     value={formValues.status}
                     label="Status"
                     onChange={handleChange("status")}
-                    disabled={loadingStatuses || statusOptions.length === 0}
+                    disabled={loadingStatuses || statusOptions.length === 0 || isStatusLocked}
                   >
                     {statusOptions.map((option) => (
                       <MenuItem key={option.value} value={option.value}>
@@ -384,6 +423,11 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
                       </MenuItem>
                     ))}
                   </Select>
+                  {isStatusLocked && (
+                    <FormHelperText>
+                      Status cannot be changed when status is 8
+                    </FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
 
@@ -463,6 +507,23 @@ export default function EditLeadModal({ lead, onLeadUpdated }) {
               {submitting ? "Updating..." : "Update"}
             </Button>
           </Stack>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmDialogOpen} onClose={handleCancelStatusChange} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirm Status Update</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText>
+            Cannot update again. Are you sure you want to update the status to 8? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelStatusChange} color="inherit">
+            No
+          </Button>
+          <Button onClick={handleConfirmStatusChange} color="primary" variant="contained">
+            Yes
+          </Button>
         </DialogActions>
       </Dialog>
     </>

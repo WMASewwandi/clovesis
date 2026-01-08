@@ -305,8 +305,6 @@ const InvoiceCreate = () => {
     }
   }
 
-  console.log(stock);
-
   const handleClose = () => setOpen(false);
 
   const handleSubmit = async () => {
@@ -412,7 +410,6 @@ const InvoiceCreate = () => {
     if (invoiceLines.length === 0) {
       return toast.error("At least one item must be added to the table.");
     }
-
 
     const underCostMessages = invoiceLines
       .map((line) => {
@@ -533,6 +530,12 @@ const InvoiceCreate = () => {
 
     item = stockBalance[selectedIndex];
 
+    const existingItem = selectedRows.find((row) => row.id === item.id);
+    if (existingItem) {
+      toast.error("This item already exists in the table. Cannot add duplicate items.");
+      return;
+    }
+
     const newRow = {
       ...item,
       quantity: "",
@@ -557,6 +560,13 @@ const InvoiceCreate = () => {
   };
 
   const handleAddPackage = (item) => {
+    // Check if item with same id already exists
+    const existingItem = selectedRows.find((row) => row.id === item.id);
+    if (existingItem) {
+      toast.error("This item already exists in the table. Cannot add duplicate items.");
+      return;
+    }
+
     const newRow = {
       ...item,
       quantity: 1,

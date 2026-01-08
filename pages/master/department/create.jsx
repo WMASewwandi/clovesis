@@ -104,14 +104,6 @@ export default function AddDepartment({ fetchItems = [] }) {
         aria-describedby="add-department-modal-description"
       >
         <Box sx={style}>
-          <Typography
-            id="add-department-modal-title"
-            variant="h5"
-            sx={{ fontWeight: "600", mb: 2 }}
-          >
-            Create Department
-          </Typography>
-
           <Formik
             initialValues={{
               name: "",
@@ -124,6 +116,12 @@ export default function AddDepartment({ fetchItems = [] }) {
             {({ errors, touched, isSubmitting, values, setFieldValue }) => (
               <Form>
                 <Grid container spacing={2}>
+                  <Grid item xs={12}>
+                    <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
+                      Create Department
+                    </Typography>
+                  </Grid>
+
                   <Grid item xs={12}>
                     <Typography variant="subtitle2" sx={{ mb: 1 }}>
                       Department Name *
@@ -173,31 +171,32 @@ export default function AddDepartment({ fetchItems = [] }) {
                     />
                   </Grid>
 
-                  <Grid
-                    item
-                    xs={12}
-                    mt={2}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 8,
-                    }}
-                  >
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      onClick={handleClose}
-                      disabled={isSubmitting}
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 1,
+                        mt: 2,
+                      }}
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="contained"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Saving..." : "Save"}
-                    </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        size="small"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Saving..." : "Save"}
+                      </Button>
+                    </Box>
                   </Grid>
                 </Grid>
               </Form>

@@ -165,6 +165,7 @@ function MyApp({ Component, pageProps }) {
     }
     hasLoggedOutRef.current = true;
     localStorage.clear();
+    sessionStorage.removeItem("holidayGreetingShown");
     setToken(null);
     router.replace("/authentication/sign-in/");
   }, [router]);

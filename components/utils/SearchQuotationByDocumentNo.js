@@ -7,7 +7,8 @@ const SearchQuotationByDocumentNo = forwardRef(({
   fetchUrl,
   tokenKey = "token",
   onSelect,
-  getResultLabel = (item) => item.inquiryCode,
+  getResultLabel = (item) => item.documentNo || item.inquiryCode,
+  buildParams = (value) => ({ keyword: value }),
 }, ref) => {
   const inputRef = useRef();
   const [searchValue, setSearchValue] = useState("");
@@ -22,15 +23,12 @@ const SearchQuotationByDocumentNo = forwardRef(({
     },
   }));
 
-  const buildQuery = (base, params) => {
-    const query = new URLSearchParams(params).toString();
-    return `${base}?${query}`;
-  };
-
   const handleSearch = async (value) => {
 
     try {
-      const url = buildQuery(fetchUrl, { keyword: value });
+      const queryParams = buildParams(value);
+      const query = new URLSearchParams(queryParams).toString();
+      const url = `${fetchUrl}?${query}`;
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -40,7 +38,8 @@ const SearchQuotationByDocumentNo = forwardRef(({
       });
       if (response.ok) {
         const data = await response.json();
-        setResults(data.result);
+        const items = Array.isArray(data?.result?.items) ? data.result.items : data.result;
+        setResults(items || []);
         setShowDropdown(true);
       }
     } catch (err) {
@@ -117,11 +116,9 @@ const SearchQuotationByDocumentNo = forwardRef(({
                 onClick={() => handleItemSelect(item)}
                 selected={highlightedIndex === index}
               >
-
                 <ListItemText
-                  primary={`${getResultLabel(item)} - ${item.customerName || ""} -${item.styleName || ""} `}
+                  primary={`${getResultLabel(item)}${item.inquiryCode ? ` - ${item.inquiryCode}` : ""}${item.customerName ? ` - ${item.customerName}` : ""}${item.styleName ? ` - ${item.styleName}` : ""}`}
                 />
-
               </ListItem>
             ))}
           </List>

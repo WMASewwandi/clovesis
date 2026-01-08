@@ -152,6 +152,7 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
 
       const data = await response.json();
       toast.success(data.result.message);
+      fetchShipments();
     } catch (error) {
       console.error("Error fetching GSM List:", error);
     } finally {
@@ -276,7 +277,7 @@ export default function AddPOProducts({ item, fetchPO, fetchPOTally }) {
                                 onClick={() => handleLineUpdate(shipment.id)}
                                 color="warning"
                                 variant="contained"
-                                disabled={submittingStatus[shipment.id]}
+                                disabled={shipment.isStockUpdated || submittingStatus[shipment.id]}
                               >
                                 {submittingStatus[shipment.id]
                                   ? "...Updating"

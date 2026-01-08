@@ -55,6 +55,10 @@ const SignInForm = () => {
       localStorage.setItem("company", responseData.result.companyId);
       localStorage.setItem("role", responseData.result.userRole);
 
+      // Set flag for holiday greeting to show on fresh login
+      sessionStorage.removeItem("holidayGreetingShown");
+      sessionStorage.setItem("justLoggedIn", "true");
+
       router.push("/");
       window.location.reload();
     } catch (error) {

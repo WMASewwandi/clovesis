@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styles from "@/styles/PageTitle.module.css";
+import { ToastContainer } from "react-toastify";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
 import Table from "@mui/material/Table";
@@ -18,7 +19,6 @@ import {
   Select,
 } from "@mui/material";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
-import { ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
@@ -136,6 +136,7 @@ const Index = () => {
             />
           </Search>
         </Grid>
+
         <Grid
           item
           xs={12}
@@ -151,6 +152,7 @@ const Index = () => {
             ""
           )}
         </Grid>
+
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
             <Table aria-label="simple table" className="dark-table">

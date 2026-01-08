@@ -38,6 +38,7 @@ const initialFormValues = {
   country: "",
   employeeCount: "",
   accountType: "",
+  currencyId: "",
   notes: "",
   isActive: true,
 };
@@ -46,10 +47,42 @@ export default function AddAccountModal({ onAccountCreated }) {
   const [open, setOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [formValues, setFormValues] = React.useState(initialFormValues);
+  const [currencyList, setCurrencyList] = React.useState([]);
   const { accountTypes } = useAccountTypes();
+
+  const fetchCurrencyList = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/Currency/GetAllCurrency?SkipCount=0&MaxResultCount=1000&Search=null`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch Currency List");
+      }
+
+      const data = await response.json();
+      // Extract currencies from paginated response
+      let currencies = [];
+      if (data.result && data.result.items) {
+        currencies = data.result.items;
+      } else if (Array.isArray(data.result)) {
+        currencies = data.result;
+      }
+      
+      // Filter only active currencies
+      setCurrencyList(currencies.filter(currency => currency.isActive !== false));
+    } catch (error) {
+      console.error("Error fetching Currency List:", error);
+    }
+  };
 
   const handleOpen = () => {
     setOpen(true);
+    fetchCurrencyList();
   };
 
   const resetForm = () => {
@@ -140,6 +173,7 @@ export default function AddAccountModal({ onAccountCreated }) {
       AnnualRevenue: 0,
       EmployeeCount: parseDecimal(formValues.employeeCount),
       AccountType: Number(formValues.accountType),
+      CurrencyId: formValues.currencyId || null,
       Description: formValues.notes.trim() || "",
       IsActive: formValues.isActive,
       VerificationLink: verificationLink,
@@ -246,6 +280,29 @@ export default function AddAccountModal({ onAccountCreated }) {
                       {option.label}
                     </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Select Currency</InputLabel>
+                <Select
+                  value={formValues.currencyId}
+                  label="Select Currency"
+                  onChange={handleFieldChange("currencyId")}
+                >
+                  {currencyList.length === 0 ? (
+                    <MenuItem disabled>
+                      No Currencies Available
+                    </MenuItem>
+                  ) : (
+                    currencyList.map((currency) => (
+                      <MenuItem key={currency.id} value={currency.id}>
+                        {currency.code} - {currency.name}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </Grid>

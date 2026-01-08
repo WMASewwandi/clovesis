@@ -38,6 +38,7 @@ const STATUS_META = {
   5: { label: "Negotiation", color: "secondary" },
   6: { label: "Won", color: "success" },
   7: { label: "Lost", color: "error" },
+  8: { label: "Project Created", color: "success" },
 };
 
 const SOURCE_LABELS = {

@@ -1,11 +1,12 @@
-import React, { useState } from "react";
-import { Grid, MenuItem, Select, Typography } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Grid, MenuItem, Select, Typography, TextField } from "@mui/material";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Modal from "@mui/material/Modal";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { formatCurrency } from "@/components/utils/formatHelper";
 
 const style = {
   position: "absolute",
@@ -18,11 +19,16 @@ const style = {
   p: 3,
 };
 
-export default function ConfirmInovoiceById({ id, fetchItems }) {
+export default function ConfirmInovoiceById({ id, fetchItems, paidAmount = 0 }) {
   const [open, setOpen] = React.useState(false);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
   const [paymentType, setPaymentType] = useState(null);
+  const [paidAmountInput, setPaidAmountInput] = useState(paidAmount || 0);
+
+  useEffect(() => {
+    setPaidAmountInput(paidAmount || 0);
+  }, [paidAmount]);
 
   const handleSubmit = () => {
     if(paymentType == null){
@@ -31,7 +37,7 @@ export default function ConfirmInovoiceById({ id, fetchItems }) {
     }
     const token = localStorage.getItem("token");
     fetch(
-      `${BASE_URL}/Inquiry/ConfirmProformaInvoice?invoiceId=${id}&paymentType=${paymentType}`,
+      `${BASE_URL}/Inquiry/ConfirmProformaInvoice?invoiceId=${id}&paymentType=${paymentType}&advancePayment=${paidAmountInput || 0}`,
       {
         method: "POST",
         headers: {
@@ -79,6 +85,19 @@ export default function ConfirmInovoiceById({ id, fetchItems }) {
                 >
                   Are you sure you want to confirm this ?
                 </Typography>
+              </Grid>
+              <Grid item xs={12} mb={3}>
+                <Typography component="label" sx={{ display: "block", mb: 1 }}>
+                  Paid Amount (Advance)
+                </Typography>
+                <TextField
+                  size="small"
+                  fullWidth
+                  type="number"
+                  value={paidAmountInput}
+                  onChange={(e) => setPaidAmountInput(Number(e.target.value) || 0)}
+                  InputProps={{ inputProps: { min: 0, step: "0.01" } }}
+                />
               </Grid>
               <Grid item xs={12} mb={3}>
                 <Box mt={1}>

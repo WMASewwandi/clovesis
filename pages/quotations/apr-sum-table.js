@@ -66,6 +66,29 @@ export default function ApprovedSummaryTable() {
     fetchPattern();
   }, []);
 
+  const toNumber = (val) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Calculate approved totals
+  const lines = [
+    ...items,
+    ...(patternItem && patternItem.itemName ? [patternItem] : []),
+  ];
+  const approvedCost = lines.reduce((sum, line) => {
+    const qty = toNumber(line.approvedQuantity);
+    const unit = toNumber(line.approvedUnitCost);
+    const total = line.approvedTotalCost != null ? toNumber(line.approvedTotalCost) : unit * qty;
+    return sum + total;
+  }, 0);
+  const approvedUnits = lines.reduce(
+    (sum, line) => sum + toNumber(line.approvedQuantity),
+    0
+  );
+  // User expects "Unit Cost" summary to be SUM of all approved unit costs (not average)
+  const approvedUnitCost = lines.reduce((sum, line) => sum + toNumber(line.approvedUnitCost), 0);
+
   return (
     <>
       <TableContainer>
@@ -136,17 +159,17 @@ export default function ApprovedSummaryTable() {
                 Total Cost
               </TableCell>
               <TableCell sx={{ color: "#191919" }} align="right">
-                {QuotationDetails.apprvedTotalCost}
+                {approvedCost.toFixed(2)}
               </TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ color: "#191919" }}>No of Units</TableCell>
               <TableCell sx={{ color: "#191919" }} align="right">
-                {QuotationDetails.apprvedTotalUnits}
+                {approvedUnits}
               </TableCell>
               <TableCell sx={{ color: "#191919" }}>Unit Cost</TableCell>
               <TableCell sx={{ color: "#191919" }} align="right">
-                {QuotationDetails.apprvedUnitCost}
+                {approvedUnitCost.toFixed(2)}
               </TableCell>
             </TableRow>
             <TableRow>

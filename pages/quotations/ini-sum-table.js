@@ -68,6 +68,41 @@ export default function InitialSummaryTable({ inquiry }) {
     }
   }, [inquiry]);
 
+  // Calculate totals
+  const toNumber = (val) => {
+    const num = Number(val);
+    return isNaN(num) ? 0 : num;
+  };
+
+  const lines = [
+    ...items,
+    ...(patternItem && patternItem.itemName ? [patternItem] : []),
+  ];
+  const initialCost = lines.reduce((sum, line) => {
+    const qty = toNumber(line.quantity);
+    const unit = toNumber(line.unitCost);
+    return sum + unit * qty;
+  }, 0);
+  const approvedCost = lines.reduce((sum, line) => {
+    const qty = toNumber(line.approvedQuantity ?? line.quantity);
+    const unit = toNumber(line.approvedUnitCost ?? line.unitCost);
+    return sum + unit * qty;
+  }, 0);
+  const initialUnits = lines.reduce(
+    (sum, line) => sum + toNumber(line.quantity),
+    0
+  );
+  const approvedUnits = lines.reduce(
+    (sum, line) => sum + toNumber(line.approvedQuantity ?? line.quantity),
+    0
+  );
+  // User expects "Unit Cost" summary to be SUM of all unit costs (not average)
+  const initialUnitCost = lines.reduce((sum, line) => sum + toNumber(line.unitCost), 0);
+  const approvedUnitCost = lines.reduce(
+    (sum, line) => sum + toNumber(line.approvedUnitCost ?? line.unitCost),
+    0
+  );
+
   return (
     <>
       <TableContainer component={Paper}>
@@ -153,38 +188,38 @@ export default function InitialSummaryTable({ inquiry }) {
             <TableRow>
               <TableCell sx={{ color: "#90a4ae" }}>Total Cost</TableCell>
               <TableCell align="right" sx={{ color: "#90a4ae" }}>
-                {formatCurrency(inquiry ? inquiry.totalCost : 0)}
+                {formatCurrency(initialCost)}
               </TableCell>
               <TableCell sx={{
                 background: "#a0b8f6", fontWeight: 'bold',
                 color:
-                  inquiry && (inquiry.approvedTotalCost !== inquiry.totalCost) ? "blue" : "#fff",
+                  approvedCost !== initialCost ? "blue" : "#fff",
               }}>
-                {formatCurrency(inquiry ? inquiry.approvedTotalCost : 0)}
+                {formatCurrency(approvedCost)}
               </TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ color: "#90a4ae" }}>No of Units</TableCell>
               <TableCell align="right" sx={{ color: "#90a4ae" }}>
-                {inquiry ? inquiry.totalUnits : 0}
+                {initialUnits}
               </TableCell>
               <TableCell sx={{
                 background: "#a0b8f6", fontWeight: 'bold'
               }}>
-                {inquiry ? inquiry.totalUnits : 0}
+                {approvedUnits}
               </TableCell>
             </TableRow>
             <TableRow>
               <TableCell sx={{ color: "#90a4ae" }}>Unit Cost</TableCell>
               <TableCell align="right" sx={{ color: "#90a4ae" }}>
-                {formatCurrency(inquiry ? inquiry.unitCost : 0)}
+                {formatCurrency(initialUnitCost)}
               </TableCell>
               <TableCell sx={{
                 background: "#a0b8f6", fontWeight: 'bold',
                 color:
-                  inquiry && (inquiry.approvedUnitCost !== inquiry.unitCost) ? "blue" : "#fff"
+                  approvedUnitCost !== initialUnitCost ? "blue" : "#fff"
               }}>
-                {formatCurrency(inquiry ? inquiry.approvedUnitCost : 0)}
+                {formatCurrency(approvedUnitCost)}
               </TableCell>
             </TableRow>
             <TableRow>

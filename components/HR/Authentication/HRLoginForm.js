@@ -74,6 +74,10 @@ const HRLoginForm = () => {
       localStorage.setItem("role", result.userRole || result.UserRole);
       localStorage.setItem("isPasswordReset", result.isPasswordReset || result.IsPasswordReset || false);
 
+      // Set flag for holiday greeting to show on fresh login
+      sessionStorage.removeItem("holidayGreetingShown");
+      sessionStorage.setItem("justLoggedIn", "true");
+
       // Check if first-time password reset is needed
       if (result.isPasswordReset === false || result.IsPasswordReset === false) {
         toast.info("Please reset your password on first login");

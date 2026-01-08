@@ -52,6 +52,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
   const [categoryList, setCategoryList] = useState([]);
   const [subCategoryList, setSubCategoryList] = useState([]);
   const [supplierList, setSupplierList] = useState([]);
+  const [currencyList, setCurrencyList] = useState([]);
   const [catId, setCatId] = useState(item.categoryId);
   const [tabValue, setTabValue] = useState(0);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -125,10 +126,41 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     }
   };
 
+  const fetchCurrencyList = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/Currency/GetAllCurrency?SkipCount=0&MaxResultCount=1000&Search=null`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch Currency List");
+      }
+
+      const data = await response.json();
+      // Extract currencies from paginated response
+      let currencies = [];
+      if (data.result && data.result.items) {
+        currencies = data.result.items;
+      } else if (Array.isArray(data.result)) {
+        currencies = data.result;
+      }
+      
+      // Filter only active currencies
+      setCurrencyList(currencies.filter(currency => currency.isActive !== false));
+    } catch (error) {
+      console.error("Error fetching Currency List:", error);
+    }
+  };
+
   useEffect(() => {
     fetchCategoryList();
     fetchSupplierList();
     fetchSubCategoryList();
+    fetchCurrencyList();
     setSelectedImage(item.productImage != "" ? item.productImage : null);
   }, [item]);
 
@@ -176,6 +208,9 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     formData.append("SubCategoryId", values.SubCategoryId);
     formData.append("Supplier", values.Supplier);
     formData.append("UOM", values.UOM);
+    if (values.CurrencyId) {
+      formData.append("CurrencyId", values.CurrencyId);
+    }
     if (values.Barcode !== undefined && values.Barcode !== null && values.Barcode !== "") {
       formData.append("Barcode", values.Barcode);
     }
@@ -239,6 +274,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
               Supplier: item.supplier || "",
               UOM: item.uom || "",
               Barcode: item.barcode || null,
+              CurrencyId: item.currencyId || null,
               CostAccount: item.costAccount || null,
               AssetsAccount: item.assetsAccount || null,
               IncomeAccount: item.incomeAccount || null,
@@ -535,6 +571,41 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                                 ))
                             )}
 
+                          </Field>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={12} lg={6} mt={1} p={1}>
+                        <Typography
+                          sx={{
+                            fontWeight: "500",
+                            fontSize: "14px",
+                            mb: "5px",
+                          }}
+                        >
+                          Select Currency
+                        </Typography>
+                        <FormControl fullWidth>
+                          <Field
+                            as={TextField}
+                            select
+                            fullWidth
+                            name="CurrencyId"
+                            size="small"
+                            onChange={(e) => {
+                              setFieldValue("CurrencyId", e.target.value);
+                            }}
+                          >
+                            {currencyList.length === 0 ? (
+                              <MenuItem disabled>
+                                No Currencies Available
+                              </MenuItem>
+                            ) : (
+                              currencyList.map((currency, index) => (
+                                <MenuItem key={index} value={currency.id}>
+                                  {currency.code} - {currency.name}
+                                </MenuItem>
+                              ))
+                            )}
                           </Field>
                         </FormControl>
                       </Grid>

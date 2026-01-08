@@ -56,7 +56,12 @@ export default function RejectInquiryByInquiryId({ id, controller, fetchItems ,h
   };
   return (
     <>
-      <Button onClick={handleOpen} color="error" disabled={!(hasConfirmed && !hasPending)} variant="outlined">
+      <Button
+        onClick={handleOpen}
+        color="error"
+        disabled={hasPending || hasConfirmed} // enable only when no pending and nothing confirmed (i.e., all rejected)
+        variant="outlined"
+      >
         Reject
       </Button>
       <Modal

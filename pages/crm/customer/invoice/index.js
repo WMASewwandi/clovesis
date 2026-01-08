@@ -85,7 +85,7 @@ export default function CustomerInvoice() {
       const element = invoiceContentRef.current;
       const opt = {
         margin: 0,
-        filename: `Invoice_${invoiceData?.invoiceNo || invoiceNumber || "invoice"}.pdf`,
+        filename: `Payment_Plan_${invoiceData?.invoiceNo || invoiceNumber || "paymentplan"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: { 
           scale: 2,
@@ -245,7 +245,7 @@ export default function CustomerInvoice() {
               }}
             >
               <Typography variant="body2" color="text.secondary">
-                Loading invoice...
+                Loading Payment Plan...
               </Typography>
             </Box>
           ) : invoiceData ? (
@@ -259,7 +259,7 @@ export default function CustomerInvoice() {
                   fontSize: { xs: "0.85rem", sm: "1.5rem", md: "2rem" },
                 }}
               >
-                INVOICE
+                PAYMENT PLAN
               </Typography>
 
               <Box
@@ -285,7 +285,7 @@ export default function CustomerInvoice() {
                     <strong>Quote No:</strong> {quoteData?.quoteNumber || "-"}
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
-                    <strong>Invoice No:</strong> {invoiceData.invoiceNo || invoiceNumber || "-"}
+                    <strong>Doc. No:</strong> {invoiceData.invoiceNo || invoiceNumber || "-"}
                   </Typography>
                   <Typography variant="body2" sx={{ mb: 1, fontSize: { xs: "0.55rem", sm: "0.875rem" } }}>
                     <strong>Date:</strong> {invoiceData.createdOn ? format(new Date(invoiceData.createdOn), "dd-MMM-yyyy") : currentDate}

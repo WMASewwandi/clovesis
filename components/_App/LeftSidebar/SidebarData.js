@@ -57,8 +57,8 @@ export const getSidebarData = (IsGarmentSystem) => {
             subNav: [
                 { title: "Dashboard", path: "/pmo/dashboard", categoryId: 119, isAvailable: true },
                 { title: "Projects", path: "/pmo/projects", categoryId: 120, isAvailable: true },
-                { title: "Tasks", path: "/pmo/tasks", categoryId: 121, isAvailable: true },
                 { title: "Team", path: "/pmo/team", categoryId: 122, isAvailable: true },
+                { title: "Tasks", path: "/pmo/tasks", categoryId: 121, isAvailable: true },
                 { title: "Timeline", path: "/pmo/timeline", categoryId: 123, isAvailable: true },
                 { title: "Financials", path: "/pmo/financials", categoryId: 124, isAvailable: true },
                 { title: "Reports", path: "/pmo/reports", categoryId: 125, isAvailable: true },
@@ -146,6 +146,9 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Combo Meal", path: "/master/combo/", categoryId: 94, isAvailable: true },
                 { title: "DBR Machine", path: "/master/dbr-machine/", categoryId: 100, isAvailable: true },
                 { title: "Projects", path: "/master/projects/", categoryId: 53, isAvailable: true },
+                { title: "Delivery Methods", path: "/master/delivery-methods/", categoryId: 147, isAvailable: true },
+                { title: "Department", path: "/master/department/", categoryId: 78, isAvailable: true },
+                { title: "Currency", path: "/master/currency/", categoryId: 148, isAvailable: true },
             ],
         },
         {
@@ -376,14 +379,12 @@ export const getSidebarData = (IsGarmentSystem) => {
             { title: "Kanban", path: "/crm/kanban/", categoryId: 115, isAvailable: true },                       
             { title: "Accounts", path: "/crm/accounts/", categoryId: 109, isAvailable: true },  
             { title: "Contacts", path: "/crm/contacts/", categoryId: 110, isAvailable: true },
-            { title: "Leads", path: "/crm/leads/", categoryId: 116, isAvailable: true },   
-            // { title: "Opportunities", path: "/crm/opportunities/", categoryId: 111, isAvailable: true },                     
+            { title: "Leads", path: "/crm/leads/", categoryId: 116, isAvailable: true },                        
             { title: "Activities", path: "/crm/activities/", categoryId: 112, isAvailable: true },                     
             { title: "Quotes", path: "/crm/quotes/", categoryId: 113, isAvailable: true },                     
-            { title: "Invoice", path: "/crm/invoice/", categoryId: 137, isAvailable: true },                     
+            { title: "Payment Plan", path: "/crm/payment-plan/", categoryId: 137, isAvailable: true },                     
             { title: "Sales Person", path: "/crm/sales-person/", categoryId: 135, isAvailable: true },                     
-            { title: "Meetings", path: "/crm/meeting/", categoryId: 146, isAvailable: true },                     
-            //{ title: "Reports", path: "/crm/reports/", categoryId: 114, isAvailable: true },                     
+            { title: "Meetings", path: "/crm/meeting/", categoryId: 146, isAvailable: true },                      
         ],
     });
 

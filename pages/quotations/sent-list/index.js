@@ -82,6 +82,8 @@ export default function SentQuotations() {
         return <AccessDenied />;
     }
 
+    // Use actual inquiryConfirmationStatus to avoid auto-moving before user action
+    // 1 = Pending, 2 = Confirmed, 3 = Rejected
     const filteredList = quotationList.filter((q) => {
         if (tab === 0) return q.inquiryConfirmationStatus === 1;
         if (tab === 1) return q.inquiryConfirmationStatus === 2;
@@ -154,7 +156,16 @@ export default function SentQuotations() {
                                             <TableCell align="right">
                                                 {tab === 0 ?
                                                     <Box display="flex" justifyContent="end" gap={1}>
-                                                        <ConfirmInquiryByInquiryId id={item.inquiryId} fetchItems={fetchQuotationList} hasPending={item.isHasPendingQuotations} hasConfirmed={item.isHasConfirmedQuotations}/>
+                                                        <ConfirmInquiryByInquiryId
+                                                            id={item.inquiryId}
+                                                            fetchItems={fetchQuotationList}
+                                                            hasPending={item.isHasPendingQuotations}
+                                                            hasConfirmed={item.isHasConfirmedQuotations}
+                                                            onSuccess={() => {
+                                                                setTab(1); // jump to Confirmed tab after confirming
+                                                                fetchQuotationList(1, searchTerm, pageSize);
+                                                            }}
+                                                        />
                                                         <RejectInquiryByInquiryId
                                                             id={item.inquiryId}
                                                             controller="Inquiry/RejectInquiryInSentQuotation"
@@ -163,7 +174,10 @@ export default function SentQuotations() {
                                                             hasConfirmed={item.isHasConfirmedQuotations}
                                                         />
                                                     </Box> :
-                                                    <Chip color={item.inquiryConfirmationStatus === 2 ? "success" : "error"} label={item.inquiryConfirmationStatus === 2 ? "Confirmed" : "Rejected"} />
+                                                    <Chip
+                                                        color={item.inquiryConfirmationStatus === 2 ? "success" : "error"}
+                                                        label={item.inquiryConfirmationStatus === 2 ? "Confirmed" : "Rejected"}
+                                                    />
                                                 }
                                             </TableCell>
                                         </TableRow>

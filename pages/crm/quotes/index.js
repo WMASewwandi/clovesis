@@ -22,6 +22,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import SendIcon from "@mui/icons-material/Send";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
 import FormControl from "@mui/material/FormControl";
@@ -118,6 +119,8 @@ export default function QuotesList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const [selectedQuote, setSelectedQuote] = React.useState(null);
   const [deleteLoading, setDeleteLoading] = React.useState(false);
+  const [isSendDialogOpen, setIsSendDialogOpen] = React.useState(false);
+  const [sendLoading, setSendLoading] = React.useState(false);
 
   const accountMap = React.useMemo(() => {
     const map = {};
@@ -209,6 +212,54 @@ export default function QuotesList() {
       toast.error(error.message || "Unable to delete quote");
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const handleSendClick = (quote) => {
+    setSelectedQuote(quote);
+    setIsSendDialogOpen(true);
+  };
+
+  const handleCloseSendDialog = () => {
+    setIsSendDialogOpen(false);
+    setSelectedQuote(null);
+  };
+
+  const handleConfirmSend = async () => {
+    if (!selectedQuote?.id) {
+      toast.error("Unable to determine quote to send.");
+      return;
+    }
+
+    try {
+      setSendLoading(true);
+      const token = localStorage.getItem("token");
+      const quoteNumber = selectedQuote.quoteNumber || selectedQuote.id;
+      const reportLink = `${window.location.origin}/crm/customer/quote?id=${selectedQuote.id}&documentNumber=${quoteNumber}`;
+      
+      const response = await fetch(
+        `${BASE_URL}/CRMQuotes/SendQuoteEmailToCustomer?quoteId=${selectedQuote.id}&link=${encodeURIComponent(reportLink)}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to send quote");
+      }
+
+      toast.success(data?.message || "Quote sent successfully.");
+      handleCloseSendDialog();
+    } catch (error) {
+      toast.error(error.message || "Unable to send quote");
+    } finally {
+      setSendLoading(false);
     }
   };
 
@@ -331,6 +382,16 @@ export default function QuotesList() {
                               <AssessmentIcon fontSize="medium" />
                             </IconButton>
                           </Tooltip>
+                          <Tooltip title="Send Quote">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              aria-label="send quote"
+                              onClick={() => handleSendClick(quote)}
+                            >
+                              <SendIcon fontSize="medium" />
+                            </IconButton>
+                          </Tooltip>
                           {/* {canViewReport && (
                             <Tooltip title="Open PDF Report">
                               <IconButton
@@ -399,6 +460,24 @@ export default function QuotesList() {
           </Button>
           <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleteLoading}>
             {deleteLoading ? "Deleting..." : "Delete"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={isSendDialogOpen} onClose={handleCloseSendDialog} maxWidth="xs" fullWidth>
+        <DialogTitle>Send Quote</DialogTitle>
+        <DialogContent dividers>
+          <DialogContentText>
+            Are you sure you want to send quote{" "}
+            <strong>{selectedQuote ? selectedQuote.quoteNumber || `quote #${selectedQuote.id}` : "this quote"}</strong> to the customer via email?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSendDialog} color="inherit" disabled={sendLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleConfirmSend} color="success" variant="contained" disabled={sendLoading}>
+            {sendLoading ? "Sending..." : "Send"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -64,7 +64,7 @@ const reportConfigs = {
   CustomerPaymentSummaryReport: {
     title: "Customer Payment Summary Report",
     fields: {
-      customer: { enabled: true, required: true, label: "Select Customer", paramName: "customerId", allowAll: false },
+      customer: { enabled: true, required: false, label: "Select Customer", paramName: "customerId", allowAll: true },
       invoice: { enabled: true, required: false, label: "Select Invoice", paramName: "invoiceId", allowAll: true },
       paymentType: {
         enabled: true,
@@ -445,7 +445,7 @@ export default function UnifiedSummaryReportModal({ reportName, docName }) {
   const fetchReservations = async () => {
     try {
       const token = localStorage.getItem("token");
-      const query = `${BASE_URL}/Reservation/GetAllReservationSkipAndTake?SkipCount=0&MaxResultCount=1000&Search=null`;
+      const query = `${BASE_URL}/Reservation/GetAllReservationSkipAndTake?SkipCount=0&MaxResultCount=1000&Search=null&appointmentType=0`;
       const response = await fetch(query, {
         method: "GET",
         headers: {

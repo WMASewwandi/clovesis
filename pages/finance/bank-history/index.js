@@ -10,7 +10,7 @@ import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import CreateBankHistory from "./create";
 import EditBankHistory from "./edit";
 import { FormControl, InputLabel, MenuItem, Pagination, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
-import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
+import { formatCurrency, formatDate, formatDateWithTime } from "@/components/utils/formatHelper";
 import useApi from "@/components/utils/useApi";
 
 export default function BankHistory() {
@@ -145,7 +145,7 @@ export default function BankHistory() {
                       <TableCell>
                         {item.documentNo}
                       </TableCell>
-                      <TableCell>{formatDate(item.createdOn)}</TableCell>
+                      <TableCell>{formatDateWithTime(item.createdOn)}</TableCell>
                       <TableCell>{item.description}</TableCell>
                       <TableCell>{item.cashFlowTypeName || "-"}</TableCell>
                       <TableCell >
@@ -159,7 +159,7 @@ export default function BankHistory() {
                       <TableCell>{formatCurrency(item.transactionType === 2 ? item.amount : "")}</TableCell>
                       <TableCell>{formatCurrency(item.remainingBalance)}</TableCell>
                       <TableCell align="right">
-                        {update ? <EditBankHistory item={item} fetchItems={() => fetchBankHistory(page, searchTerm, pageSize, bankId)} /> : ""}
+                        {update ? <EditBankHistory item={item} banks={banks} fetchItems={() => fetchBankHistory(page, searchTerm, pageSize, bankId)} /> : ""}
                       </TableCell>
                     </TableRow>
                   ))

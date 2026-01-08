@@ -26,6 +26,7 @@ import { useRouter } from "next/router";
 const InvoiceCreate = () => {
   const router = useRouter();
   const inquiryId = router.query.id;
+  const proformaInvoiceId = router.query.proformaInvoiceId; // Get ProformaInvoice ID if editing from Sent tab
   const [invoiceDate, setInvoiceDate] = useState();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedInquiry, setSelectedInquiry] = useState(null);
@@ -81,6 +82,18 @@ const InvoiceCreate = () => {
         const jsonResponse = await response.json();
         if (jsonResponse.message != "") {
           toast.success(jsonResponse.result.message);
+          // After editing, invoice should go to Processing tab (backend moves it there)
+          // Store flag to switch to Processing tab after navigation
+          // Also store the invoice ID to help with refresh
+          if (proformaInvoiceId) {
+            sessionStorage.setItem("editedInvoiceId", proformaInvoiceId.toString());
+          }
+          sessionStorage.setItem("switchToProcessingTab", "true");
+          // Small delay to ensure backend has committed changes
+          setTimeout(() => {
+            // Navigate back to list page
+            router.push("/quotations/proforma-list/");
+          }, 300);
         } else {
           toast.error(jsonResponse.result.message);
         }
@@ -120,7 +133,8 @@ const InvoiceCreate = () => {
 
   const fetchQuotationList = async (inquiry) => {
       try {
-        const response = await fetch(`${BASE_URL}/Inquiry/GetAllQuotationsByInquiryIdAndStatus?status=10&inquiryId=${inquiry}`, {
+        // Try status 12 (ProformaInvoiceProcessing) first - quotations move here after invoice creation
+        let response = await fetch(`${BASE_URL}/Inquiry/GetAllQuotationsByInquiryIdAndStatus?status=12&inquiryId=${inquiry}`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -128,8 +142,44 @@ const InvoiceCreate = () => {
           },
         });
   
-        const data = await response.json();
-        setQuotations(data.result);
+        let data = await response.json();
+        let quotations = data.result || [];
+        
+        // If no quotations found with status 12, try status 10 (ProformaInvoiceCreated) as fallback
+        if (!quotations || quotations.length === 0) {
+          response = await fetch(`${BASE_URL}/Inquiry/GetAllQuotationsByInquiryIdAndStatus?status=10&inquiryId=${inquiry}`, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
+          });
+          
+          data = await response.json();
+          quotations = data.result || [];
+        }
+        
+        // Map quotations to include advanceAmount and balanceAmount if not present
+        const updatedResult = quotations.map(item => {
+          // If advanceAmount and balanceAmount already exist, use them
+          if (item.advanceAmount !== undefined && item.balanceAmount !== undefined) {
+            return item;
+          }
+          
+          // Otherwise calculate from totalAmount and advancePaymentPercentage
+          const total = parseFloat(item.totalAmount) || 0;
+          const percentage = parseFloat(item.advancePaymentPercentage) || 0;
+          const advanceAmount = (total * percentage) / 100;
+          const balanceAmount = total - advanceAmount;
+
+          return {
+            ...item,
+            advanceAmount,
+            balanceAmount: balanceAmount < 0 ? 0 : balanceAmount
+          };
+        });
+        
+        setQuotations(updatedResult);
       } catch (error) {
         console.error("Error:", error);
       }

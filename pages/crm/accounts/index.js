@@ -146,14 +146,14 @@ export default function AccountsList() {
 
     try {
       setVerificationLoading(true);
-      
+
       const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
       const verificationLink = `${baseUrl}/verified?accountId=${selectedAccountForVerification.id}`;
       const email = selectedAccountForVerification.email;
       const accountName = selectedAccountForVerification.accountName || "";
-      
+
       const apiUrl = `${BASE_URL}/Email/SendAccountVerificationEmail?email=${encodeURIComponent(email)}&accountName=${encodeURIComponent(accountName)}&verificationLink=${encodeURIComponent(verificationLink)}`;
-      
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -243,7 +243,7 @@ export default function AccountsList() {
                         <TableCell>
                           <Box>
                             <Typography variant="body2">{account.email || "-"}</Typography>
-                            {account.emailVerified === true || account.isEmailVerified === true ? (
+                            {account.emailVerified === true ? (
                               <Chip
                                 label="Verified"
                                 color="success"
@@ -260,7 +260,7 @@ export default function AccountsList() {
                         </TableCell>
                         <TableCell>{account.mobileNo || "-"}</TableCell>
                         <TableCell>
-                          {[account.addressLine1, account.addressLine2, account.addressLine3,account.state,account.country]
+                          {[account.addressLine1, account.addressLine2, account.addressLine3, account.state, account.country]
                             .filter(Boolean)
                             .join(", ")}
                         </TableCell>
@@ -278,16 +278,18 @@ export default function AccountsList() {
                             account={account}
                             onAccountUpdated={() => refreshAccounts(page)}
                           />
-                          <Tooltip title="Send Verification">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              aria-label="send verification"
-                              onClick={() => handleSendVerificationClick(account)}
-                            >
-                              <SendIcon fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
+                          {account.emailVerified ? "" :
+                            <Tooltip title="Send Verification">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                aria-label="send verification"
+                                onClick={() => handleSendVerificationClick(account)}
+                              >
+                                <SendIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                          }
                           <Tooltip title="Delete">
                             <IconButton
                               size="small"
