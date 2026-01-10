@@ -224,8 +224,8 @@ export default function EditBankHistory({ item, fetchItems, banks }) {
                       Transaction Type
                     </Typography>
                     <Select fullWidth value={transactionType} onChange={(e) => setTransactionType(e.target.value)}>
-                      <MenuItem value={1}>Credit</MenuItem>
-                      <MenuItem value={2}>Debit</MenuItem>
+                      <MenuItem value={1}>Deposit</MenuItem>
+                      <MenuItem value={2}>Withdrawal</MenuItem>
                     </Select>
                   </Grid>
                   <Grid item xs={12} mt={1}>
