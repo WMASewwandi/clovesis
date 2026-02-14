@@ -24,7 +24,7 @@ import ViewComments from "../comments";
 import { projectStatusColor, projectStatusType } from "@/components/types/types";
 import { useRouter } from "next/router";
 
-export default function ViewSentQuotations({ item, update, fetchItems }) {
+export default function ViewSentQuotations({ item, update, fetchItems, parentTab = 0 }) {
   const [open, setOpen] = useState(false);
   const [quots, setQuots] = useState([]);
   const [tabIndex, setTabIndex] = useState(0);
@@ -71,9 +71,22 @@ export default function ViewSentQuotations({ item, update, fetchItems }) {
     }
   };
 
-  const filteredQuots = (statusType) => quots.filter(q => q.projectStatusType === statusType);
+  const filteredQuots = (statusType) => {
+    if (statusType === 1) {
+      // For pending tab, exclude confirmed and rejected items
+      return quots.filter(q => q.projectStatusType === statusType 
+        && q.inquiryConfirmationStatus !== 2 
+        && q.inquiryConfirmationStatus !== 3);
+    } else if (statusType === 2) {
+      // For confirmed tab, show items with ProjectStatusType = 2 (QuotationConfirmed) OR InquiryConfirmationStatus = 2 (Confirmed)
+      return quots.filter(q => q.projectStatusType === statusType || q.inquiryConfirmationStatus === 2);
+    } else {
+      // For rejected tab, show items with ProjectStatusType = 9 (SentQuotationRejected) OR InquiryConfirmationStatus = 3 (Rejected)
+      return quots.filter(q => q.projectStatusType === statusType || q.inquiryConfirmationStatus === 3);
+    }
+  };
 
-  const renderTable = (quotations, isRejected = false) => (
+  const renderTable = (quotations, isRejected = false, isPendingTab = false, isRejectedTab = false) => (
     <TableContainer component={Paper}>
       <Table aria-label="quotations table">
         <TableHead>
@@ -123,16 +136,23 @@ export default function ViewSentQuotations({ item, update, fetchItems }) {
                 {isRejected && <TableCell>{q.rejectedReason || "N/A"}</TableCell>}
                 <TableCell align="right">
                   <Box display="flex" gap={1} justifyContent="end">
-                    {update && q.projectStatusType === 1 ? <Button variant="outlined" onClick={() => navigateToEdit(q.inquiryId, q.optionId)}>Edit</Button> : ""}
-                    {q.projectStatusType === 1 && (
+                    {q.projectStatusType === 1 && isPendingTab && (
                       <Box display="flex" justifyContent="end" gap={1}>
+                        {update && <Button variant="outlined" onClick={() => navigateToEdit(q.inquiryId, q.optionId)}>Edit</Button>}
                         <UpdateConfirmQuotation fetchItems={fetchSentQuotList} type={2} sentQuotId={q.id} isConfirm={true} />
                         <UpdateConfirmQuotation fetchItems={fetchSentQuotList} type={9} sentQuotId={q.id} isConfirm={false} />
                       </Box>
                     )}
-                    {q.projectStatusType !== 1 && (
+                    {q.projectStatusType === 9 && (
+                      <Box display="flex" justifyContent="end" gap={1}>
+                        {update && isRejectedTab && parentTab === 0 && <Button variant="outlined" onClick={() => navigateToEdit(q.inquiryId, q.optionId)}>Edit</Button>}
+                        <Chip sx={{ color: "#fff", background: projectStatusColor(q.projectStatusType) }} label={projectStatusType(q.projectStatusType)} />
+                      </Box>
+                    )}
+                    {q.projectStatusType !== 1 && q.projectStatusType !== 9 && (
                       <Chip sx={{ color: "#fff", background: projectStatusColor(q.projectStatusType) }} label={projectStatusType(q.projectStatusType)} />
                     )}
+                    {/* Confirmed items (projectStatusType === 2) should only show status chip, no edit button */}
                   </Box>
                 </TableCell>
               </TableRow>
@@ -158,9 +178,9 @@ export default function ViewSentQuotations({ item, update, fetchItems }) {
           </Tabs>
 
           <Box sx={{ flex: 1, overflowY: "auto", mt: 2 }}>
-            {tabIndex === 0 && renderTable(filteredQuots(1))}
-            {tabIndex === 1 && renderTable(filteredQuots(2))}
-            {tabIndex === 2 && renderTable(filteredQuots(9), true)}
+            {tabIndex === 0 && renderTable(filteredQuots(1), false, true, false)}
+            {tabIndex === 1 && renderTable(filteredQuots(2), false, false, false)}
+            {tabIndex === 2 && renderTable(filteredQuots(9), true, false, true)}
           </Box>
 
           <Box my={2}>

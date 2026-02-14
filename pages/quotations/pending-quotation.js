@@ -9,6 +9,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
+import Box from "@mui/material/Box";
 import { Pagination, Typography, FormControl, InputLabel, MenuItem, Select, Button } from "@mui/material";
 import { ToastContainer } from "react-toastify";
 import BASE_URL from "Base/api";
@@ -148,8 +149,20 @@ export default function PendingQuotation() {
                       <TableCell>{getWindowType(quotation.windowType)}</TableCell>
                       <TableCell>{formatDate(quotation.createdOn)}</TableCell>
                       <TableCell align="right">
-                        {update ? <Button onClick={() => navigateToEdit(quotation)} variant="outlined">Edit</Button> : ""}
-                        {remove ? <DeleteConfirmation fetchItems={fetchQuotationList} quotation={quotation} /> : ""}
+                        <Box display="flex" sx={{ gap: "10px", justifyContent: "flex-end" }}>
+                          {update ? <Button onClick={() => navigateToEdit(quotation)} variant="outlined" size="small">Edit</Button> : ""}
+                          <Button
+                            onClick={() => router.push({
+                              pathname: "/quotations/comparison",
+                              query: { id: quotation ? quotation.inquiryID : "", option: quotation ? quotation.optionId : "" },
+                            })}
+                            variant="outlined"
+                            size="small"
+                          >
+                            Comparison
+                          </Button>
+                          {remove ? <DeleteConfirmation fetchItems={fetchQuotationList} quotation={quotation} /> : ""}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))

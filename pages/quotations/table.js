@@ -124,14 +124,23 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
         pattern.approvedUnitCost = pattern.unitCost;
       }
 
-      const qty = pattern.approvedQuantity ?? 0;
+      // Fallback for approvedQuantity - use quantity if approvedQuantity is not set
+      if (!pattern.approvedQuantity && pattern.approvedQuantity !== 0) {
+        pattern.approvedQuantity = pattern.quantity ?? 0;
+      }
+
+      const qty = pattern.approvedQuantity ?? pattern.quantity ?? 0;
       const totalCost = pattern.approvedTotalCost ?? 0;
       const unitCost = qty > 0 ? totalCost / qty : 0;
 
       setPatternQuantity(qty);
       setPatternTotalCost(totalCost);
       setPatternUCost(unitCost);
-      setPatternItem(pattern);
+      setPatternItem({
+        ...pattern,
+        approvedQuantity: qty,
+        quantity: pattern.quantity ?? qty,
+      });
     } catch (error) {
       console.error(error);
     }
@@ -188,6 +197,8 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
       ...patternItem,
       approvedUnitCost: unitCost,
       approvedTotalCost: cost,
+      approvedQuantity: patternQuantity,
+      quantity: patternItem.quantity ?? patternQuantity,
     });
   };
 
@@ -213,6 +224,8 @@ export default function TableData({ onIsSavedChange, inquiry, onSummaryChange })
         ...patternItem,
         approvedTotalCost: patternTotalCost,
         approvedUnitCost: patternUCost,
+        approvedQuantity: patternQuantity,
+        quantity: patternItem.quantity ?? patternQuantity,
       },
       {
         ...commissionItem,
