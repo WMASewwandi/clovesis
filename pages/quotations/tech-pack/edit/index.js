@@ -127,7 +127,7 @@ export default function TechPackEdit() {
     const navToNext = () => {
         router.push({
             pathname: "/quotations/tech-pack/edit/color-code",
-            query: { inquiryId, optionId, sentQuotationId, ongoingInquiryId },
+            query: { inquiryId, optionId, sentQuotationId, ongoingInquiryId, ...(inquiry?.windowType != null && { windowType: inquiry.windowType }) },
         });
     };
 
@@ -210,6 +210,7 @@ export default function TechPackEdit() {
             <DashboardHeader
                 customerName={inquiry ? inquiry.customerName : ""}
                 optionName={inquiry ? inquiry.optionName : ""}
+                windowType={inquiry ? inquiry.windowType : null}
                 href="/quotations/tech-pack/"
                 link="Tech Pack"
                 title="Select Fabric - Tech Pack"

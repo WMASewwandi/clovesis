@@ -24,10 +24,23 @@ export default function Comparison() {
   const router = useRouter();
   const inqId = router.query.id;
   const optId = router.query.option;
+  const windowType = router.query.windowType;
+  const from = router.query.from; // Get the source page (pending-quotation or approved-quotation)
   const [inquiry, setInquiry] = useState(null);
   const [versions, setVersions] = useState([]);
   const [versionLineItems, setVersionLineItems] = useState({});
   const [loading, setLoading] = useState(true);
+  
+  // Determine the back navigation URL based on the source
+  const getBackUrl = () => {
+    if (from === "pending-quotation") {
+      return "/quotations/pending-quotation";
+    } else if (from === "approved-quotation") {
+      return "/quotations/approved-quotation";
+    }
+    // Default to approved-quotation if no source is specified (for backward compatibility)
+    return "/quotations/approved-quotation";
+  };
 
   const fetchInquiryById = async () => {
     try {
@@ -53,6 +66,8 @@ export default function Comparison() {
 
   const fetchVersionHistory = async () => {
     try {
+      // Don't filter by WindowType - we want to see all history versions for comparison
+      // This ensures "Sent Quotation Edit" and other versions are visible regardless of WindowType
       const response = await fetch(`${BASE_URL}/Inquiry/GetQuotationVersionHistory?InquiryID=${inqId}&OptionId=${optId}`, {
         method: "GET",
         headers: {
@@ -102,16 +117,23 @@ export default function Comparison() {
   useEffect(() => {
     if (inqId && optId) {
       fetchInquiryById();
-      fetchVersionHistory();
     }
   }, [inqId, optId]);
+
+  useEffect(() => {
+    if (inqId && optId && inquiry) {
+      fetchVersionHistory();
+    }
+  }, [inqId, optId, inquiry]);
 
   const getVersionTypeLabel = (versionType) => {
     const labels = {
       "Initial Creation": "Inquiry Created",
+      "Inquiry Created": "Inquiry Created",
       "Pending Quotation Edit": "Pending Quotation Edit",
       "Quotation Approved": "Quotation Approved",
-      "Approved Quotation Edit": "Approved Quotation Edit"
+      "Approved Quotation Edit": "Approved Quotation Edit",
+      "Sent Quotation Edit": "Sent Quotation Edit"
     };
     return labels[versionType] || versionType;
   };
@@ -119,29 +141,42 @@ export default function Comparison() {
   const getVersionTypeColor = (versionType) => {
     const colors = {
       "Initial Creation": "primary",
+      "Inquiry Created": "primary",
       "Pending Quotation Edit": "warning",
       "Quotation Approved": "success",
-      "Approved Quotation Edit": "info"
+      "Approved Quotation Edit": "info",
+      "Sent Quotation Edit": "secondary"
     };
     return colors[versionType] || "default";
   };
+
+  // First column (Inquiry Created): show Unit Cost only, no Approved - support both legacy and new version type
+  const isInquiryCreatedVersion = (versionType) =>
+    versionType === "Initial Creation" || versionType === "Inquiry Created";
 
   const toNumber = (val) => {
     const num = Number(val);
     return isNaN(num) ? 0 : num;
   };
 
-  // Get all unique item names across all versions
   const getAllItemNames = () => {
-    const itemSet = new Set();
-    Object.values(versionLineItems).forEach((items) => {
+    if (versions.length === 0) return [];
+    const firstVersionId = versions[0].id;
+    const firstItems = versionLineItems[firstVersionId] || [];
+    const ordered = firstItems
+      .filter((item) => item.itemName && item.itemName !== "Commission" && item.itemName !== "Pattern")
+      .map((item) => item.itemName);
+    const seen = new Set(ordered);
+    versions.slice(1).forEach((version) => {
+      const items = versionLineItems[version.id] || [];
       items.forEach((item) => {
-        if (item.itemName && item.itemName !== "Commission") {
-          itemSet.add(item.itemName);
+        if (item.itemName && item.itemName !== "Commission" && item.itemName !== "Pattern" && !seen.has(item.itemName)) {
+          seen.add(item.itemName);
+          ordered.push(item.itemName);
         }
       });
     });
-    return Array.from(itemSet).sort();
+    return ordered;
   };
 
   // Get pattern and commission items for each version
@@ -160,6 +195,13 @@ export default function Comparison() {
     return items.find((item) => item.itemName === itemName) || {};
   };
 
+  // Common qty: use first version's quantity for this item (same line item across versions)
+  const getCommonQty = (itemName) => {
+    if (versions.length === 0) return 0;
+    const item = getItemForVersion(versions[0].id, itemName);
+    return item.quantity === null || item.quantity === undefined ? 0 : item.quantity;
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -176,8 +218,8 @@ export default function Comparison() {
         <h1>Quotation Version Comparison</h1>
         <ul>
           <li>
-            <Link href="/quotations/approved-quotation">
-              Approved Quotations
+            <Link href={getBackUrl()}>
+              {from === "pending-quotation" ? "Pending Quotations" : "Approved Quotations"}
             </Link>
           </li>
           <li>Comparison</li>
@@ -192,11 +234,13 @@ export default function Comparison() {
           <Box display="flex" sx={{ gap: "10px" }}>
             {inquiry ? inquiry.customerName : ""} / {inquiry ? inquiry.inquiryCode : ""} / {inquiry ? inquiry.optionName : ""}
           </Box>
-          <Link href="/quotations/approved-quotation/">
-            <Button variant="outlined" color="primary">
-              Go Back
-            </Button>
-          </Link>
+          <Button 
+            variant="outlined" 
+            color="primary"
+            onClick={() => router.push(getBackUrl())}
+          >
+            Go Back
+          </Button>
         </Grid>
 
         {versions.length === 0 ? (
@@ -216,8 +260,11 @@ export default function Comparison() {
                       <TableCell sx={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f5f5f5", minWidth: 120, padding: "8px 4px" }}>
                         <Typography variant="caption" fontWeight="bold">Description</Typography>
                       </TableCell>
+                      <TableCell align="center" sx={{ position: "sticky", left: 120, zIndex: 3, backgroundColor: "#f5f5f5", minWidth: 50, padding: "8px 4px" }}>
+                        <Typography variant="caption" fontWeight="bold">Qty</Typography>
+                      </TableCell>
                       {versions.map((version, index) => (
-                        <TableCell key={index} align="center" sx={{ minWidth: 150, padding: "8px 4px" }}>
+                        <TableCell key={index} align="center" sx={{ minWidth: 120, padding: "8px 4px" }}>
                           <Box display="flex" flexDirection="column" alignItems="center" gap={0.3}>
                             <Chip
                               label={getVersionTypeLabel(version.versionType)}
@@ -234,15 +281,16 @@ export default function Comparison() {
                     </TableRow>
                     <TableRow>
                       <TableCell sx={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f5f5f5", padding: "4px" }}></TableCell>
+                      <TableCell sx={{ position: "sticky", left: 120, zIndex: 3, backgroundColor: "#f5f5f5", padding: "4px" }}></TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center" sx={{ backgroundColor: "#f5f5f5", padding: "4px" }}>
-                          <Box display="flex" gap={0.5} justifyContent="center">
-                            <Typography variant="caption" sx={{ minWidth: 45, fontSize: "0.7rem" }}>Qty</Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
                             <Typography variant="caption" sx={{ minWidth: 50, fontSize: "0.7rem" }}>Unit Cost</Typography>
+                          ) : (
                             <Typography variant="caption" sx={{ minWidth: 60, background: "#a0b8f6", color: "#fff", p: 0.3, borderRadius: 0.5, fontSize: "0.7rem" }}>
                               Approved
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -253,17 +301,19 @@ export default function Comparison() {
                         <TableCell sx={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#fff", fontWeight: "bold", fontSize: "0.75rem" }}>
                           {itemName}
                         </TableCell>
+                        <TableCell align="center" sx={{ position: "sticky", left: 120, zIndex: 2, backgroundColor: "#fff", fontSize: "0.75rem" }}>
+                          {getCommonQty(itemName)}
+                        </TableCell>
                         {versions.map((version, versionIndex) => {
                           const item = getItemForVersion(version.id, itemName);
+                          const isInquiryCreated = isInquiryCreatedVersion(version.versionType);
                           return (
                             <TableCell key={versionIndex} align="center" sx={{ padding: "4px" }}>
-                              <Box display="flex" gap={0.5} justifyContent="center">
-                                <Typography sx={{ minWidth: 45, fontSize: "0.7rem" }}>
-                                  {item.quantity === null || item.quantity === undefined ? 0 : item.quantity}
-                                </Typography>
+                              {isInquiryCreated ? (
                                 <Typography sx={{ minWidth: 50, fontSize: "0.7rem" }}>
                                   {item.unitCost === null || item.unitCost === undefined ? 0 : formatCurrency(item.unitCost)}
                                 </Typography>
+                              ) : (
                                 <Typography
                                   sx={{
                                     minWidth: 60,
@@ -279,7 +329,7 @@ export default function Comparison() {
                                     ? 0
                                     : formatCurrency(item.approvedUnitCost)}
                                 </Typography>
-                              </Box>
+                              )}
                             </TableCell>
                           );
                         })}
@@ -290,19 +340,21 @@ export default function Comparison() {
                       <TableCell sx={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#fff", fontWeight: "bold", fontSize: "0.75rem" }}>
                         Pattern
                       </TableCell>
+                      <TableCell align="center" sx={{ position: "sticky", left: 120, zIndex: 2, backgroundColor: "#fff", fontSize: "0.75rem" }}>
+                        {versions.length > 0 ? (getPatternItem(versions[0].id).quantity ?? 0) : 0}
+                      </TableCell>
                       {versions.map((version, versionIndex) => {
                         const patternItem = getPatternItem(version.id);
+                        const isInquiryCreated = isInquiryCreatedVersion(version.versionType);
                         return (
                           <TableCell key={versionIndex} align="center" sx={{ padding: "4px" }}>
-                            <Box display="flex" gap={0.5} justifyContent="center">
-                              <Typography sx={{ minWidth: 45, fontSize: "0.7rem" }}>
-                                {patternItem.quantity === null || patternItem.quantity === undefined ? 0 : patternItem.quantity}
-                              </Typography>
+                            {isInquiryCreated ? (
                               <Typography sx={{ minWidth: 50, fontSize: "0.7rem" }}>
                                 {patternItem.unitCost === null || patternItem.unitCost === undefined
                                   ? 0
                                   : formatCurrency(patternItem.unitCost)}
                               </Typography>
+                            ) : (
                               <Typography
                                 sx={{
                                   minWidth: 60,
@@ -318,7 +370,7 @@ export default function Comparison() {
                                   ? 0
                                   : formatCurrency(patternItem.approvedUnitCost)}
                               </Typography>
-                            </Box>
+                            )}
                           </TableCell>
                         );
                       })}
@@ -328,17 +380,21 @@ export default function Comparison() {
                       <TableCell sx={{ position: "sticky", left: 0, zIndex: 2, backgroundColor: "#fff", fontWeight: "bold", fontSize: "0.75rem" }}>
                         Commission
                       </TableCell>
+                      <TableCell align="center" sx={{ position: "sticky", left: 120, zIndex: 2, backgroundColor: "#fff", fontSize: "0.75rem" }}>
+                        1
+                      </TableCell>
                       {versions.map((version, versionIndex) => {
                         const commissionItem = getCommissionItem(version.id);
+                        const isInquiryCreated = isInquiryCreatedVersion(version.versionType);
                         return (
                           <TableCell key={versionIndex} align="center" sx={{ padding: "4px" }}>
-                            <Box display="flex" gap={0.5} justifyContent="center">
-                              <Typography sx={{ minWidth: 45, fontSize: "0.7rem" }}>1</Typography>
+                            {isInquiryCreated ? (
                               <Typography sx={{ minWidth: 50, fontSize: "0.7rem" }}>
                                 {commissionItem.totalCost === null || commissionItem.totalCost === undefined
                                   ? 0
                                   : formatCurrency(commissionItem.totalCost)}
                               </Typography>
+                            ) : (
                               <Typography
                                 sx={{
                                   minWidth: 60,
@@ -354,7 +410,7 @@ export default function Comparison() {
                                   ? 0
                                   : formatCurrency(commissionItem.approvedTotalCost)}
                               </Typography>
-                            </Box>
+                            )}
                           </TableCell>
                         );
                       })}
@@ -393,12 +449,13 @@ export default function Comparison() {
                       <TableCell sx={{ position: "sticky", left: 0, zIndex: 3, backgroundColor: "#f5f5f5" }}></TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center" sx={{ backgroundColor: "#f5f5f5" }}>
-                          <Box display="flex" gap={1} justifyContent="center">
+                          {isInquiryCreatedVersion(version.versionType) ? (
                             <Typography variant="caption" sx={{ minWidth: 80, color: "#90a4ae" }}>Initial</Typography>
+                          ) : (
                             <Typography variant="caption" sx={{ minWidth: 80, background: "#a0b8f6", color: "#fff", p: 0.5, borderRadius: 1 }}>
                               Approved
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -410,10 +467,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.totalCost)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.totalCost)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -426,7 +482,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedTotalCost)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -436,20 +492,13 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
+                          {isInquiryCreatedVersion(version.versionType) ? (
                             <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{version.totalUnits}</Typography>
-                            <Typography
-                              sx={{
-                                minWidth: 80,
-                                background: "#a0b8f6",
-                                fontWeight: "bold",
-                                p: 0.5,
-                                borderRadius: 1,
-                              }}
-                            >
+                          ) : (
+                            <Typography sx={{ minWidth: 80, background: "#a0b8f6", fontWeight: "bold", p: 0.5, borderRadius: 1 }}>
                               {version.apprvedTotalUnits}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -459,10 +508,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.unitCost)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.unitCost)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -475,7 +523,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedUnitCost)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -485,10 +533,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.unitProfit)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.unitProfit)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -501,7 +548,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedUnitProfit)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -511,10 +558,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.sellingPrice)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.sellingPrice)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -527,7 +573,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedSellingPrice)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -537,10 +583,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {toNumber(version.profitPercentage).toFixed(2)}%
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{toNumber(version.profitPercentage).toFixed(2)}%</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -553,7 +598,7 @@ export default function Comparison() {
                             >
                               {toNumber(version.apprvedProfitPercentage).toFixed(2)}%
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -563,10 +608,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.totalProfit)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.totalProfit)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -579,7 +623,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedTotalProfit)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -589,10 +633,9 @@ export default function Comparison() {
                       </TableCell>
                       {versions.map((version, index) => (
                         <TableCell key={index} align="center">
-                          <Box display="flex" gap={1} justifyContent="center">
-                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>
-                              {formatCurrency(version.revanue)}
-                            </Typography>
+                          {isInquiryCreatedVersion(version.versionType) ? (
+                            <Typography sx={{ minWidth: 80, color: "#90a4ae" }}>{formatCurrency(version.revanue)}</Typography>
+                          ) : (
                             <Typography
                               sx={{
                                 minWidth: 80,
@@ -605,7 +648,7 @@ export default function Comparison() {
                             >
                               {formatCurrency(version.apprvedRevanue)}
                             </Typography>
-                          </Box>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>

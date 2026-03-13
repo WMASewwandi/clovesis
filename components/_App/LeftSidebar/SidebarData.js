@@ -26,6 +26,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import WorkIcon from '@mui/icons-material/Work';
 import FactoryIcon from '@mui/icons-material/Factory';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 
 
 export const getSidebarData = (IsGarmentSystem) => {
@@ -172,7 +173,12 @@ export const getSidebarData = (IsGarmentSystem) => {
             ModuleId: 20,
             IsAvailable: true,
             subNav: [
-                { title: "Online Orders", path: "/ecom/orders/", categoryId: 107, isAvailable: true },
+                { title: "Online Orders", path: "/ecom/orders/", categoryId: 108, isAvailable: true },
+                { title: "ECommerce Customer", path: "/ecom/customers/", categoryId: 161, isAvailable: true },
+                { title: "Promotions", path: "/ecom/promotions/", categoryId: 160, isAvailable: true },
+                { title: "Topbar Notifications", path: "/ecom/topbar-notifications/", categoryId: 157, isAvailable: true },
+                { title: "Hero Banners", path: "/ecom/hero-banners/", categoryId: 158, isAvailable: true },
+                { title: "Blog Posts", path: "/ecom/blog-posts/", categoryId: 159, isAvailable: true },
             ],
         },
         {
@@ -229,6 +235,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Stock Adjustment", path: "/inventory/stock-adjustment/", categoryId: 40, isAvailable: true },
                 { title: "Stock Transfer Note", path: "/inventory/stock-transfer/", categoryId: 69, isAvailable: true },
                 { title: "Goods Return Note", path: "/inventory/grn-return/", categoryId: 77, isAvailable: true },
+                { title: "Stock Details", path: "/inventory/stock-details/", categoryId: 156, isAvailable: true },
             ],
         },
         {
@@ -410,7 +417,20 @@ export const getSidebarData = (IsGarmentSystem) => {
             subNav: [
                 { title: "Versions", path: "/version/version", categoryId: 149, isAvailable: true }
             ],
-        },{
+        },
+        {
+            title: "Work Track",
+            path: "/work-track/",
+            icon: <TrackChangesIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 24,
+            IsAvailable: true,
+            subNav: [
+                { title: "Work Track", path: "/work-track/", categoryId: 153, isAvailable: true },
+                { title: "Technician", path: "/work-track/technician/", categoryId: 154, isAvailable: true }
+            ],
+        }, {
             title: "Administrator",
             path: "/administrator/administrator/",
             icon: <AdminIcon />,

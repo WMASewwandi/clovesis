@@ -21,7 +21,7 @@ import * as Yup from "yup";
 import BASE_URL from "Base/api";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
-const getValidationSchema = (isCustomerNICRequired) => Yup.object().shape({
+const getValidationSchema = (isCustomerNICRequired, isCustomerCreditLimitRequired) => Yup.object().shape({
   Title: Yup.string().required("Title is required"),
   FirstName: Yup.string().required("First Name is required"),
   LastName: Yup.string(),
@@ -30,6 +30,11 @@ const getValidationSchema = (isCustomerNICRequired) => Yup.object().shape({
   AddressLine3: Yup.string(),
   Designation: Yup.string(),
   Company: Yup.string(),
+  CreditLimit: isCustomerCreditLimitRequired
+    ? Yup.number()
+        .required("Credit Limit is required")
+        .moreThan(0, "Credit Limit must be greater than 0")
+    : Yup.number().min(0, "Credit Limit must be a positive number").nullable(),
   NIC: Yup.string().test(
     "nic-format",
     function (value) {
@@ -61,16 +66,21 @@ const getValidationSchema = (isCustomerNICRequired) => Yup.object().shape({
   ),
 });
 
-export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
-  const [open, setOpen] = React.useState(false);
+export default function AddCustomerDialog({ fetchItems, chartOfAccounts, externalOpen, onClose: externalOnClose, showButton = true }) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const [scroll, setScroll] = React.useState("paper");
+  
+  // Use external open state if provided, otherwise use internal
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const [titleList, setTitleList] = useState([]);
   const [currencyList, setCurrencyList] = useState([]);
   const { data: isCustomerNICRequired } = IsAppSettingEnabled("IsCustomerNICRequired");
+  const { data: isCustomerCreditLimit } = IsAppSettingEnabled("IsCustomerCreditLimit");
   const [contacts, setContacts] = useState([
     { ContactName: "", ContactNo: "", EmailAddress: "" },
   ]);
   const [birthdate, setBirthdate] = useState("");
+  const [formKey, setFormKey] = useState(0);
 
   const fetchTitleList = async () => {
     try {
@@ -137,16 +147,34 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
   };
 
   const handleClickOpen = (scrollType) => () => {
-    setOpen(true);
+    if (externalOpen === undefined) {
+      setInternalOpen(true);
+    }
     setScroll(scrollType);
     fetchTitleList();
     fetchCurrencyList();
   };
 
   const handleClose = () => {
-    setOpen(false);
+    if (externalOnClose) {
+      externalOnClose();
+    } else if (externalOpen === undefined) {
+      setInternalOpen(false);
+    }
     setBirthdate("");
+    // Reset contacts to initial state
+    setContacts([{ ContactName: "", ContactNo: "", EmailAddress: "" }]);
+    // Increment form key to reset Formik form
+    setFormKey(prev => prev + 1);
   };
+  
+  // Fetch data when externally opened
+  React.useEffect(() => {
+    if (open && externalOpen !== undefined) {
+      fetchTitleList();
+      fetchCurrencyList();
+    }
+  }, [open, externalOpen]);
 
   const descriptionElementRef = React.useRef(null);
   React.useEffect(() => {
@@ -175,8 +203,18 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
       .then((data) => {
         if (data.statusCode == 200) {
           toast.success(data.message);
-          setOpen(false);
-          fetchItems();
+          handleClose();
+          if (fetchItems) {
+            // Pass the newly created customer data to the callback
+            const newCustomer = data.result || data.data || { 
+              id: data.id,
+              firstName: values.FirstName,
+              lastName: values.LastName,
+              displayName: values.DisplayName || `${values.FirstName} ${values.LastName}`.trim(),
+              company: values.Company,
+            };
+            fetchItems(newCustomer);
+          }
         } else {
           toast.error(data.message);
         }
@@ -241,16 +279,18 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
 
   return (
     <>
-      <Button variant="outlined" onClick={handleClickOpen("paper")}>
-        <AddIcon
-          sx={{
-            position: "relative",
-            top: "-2px",
-          }}
-          className="mr-5px"
-        />{" "}
-        Create New Customer
-      </Button>
+      {showButton && (
+        <Button variant="outlined" onClick={handleClickOpen("paper")}>
+          <AddIcon
+            sx={{
+              position: "relative",
+              top: "-2px",
+            }}
+            className="mr-5px"
+          />{" "}
+          Create New Customer
+        </Button>
+      )}
 
       <Dialog
         open={open}
@@ -264,6 +304,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
           <DialogTitle id="scroll-dialog-title">Create Customer</DialogTitle>
           <DialogContent>
             <Formik
+              key={formKey}
               initialValues={{
                 Title: "",
                 FirstName: "",
@@ -278,6 +319,7 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                 DateOfBirth: "",
                 ReceivableAccount: null,
                 CurrencyId: null,
+                CreditLimit: 0,
                 IsManufacture: false,
                 CustomerContactDetails: contacts.map(() => ({
                   ContactName: "",
@@ -285,8 +327,9 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                   ContactNo: "",
                 })),
               }}
-              validationSchema={getValidationSchema(isCustomerNICRequired)}
+              validationSchema={getValidationSchema(isCustomerNICRequired, isCustomerCreditLimit)}
               onSubmit={handleSubmit}
+              enableReinitialize
             >
               {({ errors, touched, values, setFieldValue }) => (
                 <Form>
@@ -598,6 +641,30 @@ export default function AddCustomerDialog({ fetchItems, chartOfAccounts }) {
                                 touched.Designation && Boolean(errors.Designation)
                               }
                               helperText={touched.Designation && errors.Designation}
+                            />
+                          </Grid>
+                          <Grid item lg={6} xs={12}>
+                            <Typography
+                              component="label"
+                              sx={{
+                                fontWeight: "500",
+                                fontSize: "14px",
+                                mb: "10px",
+                                display: "block",
+                              }}
+                            >
+                              Credit Limit {isCustomerCreditLimit && <span style={{ color: "red" }}>*</span>}
+                            </Typography>
+                            <Field
+                              as={TextField}
+                              fullWidth
+                              name="CreditLimit"
+                              type="number"
+                              inputProps={{ min: 0, step: "0.01" }}
+                              error={
+                                touched.CreditLimit && Boolean(errors.CreditLimit)
+                              }
+                              helperText={touched.CreditLimit && errors.CreditLimit}
                             />
                           </Grid>
                           <Grid item xs={12}>

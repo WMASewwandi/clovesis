@@ -23,6 +23,7 @@ import UpdateConfirmQuotation from "@/components/UIElements/Modal/UpdateConfirmQ
 import ViewComments from "../comments";
 import { projectStatusColor, projectStatusType } from "@/components/types/types";
 import { useRouter } from "next/router";
+import { toast } from "react-toastify";
 
 export default function ViewSentQuotations({ item, update, fetchItems, parentTab = 0 }) {
   const [open, setOpen] = useState(false);
@@ -42,11 +43,51 @@ export default function ViewSentQuotations({ item, update, fetchItems, parentTab
 
   const handleTabChange = (event, newValue) => setTabIndex(newValue);
 
-  const navigateToEdit = (id, option) => {
+  const navigateToEdit = (id, option, fromSentList = false) => {
     router.push({
       pathname: "/inquiry/edit-inquiry",
-      query: { id, option },
+      query: { id, option, fromSentList: fromSentList ? "true" : undefined },
     });
+  };
+
+  const handleEditFromSentList = async (quotation) => {
+    try {
+      // Change status back to pending (projectStatusType = 1) if not already pending
+      // History will be saved automatically after edit is done in the backend
+      if (quotation.projectStatusType !== 1) {
+        const statusResponse = await fetch(
+          `${BASE_URL}/Inquiry/UpdateProjectStatusType?sentQuotId=${quotation.id}&type=1&reason=Editing from sent-list - returning to pending`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          if (statusData.statusCode === 200) {
+            toast.success("Quotation status changed to pending. History will be saved after edit.");
+            // Refresh the list
+            await fetchSentQuotList();
+            // Navigate to edit with flag indicating it came from sent-list
+            navigateToEdit(quotation.inquiryId, quotation.optionId, true);
+          } else {
+            toast.error(statusData.message || "Failed to update status");
+          }
+        } else {
+          toast.error("Failed to update quotation status");
+        }
+      } else {
+        // Already pending, just navigate
+        navigateToEdit(quotation.inquiryId, quotation.optionId);
+      }
+    } catch (error) {
+      console.error("Error handling edit from sent-list:", error);
+      toast.error("Error preparing quotation for edit. Please try again.");
+    }
   };
 
   const fetchSentQuotList = async () => {
@@ -145,12 +186,17 @@ export default function ViewSentQuotations({ item, update, fetchItems, parentTab
                     )}
                     {q.projectStatusType === 9 && (
                       <Box display="flex" justifyContent="end" gap={1}>
-                        {update && isRejectedTab && parentTab === 0 && <Button variant="outlined" onClick={() => navigateToEdit(q.inquiryId, q.optionId)}>Edit</Button>}
+                        {update && isRejectedTab && parentTab === 0 && <Button variant="outlined" onClick={() => handleEditFromSentList(q)}>Edit</Button>}
                         <Chip sx={{ color: "#fff", background: projectStatusColor(q.projectStatusType) }} label={projectStatusType(q.projectStatusType)} />
                       </Box>
                     )}
                     {q.projectStatusType !== 1 && q.projectStatusType !== 9 && (
-                      <Chip sx={{ color: "#fff", background: projectStatusColor(q.projectStatusType) }} label={projectStatusType(q.projectStatusType)} />
+                      <Box display="flex" justifyContent="end" gap={1}>
+                        {update && (q.projectStatusType === 2 || q.projectStatusType === 10 || q.projectStatusType === 12) && (
+                          <Button variant="outlined" onClick={() => handleEditFromSentList(q)}>Edit</Button>
+                        )}
+                        <Chip sx={{ color: "#fff", background: projectStatusColor(q.projectStatusType) }} label={projectStatusType(q.projectStatusType)} />
+                      </Box>
                     )}
                     {/* Confirmed items (projectStatusType === 2) should only show status chip, no edit button */}
                   </Box>

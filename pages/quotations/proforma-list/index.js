@@ -18,9 +18,7 @@ import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import { Catelogue } from "Base/catelogue";
-import ShareReports from "@/components/UIElements/Modal/Reports/ShareReports";
 import { Report } from "Base/report";
-import SendIcon from "@mui/icons-material/Send";
 import { useRouter } from "next/router";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import RejectConfirmationById from "./reject";
@@ -363,6 +361,7 @@ export default function ProformaList() {
                         <Table aria-label="simple table" className="dark-table">
                             <TableHead>
                                 <TableRow>
+                                    <TableCell>Document No</TableCell>
                                     <TableCell>Invoice Date</TableCell>
                                     <TableCell>Customer Name</TableCell>
                                     <TableCell>Inquiry Code</TableCell>
@@ -395,7 +394,7 @@ export default function ProformaList() {
                                         }
                                     }
 
-                                    const colSpan = tabValue === 3 ? 7 : tabValue === 4 ? 8 : 8;
+                                    const colSpan = tabValue === 3 ? 8 : tabValue === 4 ? 9 : 9;
                                     return displayList.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={colSpan}>
@@ -409,17 +408,12 @@ export default function ProformaList() {
                                                 console.error("Missing inquiryId for item:", item);
                                                 return null;
                                             }
-                                            // Use PrintDocuments (uploads to S3) for WhatsApp
-                                            // The ProformaInvoice report expects InquiryId as DocumentNumber parameter
-                                            // Testing InquiryId since ProformaInvoice ID and InquiryCode didn't work
                                             const documentNumber = item.inquiryId.toString();
-
-                                            const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId || 0}&currentUser=${name || ''}`;
-                                            // Use Local for browser print preview
                                             const invoiceReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${documentNumber}&reportName=${InvoiceReportName}&warehouseId=${item.warehouseId || 0}&currentUser=${name || ''}`;
 
                                             return (
                                                 <TableRow key={index}>
+                                                    <TableCell>{item.documentNo || "—"}</TableCell>
                                                     <TableCell>{formatDate(item.invoiceDate)}</TableCell>
                                                     <TableCell>{item.customerName}</TableCell>
                                                     <TableCell>{item.inquiryCode}</TableCell>
@@ -463,16 +457,12 @@ export default function ProformaList() {
                                                                     {tabValue === 1 ? (
                                                                         <BackToPending id={item.id} fetchItems={() => fetchQuotationList(1, searchTerm, pageSize, 1)} />
                                                                     ) : ""}
-                                                                {tabValue === 1 ? (
-                                                                    <ShareReports 
-                                                                        url={whatsapp} 
-                                                                        mobile={(item.sentWhatsappNumber && item.sentWhatsappNumber.trim() !== "") ? item.sentWhatsappNumber : (item.customerContactNo && item.customerContactNo.trim() !== "" ? item.customerContactNo : null)}
-                                                                        onSuccess={() => handleMarkAsSent(item.id, item.inquiryId, item.warehouseId, null, true)}
+                                                                {print && tabValue === 1 ? (
+                                                                    <ProformaInvoiceReport
+                                                                        proformaInvoice={item}
+                                                                        onShareSuccess={() => handleMarkAsSent(item.id, item.inquiryId, item.warehouseId, null, true)}
                                                                     />
                                                                 ) : ""}
-                                                                {print && tabValue === 1 ?
-                                                                    <ProformaInvoiceReport proformaInvoice={item} />
-                                                                : ""}
                                                                 </>
 
                                                                 {/* Sent tab actions (now tabValue === 2) */}

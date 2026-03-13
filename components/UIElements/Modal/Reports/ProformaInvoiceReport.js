@@ -37,10 +37,8 @@ const styles = StyleSheet.create({
   sign: {
     width: "120px",
     height: "55px",
-    bottom: "120px",
-    position: "absolute",
-    zIndex: -1,
-    left: "35px",
+    marginLeft: "40px",
+    marginBottom: "10px",
   },
   section: {
     margin: 10,
@@ -50,15 +48,25 @@ const styles = StyleSheet.create({
   title: {
     fontSize: "16px",
     marginBottom: "5px",
-    marginTop: "120px",
+    marginTop: "140px",
     marginLeft: "220px",
-    fontWeight: "bold",
+    fontWeight: 700,
   },
-  date: {
-    fontSize: "11px",
+  dateDocRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: "8px",
     marginTop: "5px",
     marginLeft: "40px",
+    marginRight: "100px",
+    paddingRight: 0,
+  },
+  date: {
+    fontSize: "11px",
+  },
+  documentNo: {
+    fontSize: "11px",
   },
   invoiceNo: {
     fontSize: "11px",
@@ -104,17 +112,19 @@ const styles = StyleSheet.create({
     fontSize: "10px",
     padding: "3px",
     borderRight: "1px solid black",
+    borderBottom: "1px solid black",
     justifyContent: "center",
   },
   tablecell2Last: {
     fontSize: "10px",
     padding: "3px",
+    borderBottom: "1px solid black",
     justifyContent: "center",
   },
   heading: {
     fontSize: "11px",
     fontWeight: "bold",
-    marginTop: "8px",
+    marginTop: "15px",
     marginBottom: "5px",
     marginLeft: "40px",
   },
@@ -252,7 +262,7 @@ function formatDateTime(date) {
   );
 }
 
-const ProformaInvoiceReport = ({ proformaInvoice }) => {
+const ProformaInvoiceReport = ({ proformaInvoice, onShareSuccess }) => {
   const today = new Date();
   const [open, setOpen] = useState(false);
   const [quotations, setQuotations] = useState([]);
@@ -284,6 +294,8 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
     }
   }, [categories, quotations]);
 
+  console.log(quotationsWithDetails);
+  
   const fetchQuotations = async () => {
     try {
       // Try multiple statuses to get all confirmed quotations for this proforma invoice
@@ -398,18 +410,13 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
               if (inquiryResponse.ok) {
                 const inquiryData = await inquiryResponse.json();
                 if (inquiryData.result) {
-                  // Get windowType from inquiryOption (same as ViewQuotation.js)
-                  const inquiryOption = inquiryData.result.inquiryOption;
-                  if (inquiryOption) {
-                    windowType = inquiryOption.windowType || inquiryOption.WindowType || 0;
-                  } else {
-                    // Fallback: try to get from result directly
-                    windowType = inquiryData.result.windowType || inquiryData.result.WindowType || 0;
-                  }
-                  
+                  const result = inquiryData.result;
+                  // API returns WindowType at top level of InquiryResponse (camelCase or PascalCase)
+                  const raw = result.windowType ?? result.WindowType ?? result.inquiryOption?.windowType ?? result.inquiryOption?.WindowType ?? 0;
+                  windowType = typeof raw === "number" ? raw : (parseInt(raw, 10) || 0);
                   // Get material from fabric list if available in response
-                  if (inquiryData.result.fabricList && Array.isArray(inquiryData.result.fabricList) && inquiryData.result.fabricList.length > 0) {
-                    const fabricNames = [...new Set(inquiryData.result.fabricList.map(f => f.fabricName || f.FabricName).filter(Boolean))];
+                  if (result.fabricList && Array.isArray(result.fabricList) && result.fabricList.length > 0) {
+                    const fabricNames = [...new Set(result.fabricList.map(f => f.fabricName || f.FabricName).filter(Boolean))];
                     material = fabricNames.length > 0 ? fabricNames.join(", ") : "-";
                   }
                 }
@@ -591,6 +598,7 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
       setOpenShare(false);
       setOpen(false);
       setLoading(false);
+      onShareSuccess?.();
     } else if (selectedCard == 1) {
       const emailSubject = "Proforma Invoice";
       const emailBody = "Hi there,\n\nPlease find the proforma invoice attached:\n" + url;
@@ -605,7 +613,10 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setOpenShare(false);
+      setOpen(false);
       setLoading(false);
+      onShareSuccess?.();
     } else {
       const messengerLink =
         "https://www.facebook.com/dialog/share?app_id=YourAppID&href=" +
@@ -617,14 +628,17 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      setOpenShare(false);
+      setOpen(false);
       setLoading(false);
+      onShareSuccess?.();
     }
   };
 
   const handleShareOpen = () => {
     const url = shareURL;
     if (!url) {
-      setMessage("Please Save PDF Before Sharing");
+      setMessage("Please Save Report Before Sharing");
       return;
     } else {
       setMessage("");
@@ -681,8 +695,10 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
         <View style={styles.section}>
           <Image style={styles.backgroundImage} src="/images/quotation/abc.jpg" />
           <Text style={styles.title}>PROFORMA INVOICE</Text>
-          <Text style={styles.date}>Date : {formatDate(proformaInvoice.invoiceDate)}</Text>
-          <Text style={styles.invoiceNo}>Invoice No : {proformaInvoice.inquiryCode}</Text>
+          <View style={styles.dateDocRow}>
+            <Text style={styles.date}>Date : {formatDate(proformaInvoice.invoiceDate)}</Text>
+            <Text style={styles.documentNo}>Document No : {proformaInvoice.documentNo || "—"}</Text>
+          </View>
 
           {customerDetails && (
             <>
@@ -706,114 +722,112 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
             <View
               style={{
                 ...styles.tableContainer,
-                marginTop: "5px",
+                marginTop: "15px",
                 marginLeft: "40px",
                 marginRight: "100px",
               }}
             >
               {/* Header Row */}
               <View style={styles.tableHeaderRow}>
-                <View style={{ ...styles.tablecell, width: "40px" }}>
-                  <Text style={{ textAlign: "right" }}>QTY</Text>
+                <View style={{ ...styles.tablecell, width: "60px" }}>
+                  <Text style={{ textAlign: "right" }}>Quantity</Text>
                 </View>
-                <View style={{ ...styles.tablecell, width: "55px" }}>
+                <View style={{ ...styles.tablecell, flex: 1 }}>
                   <Text>Item</Text>
                 </View>
-                <View style={{ ...styles.tablecell, flex: 1 }}>
-                  <Text>Material</Text>
+                <View style={{ ...styles.tablecell, width: "100px" }}>
+                  <Text style={{ textAlign: "right" }}>Unit Price (Rs)</Text>
                 </View>
-                <View style={{ ...styles.tablecell, flex: 1 }}>
-                  <Text>Emblishment</Text>
-                </View>
-                <View style={{ ...styles.tablecell, width: "65px" }}>
-                  <Text style={{ textAlign: "right" }}>Unit Price (LKR)</Text>
-                </View>
-                <View style={{ ...styles.tablecellLast, width: "65px" }}>
-                  <Text style={{ textAlign: "right" }}>Amount (LKR)</Text>
+                <View style={{ ...styles.tablecellLast, width: "100px" }}>
+                  <Text style={{ textAlign: "right" }}>Amount (Rs)</Text>
                 </View>
               </View>
               {/* Data Rows - All Quotations */}
               {(quotationsWithDetails.length > 0 ? quotationsWithDetails : quotations).map((quotation, quotationIndex) => (
                 <React.Fragment key={quotationIndex}>
                   <View style={styles.tableRow}>
-                    <View style={{ ...styles.tablecell2, width: "40px" }}>
+                    <View style={{ ...styles.tablecell2, width: "60px" }}>
                       <Text style={{ textAlign: "right" }}>{formatQuantity(quotation.quantity || quotation.Quantity || 0)}</Text>
                     </View>
-                    <View style={{ ...styles.tablecell2, width: "55px" }}>
-                      <Text>{getCategoryName(quotation.windowType || quotation.WindowType || 0, categories)}</Text>
-                    </View>
                     <View style={{ ...styles.tablecell2, flex: 1 }}>
-                      <Text>{quotation.material || "-"}</Text>
+                      <Text>
+                        {(() => {
+                          const wt = quotation.windowType ?? quotation.WindowType ?? 0;
+                          const name = getCategoryName(wt);
+                          if (name !== "Item") return name;
+                          return quotation.optionName || quotation.OptionName || name;
+                        })()}
+                      </Text>
                     </View>
-                    <View style={{ ...styles.tablecell2, flex: 1 }}>
-                      {quotation.embellishments && quotation.embellishments !== "-" ? (
-                        quotation.embellishments.split("\n").map((line, idx) => (
-                          <Text key={idx}>{line}</Text>
-                        ))
-                      ) : (
-                        <Text>-</Text>
-                      )}
-                    </View>
-                    <View style={{ ...styles.tablecell2, width: "65px" }}>
+                    <View style={{ ...styles.tablecell2, width: "100px" }}>
                       <Text style={{ textAlign: "right" }}>
                         {formatNumberWithSeparator(quotation.sellingPrice || quotation.SellingPrice || 0)}
                       </Text>
                     </View>
-                    <View style={{ ...styles.tablecell2Last, width: "65px" }}>
+                    <View style={{ ...styles.tablecell2Last, width: "100px" }}>
                       <Text style={{ textAlign: "right" }}>
                         {formatNumberWithSeparator(quotation.totalAmount || quotation.TotalAmount || quotation.revenue || quotation.Revenue || 0)}
                       </Text>
                     </View>
                   </View>
-                  {/* Separator line between quotations (except after last one) - spans full table width */}
-                  {quotationIndex < (quotationsWithDetails.length > 0 ? quotationsWithDetails : quotations).length - 1 && (
-                    <View style={{ borderBottom: "1px solid black", width: "100%" }} />
-                  )}
                 </React.Fragment>
               ))}
+              
+              {/* Total Row */}
+              <View style={styles.tableRow}>
+                <View style={{ ...styles.tablecell2, width: "60px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2, flex: 1 }}>
+                  <Text>Total</Text>
+                </View>
+                <View style={{ ...styles.tablecell2, width: "100px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2Last, width: "100px" }}>
+                  <Text style={{ textAlign: "right" }}>
+                    {formatNumberWithSeparator(proformaInvoice.totalPayment)}
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Advance Payment Row */}
+              <View style={styles.tableRow}>
+                <View style={{ ...styles.tablecell2, width: "60px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2, flex: 1 }}>
+                  <Text>Advance Payment</Text>
+                </View>
+                <View style={{ ...styles.tablecell2, width: "100px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2Last, width: "100px" }}>
+                  <Text style={{ textAlign: "right" }}>
+                    ({formatNumberWithSeparator(proformaInvoice.advancePayment)})
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Balance Payment Row */}
+              <View style={styles.tableRow}>
+                <View style={{ ...styles.tablecell2, width: "60px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2, flex: 1 }}>
+                  <Text style={{ fontWeight: "bold" }}>Balance Payment</Text>
+                </View>
+                <View style={{ ...styles.tablecell2, width: "100px" }}>
+                  <Text></Text>
+                </View>
+                <View style={{ ...styles.tablecell2Last, width: "100px" }}>
+                  <Text style={{ textAlign: "right", fontWeight: "bold" }}>
+                    {formatNumberWithSeparator(proformaInvoice.balancePayment)}
+                  </Text>
+                </View>
+              </View>
             </View>
           )}
-
-          {/* Summary Section */}
-          <View
-            style={{
-              ...styles.tableContainer,
-              marginTop: "10px",
-              marginLeft: "40px",
-              marginRight: "100px",
-            }}
-          >
-            <View style={styles.tableRow}>
-              <View style={{ ...styles.tablecell2, flex: 1, borderRight: "1px solid black" }}>
-                <Text style={{ fontWeight: "bold" }}>Total Payment</Text>
-              </View>
-              <View style={{ ...styles.tablecell2Last, width: "130px" }}>
-                <Text style={{ textAlign: "right", fontWeight: "bold" }}>
-                  {formatNumberWithSeparator(proformaInvoice.totalPayment)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.tableRow}>
-              <View style={{ ...styles.tablecell2, flex: 1, borderRight: "1px solid black" }}>
-                <Text>Advance Payment</Text>
-              </View>
-              <View style={{ ...styles.tablecell2Last, width: "130px" }}>
-                <Text style={{ textAlign: "right" }}>
-                  {formatNumberWithSeparator(proformaInvoice.advancePayment)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.tableRow}>
-              <View style={{ ...styles.tablecell2, flex: 1, borderRight: "1px solid black" }}>
-                <Text>Balance Payment</Text>
-              </View>
-              <View style={{ ...styles.tablecell2Last, width: "130px" }}>
-                <Text style={{ textAlign: "right" }}>
-                  {formatNumberWithSeparator(proformaInvoice.balancePayment)}
-                </Text>
-              </View>
-            </View>
-          </View>
 
           <Text style={styles.heading}>Terms & Conditions</Text>
           <View style={styles.pointsContainer}>
@@ -823,20 +837,20 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
             </Text>
           </View>
 
-          <View style={{ marginTop: "5px" }}>
+          <View style={{ marginTop: "8px" }}>
             <Text style={styles.add}>Tailor Made apparels,</Text>
             <Text style={styles.add}>200010000964,</Text>
             <Text style={styles.add}>Hatton National Bank ,</Text>
             <Text style={styles.add}>Hakmana Branch.</Text>
           </View>
-          <View style={{ marginTop: "5px" }}>
+          <View style={{ marginTop: "10px" }}>
             <Text style={styles.add}>
               Your concern regarding this is highly appreciated.
             </Text>
             <Text style={styles.add}>Thank You.</Text>
           </View>
-          <Image style={styles.sign} src="/images/quotation/sign.png" />
-          <View style={{ marginTop: "30px" }}>
+          <View style={{ marginTop: "20px" }}>
+            <Image style={styles.sign} src="/images/quotation/sign.png" />
             <Text style={styles.add}>Yours Faithfully</Text>
             <Text style={styles.add}>Deshitha R Kumara</Text>
           </View>
@@ -881,8 +895,8 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
               justifyContent="space-between"
             >
               <Box>
-                {/* <Button disabled={saving} variant="outlined" sx={{ ml: 1 }} onClick={handleSave}>
-                  {saving ? "Saving..." : "Save PDF"}
+                <Button disabled={saving} variant="outlined" sx={{ ml: 1 }} onClick={handleSave}>
+                  {saving ? "Saving..." : "Save Report"}
                 </Button>
                 <Button
                   variant="outlined"
@@ -891,7 +905,7 @@ const ProformaInvoiceReport = ({ proformaInvoice }) => {
                   disabled={saving}
                 >
                   <ShareIcon sx={{ mr: 1 }} /> Share
-                </Button> */}
+                </Button>
               </Box>
               <Button
                 sx={{ ml: 1 }}

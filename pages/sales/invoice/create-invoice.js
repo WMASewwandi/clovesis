@@ -120,6 +120,10 @@ const InvoiceCreate = () => {
     "paymentTypeEnableforCustomersIninvoiceView"
   );
 
+  const { data: isCustomerCreditLimit } = IsAppSettingEnabled(
+    "IsCustomerCreditLimit"
+  );
+
   const {
     data: customerList,
     loading: customerLoading,
@@ -319,6 +323,26 @@ const InvoiceCreate = () => {
     if (paymentTypeEnableforCustomersIninvoiceView && !paymentType) {
       toast.warning("Please Select Payment Type");
       return;
+    }
+
+    // Credit limit validation for credit payments only (PaymentType = 7)
+    if (isCustomerCreditLimit && paymentType === 7 && customer) {
+      const creditLimit = customer.creditLimit || 0;
+      
+      // Check if customer has a valid credit limit set
+      if (creditLimit <= 0) {
+        toast.error("Cannot create invoice. Customer must have a Credit Limit set. Please update customer details.");
+        return;
+      }
+
+      // Check if invoice amount exceeds available credit balance
+      const outstandingAmount = customer.outstandingAmount || 0;
+      const availableBalance = creditLimit - outstandingAmount;
+      
+      if (parseFloat(grossTotal) > availableBalance) {
+        toast.error(`Credit Limit Exceeded. Available Balance: ${availableBalance.toLocaleString()}`);
+        return;
+      }
     }
 
     if (rowsCC.length > 0 && rowsCC.some(row => row.machine === null)) {

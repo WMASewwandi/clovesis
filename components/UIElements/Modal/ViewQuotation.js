@@ -237,6 +237,7 @@ export default function ViewQuotation({
   const [open, setOpen] = useState(false);
   const [fabs, setFabs] = useState([]);
   const [docs, setDocs] = useState([]);
+  const [sleeveLabel, setSleeveLabel] = useState("");
   const [shareURL, setShareURL] = useState(url);
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -344,11 +345,57 @@ export default function ViewQuotation({
     }
   };
 
+  const fetchSleeve = async () => {
+    const inquiryId = quotDetails?.inquiryID ?? quotDetails?.inquiryId;
+    const optionId = quotDetails?.optionId;
+    const windowType = quotDetails?.windowType;
+    if (inquiryId == null || optionId == null) return;
+    if (windowType !== 1 && windowType !== 2) return;
+    setSleeveLabel("");
+    try {
+      const response = await fetch(
+        `${BASE_URL}/InquirySleeve/GetSleeve?InquiryID=${inquiryId}&OptionId=${optionId}&WindowType=${windowType}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) {
+        if (windowType === 2) setSleeveLabel("Short");
+        return;
+      }
+      const data = await response.json();
+      // API may return result (camelCase) or Result (PascalCase)
+      const raw = data.result ?? data.Result;
+      const list = Array.isArray(raw) && raw.length > 0 ? raw[0] : Array.isArray(raw) ? null : raw;
+      if (!list || (typeof list !== "object")) {
+        if (windowType === 2) setSleeveLabel("Short");
+        return;
+      }
+      // API returns Short/Long (PascalCase) or short/long (camelCase); values can be 1, "1", or true
+      const shortVal = list.Short ?? list.short;
+      const longVal = list.Long ?? list.long;
+      const short = shortVal === 1 || shortVal === "1" || shortVal === true;
+      const long = longVal === 1 || longVal === "1" || longVal === true;
+      const label = short ? "Short" : long ? "Long" : (windowType === 2 ? "Short" : "");
+      setSleeveLabel(label);
+    } catch (error) {
+      console.error("Error fetching sleeve:", error);
+      if (windowType === 2) setSleeveLabel("Short");
+    }
+  };
+
   useEffect(() => {
+    const inquiryId = quotDetails?.inquiryID ?? quotDetails?.inquiryId;
+    if (!inquiryId) return;
     fetchCustomerDetails();
     fetchDocuments();
     fetchFabricValueList();
-  }, []);
+    fetchSleeve();
+  }, [quotDetails?.inquiryID ?? quotDetails?.inquiryId, quotDetails?.optionId, quotDetails?.windowType]);
 
   const handleOpenWhatsappTemp = (documentUrl) => {
     const encodedMessage = encodeURIComponent(`${documentUrl}`);
@@ -516,33 +563,29 @@ export default function ViewQuotation({
               "Invalid Customer"
             )}
           </Text>
-          <Text style={styles.addDesi}>
-            {quotDetails.customerDetails ? (
-              <>{quotDetails.customerDetails.designation},</>
-            ) : (
-              ""
-            )}
-          </Text>
-          <Text style={styles.add}>
-            {quotDetails.customerDetails ? (
-              <>{quotDetails.customerDetails.company},</>
-            ) : (
-              ""
-            )}
-          </Text>
-          <Text style={styles.add}>
-            {quotDetails.customerDetails ? (
-              <>
-                {quotDetails.customerDetails.addressLine1}
-                {quotDetails.customerDetails.addressLine2 &&
-                  `, ${quotDetails.customerDetails.addressLine2}`}
-                {quotDetails.customerDetails.addressLine3 &&
-                  `, ${quotDetails.customerDetails.addressLine3}`}
-              </>
-            ) : (
-              ""
-            )}
-          </Text>
+          {quotDetails.customerDetails?.designation?.trim() && (
+            <Text style={styles.addDesi}>
+              {quotDetails.customerDetails.designation},
+            </Text>
+          )}
+          {quotDetails.customerDetails?.company?.trim() && (
+            <Text style={styles.add}>
+              {quotDetails.customerDetails.company},
+            </Text>
+          )}
+          {quotDetails.customerDetails &&
+            [quotDetails.customerDetails.addressLine1, quotDetails.customerDetails.addressLine2, quotDetails.customerDetails.addressLine3]
+              .filter(Boolean)
+              .join(", ")
+              .trim() && (
+            <Text style={styles.add}>
+              {quotDetails.customerDetails.addressLine1}
+              {quotDetails.customerDetails.addressLine2 &&
+                `, ${quotDetails.customerDetails.addressLine2}`}
+              {quotDetails.customerDetails.addressLine3 &&
+                `, ${quotDetails.customerDetails.addressLine3}`}
+            </Text>
+          )}
           <View
             style={{
               ...styles.tableContainer,
@@ -578,7 +621,12 @@ export default function ViewQuotation({
                 <Text style={{ textAlign: "right" }}>{formatQuantity(quotDetails.apprvedTotalUnits || quotDetails.totalUnits)}</Text>
               </View>
               <View style={{ ...styles.tablecell2, width: "55px" }}>
-                <Text>{windowType}</Text>
+                <Text>
+                  {(() => {
+                    const effectiveSleeve = sleeveLabel || (quotDetails.windowType === 2 ? "Short" : "");
+                    return effectiveSleeve ? `${windowType} - ${effectiveSleeve}` : windowType;
+                  })()}
+                </Text>
               </View>
               <View style={{ ...styles.tablecell2, width: "80px" }}>
                 <Text>
@@ -802,7 +850,11 @@ export default function ViewQuotation({
               {message ? message : ""}
             </Typography>
             <Grid item xs={12}>
-              <PDFViewer width={800} height={500}>
+              <PDFViewer
+                key={`${quotDetails?.inquiryID}-${quotDetails?.optionId}-${sleeveLabel}`}
+                width={800}
+                height={500}
+              >
                 {MyDocument}
               </PDFViewer>
             </Grid>

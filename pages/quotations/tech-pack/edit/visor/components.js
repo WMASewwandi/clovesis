@@ -19,7 +19,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 export default function TechPackVisorComponents() {
   const router = useRouter();
-  const { inquiryId, optionId, sentQuotationId, ongoingInquiryId } = router.query;
+  const { inquiryId, optionId, sentQuotationId, ongoingInquiryId, windowType: queryWindowType } = router.query;
   const [inquiry, setInquiry] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPeekChecked, setIsPeekChecked] = useState(false);
@@ -31,8 +31,9 @@ export default function TechPackVisorComponents() {
   const fetchOngoingData = async () => {
     try {
       setLoading(true);
+      const windowParam = queryWindowType != null && queryWindowType !== "" ? `&windowType=${queryWindowType}` : "";
       const response = await fetch(
-        `${BASE_URL}/Ongoing/GetOngoingInquiryById?ongoingInquiryId=${ongoingInquiryId}&optionId=${optionId}`,
+        `${BASE_URL}/Ongoing/GetOngoingInquiryById?ongoingInquiryId=${ongoingInquiryId}&optionId=${optionId}${windowParam}`,
         {
           method: "GET",
           headers: {
@@ -129,6 +130,7 @@ export default function TechPackVisorComponents() {
       <DashboardHeader
         customerName={inquiry ? inquiry.customerName : ""}
         optionName={inquiry ? inquiry.optionName : ""}
+        windowType={inquiry ? inquiry.windowType : null}
         href="/quotations/tech-pack/"
         link="Tech Pack"
         title="Components - Tech Pack"
