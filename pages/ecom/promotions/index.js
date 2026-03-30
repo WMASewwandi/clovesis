@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styles from "@/styles/PageTitle.module.css";
 import Link from "next/link";
 import Grid from "@mui/material/Grid";
@@ -19,10 +19,17 @@ import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import AddPromotion from "./create";
 import EditPromotion from "./edit";
-import { PROMOTION_CATEGORIES, PROMOTION_TYPES } from "./promotionConfig";
+import { PROMOTION_CATEGORIES, PROMOTION_TYPES } from "@/components/eCommerce/promotions/promotionConfig";
 
 export default function Promotions() {
-  const cId = sessionStorage.getItem("category");
+  const [cId, setCId] = useState(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCId(sessionStorage.getItem("category"));
+    }
+  }, []);
+
   const { navigate, create, update, remove } = IsPermissionEnabled(cId);
   const controller = "ECommerce/DeletePromotion";
 

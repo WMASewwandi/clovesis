@@ -27,6 +27,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import AddIcon from "@mui/icons-material/Add";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 // Controlled Category Modal Component
 const CreateCategoryModal = ({ open, onClose, fetchItems, IsEcommerceWebSiteAvailable }) => {
@@ -688,6 +689,7 @@ const validationSchema = Yup.object().shape({
 });
 
 export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled, IsEcommerceWebSiteAvailable }) {
+  const { data: isItemEndInvolveEnable } = IsAppSettingEnabled("IsItemEndInvolveEnable");
   const [open, setOpen] = React.useState(false);
   const [subImages, setSubImages] = useState([]); // { id, preview|imgUrl, file?, price, description, isExisting }
   const [subImageIdsToRemove, setSubImageIdsToRemove] = useState([]);
@@ -706,6 +708,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
           imgUrl: s.imgUrl ?? s.ImgUrl ?? "",
           price: s.price ?? s.Price ?? "",
           description: s.description ?? s.Description ?? "",
+          isOutOfStock: !!(s.isOutOfStock ?? s.IsOutOfStock),
           isExisting: true,
         }));
         setSubImages(existing);
@@ -946,6 +949,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
         file,
         price: "",
         description: "",
+        isOutOfStock: false,
         isExisting: false,
       });
     }
@@ -1029,6 +1033,8 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
     formData.append("IsNonInventoryItem", values.IsNonInventoryItem);
     formData.append("HasSerialNumbers", values.HasSerialNumbers);
     formData.append("IsWebView", values.IsWebView);
+    formData.append("IsOutOfStock", values.IsOutOfStock);
+    formData.append("IsItemEndInvolve", values.IsItemEndInvolve);
     formData.append("ProductImage", selectedFile ? selectedFile : null);
     (subImages || []).forEach((s) => {
       if (s.file) formData.append("SubImages", s.file);
@@ -1040,9 +1046,22 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
         return {
           price: !isNaN(priceVal) ? priceVal : null,
           description: (s.description || "").trim() || null,
+          isOutOfStock: !!s.isOutOfStock,
         };
       });
     formData.append("SubImagesMeta", JSON.stringify(subImagesMeta));
+    const existingSubImagesMeta = (subImages || [])
+      .filter((s) => s.isExisting && typeof s.id === "number")
+      .map((s) => {
+        const priceVal = s.price !== "" && s.price != null ? parseFloat(s.price) : NaN;
+        return {
+          id: s.id,
+          price: !isNaN(priceVal) ? priceVal : null,
+          description: (s.description || "").trim() || null,
+          isOutOfStock: !!s.isOutOfStock,
+        };
+      });
+    formData.append("ExistingSubImagesMeta", JSON.stringify(existingSubImagesMeta));
     if (subImageIdsToRemove.length > 0) {
       formData.append("SubImageIdsToRemove", subImageIdsToRemove.join(","));
     }
@@ -1111,6 +1130,8 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
               IsNonInventoryItem: item.isNonInventoryItem,
               HasSerialNumbers: item.hasSerialNumbers,
               IsWebView: item.isWebView,
+              IsOutOfStock: item.isOutOfStock || false,
+              IsItemEndInvolve: item.isItemEndInvolve || false,
               Description: item.description
             }}
             validationSchema={validationSchema}
@@ -1336,7 +1357,7 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                         </Box>
                       </Grid>
 
-                      {isPOSSystem && (
+                      {IsEcommerceWebSiteAvailable && (
                         <>
                           <Grid item xs={12} mt={1} lg={6} p={1}>
                             <Typography
@@ -1687,6 +1708,22 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                               />
                             </Grid>
                           )}
+
+                          {isItemEndInvolveEnable && (
+                            <Grid item xs={12} lg={6} mt={1}>
+                              <FormControlLabel
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsItemEndInvolve"
+                                    checked={values.IsItemEndInvolve}
+                                    onChange={() => setFieldValue("IsItemEndInvolve", !values.IsItemEndInvolve)}
+                                  />
+                                }
+                                label="Is Item End Involve"
+                              />
+                            </Grid>
+                          )}
                         </Grid>
                       </Grid>
                     </Grid>
@@ -1787,6 +1824,20 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                               </Box>
                             </Grid>
                           </Grid>
+                          {IsEcommerceWebSiteAvailable && (
+                            <FormControlLabel
+                              sx={{ mt: 1, display: "block" }}
+                              control={
+                                <Field
+                                  as={Checkbox}
+                                  name="IsOutOfStock"
+                                  checked={values.IsOutOfStock}
+                                  onChange={() => setFieldValue("IsOutOfStock", !values.IsOutOfStock)}
+                                />
+                              }
+                              label="Out of Stock (main image)"
+                            />
+                          )}
                         </Grid>
                       )}
                       
@@ -1808,6 +1859,20 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                             <Typography variant="body2" color="textSecondary">
                               Click "Choose Image" button to upload
                             </Typography>
+                            {IsEcommerceWebSiteAvailable && (
+                              <FormControlLabel
+                                sx={{ mt: 2, justifyContent: "center" }}
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsOutOfStock"
+                                    checked={values.IsOutOfStock}
+                                    onChange={() => setFieldValue("IsOutOfStock", !values.IsOutOfStock)}
+                                  />
+                                }
+                                label="Out of Stock (main image)"
+                              />
+                            )}
                           </Box>
                         </Grid>
                       )}
@@ -1907,6 +1972,21 @@ export default function EditItems({ fetchItems, item, isPOSSystem, uoms, isGarme
                                       value={s.description ?? ""}
                                       onChange={(e) => updateSubImageMeta(s.id, "description", e.target.value)}
                                     />
+                                    {IsEcommerceWebSiteAvailable && (
+                                      <FormControlLabel
+                                        sx={{ mt: 0.5, alignItems: "flex-start", ml: 0 }}
+                                        control={
+                                          <Checkbox
+                                            size="small"
+                                            checked={!!s.isOutOfStock}
+                                            onChange={(e) =>
+                                              updateSubImageMeta(s.id, "isOutOfStock", e.target.checked)
+                                            }
+                                          />
+                                        }
+                                        label="Out of Stock"
+                                      />
+                                    )}
                                   </Box>
                                 </Box>
                               </Grid>

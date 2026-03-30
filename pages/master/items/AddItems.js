@@ -15,6 +15,7 @@ import { ChartOfAccountType } from "@/components/types/types";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 // Controlled Category Modal Component - Using existing AddCategory component logic
 const CreateCategoryModal = ({ open, onClose, fetchItems, IsEcommerceWebSiteAvailable }) => {
@@ -676,6 +677,7 @@ const validationSchema = Yup.object().shape({
 });
 
 export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSystem, chartOfAccounts, barcodeEnabled, IsEcommerceWebSiteAvailable }) {
+  const { data: isItemEndInvolveEnable } = IsAppSettingEnabled("IsItemEndInvolveEnable");
   const [itemCode, setItemCode] = useState(null);
   const [open, setOpen] = React.useState(false);
   const handleClose = () => {
@@ -914,6 +916,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
         file,
         price: "",
         description: "",
+        isOutOfStock: false,
       });
     }
     setSubImages((prev) => [...prev, ...newSubImages]);
@@ -990,6 +993,8 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
     formData.append("IsNonInventoryItem", values.IsNonInventoryItem);
     formData.append("HasSerialNumbers", values.HasSerialNumbers);
     formData.append("IsWebView", values.IsWebView);
+    formData.append("IsOutOfStock", values.IsOutOfStock);
+    formData.append("IsItemEndInvolve", values.IsItemEndInvolve);
     formData.append("ProductImage", selectedFile ? selectedFile : null);
     (subImages || []).forEach((item) => {
       if (item.file) formData.append("SubImages", item.file);
@@ -1001,6 +1006,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
         return {
           price: !isNaN(priceVal) ? priceVal : null,
           description: item.description?.trim() || null,
+          isOutOfStock: !!item.isOutOfStock,
         };
       });
     formData.append("SubImagesMeta", JSON.stringify(subImagesMeta));
@@ -1067,6 +1073,8 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
               IsNonInventoryItem: false,
               HasSerialNumbers: false,
               IsWebView: false,
+              IsOutOfStock: false,
+              IsItemEndInvolve: false,
               Description: ""
             }}
             validationSchema={validationSchema}
@@ -1295,7 +1303,7 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                             </IconButton>
                           </Box>
                         </Grid>
-                        {isPOSSystem && (
+                        {IsEcommerceWebSiteAvailable && (
                           <>
                             <Grid item xs={12} mt={1} lg={6}>
                               <Typography
@@ -1652,6 +1660,22 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                                 />
                               </Grid>
                             )}
+
+                            {isItemEndInvolveEnable && (
+                              <Grid item xs={12} lg={6} mt={1}>
+                                <FormControlLabel
+                                  control={
+                                    <Field
+                                      as={Checkbox}
+                                      name="IsItemEndInvolve"
+                                      checked={values.IsItemEndInvolve}
+                                      onChange={() => setFieldValue("IsItemEndInvolve", !values.IsItemEndInvolve)}
+                                    />
+                                  }
+                                  label="Is Item End Involve"
+                                />
+                              </Grid>
+                            )}
                           </Grid>
                         </Grid>
                       </Grid>
@@ -1730,6 +1754,20 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                                 </Box>
                               </Grid>
                             </Grid>
+                            {IsEcommerceWebSiteAvailable && (
+                              <FormControlLabel
+                                sx={{ mt: 1, display: "block" }}
+                                control={
+                                  <Field
+                                    as={Checkbox}
+                                    name="IsOutOfStock"
+                                    checked={values.IsOutOfStock}
+                                    onChange={() => setFieldValue("IsOutOfStock", !values.IsOutOfStock)}
+                                  />
+                                }
+                                label="Out of Stock (main image)"
+                              />
+                            )}
                           </Grid>
                         )}
 
@@ -1751,6 +1789,20 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                               <Typography variant="body2" color="textSecondary">
                                 Click "Choose Image" button to upload
                               </Typography>
+                              {IsEcommerceWebSiteAvailable && (
+                                <FormControlLabel
+                                  sx={{ mt: 2, justifyContent: "center" }}
+                                  control={
+                                    <Field
+                                      as={Checkbox}
+                                      name="IsOutOfStock"
+                                      checked={values.IsOutOfStock}
+                                      onChange={() => setFieldValue("IsOutOfStock", !values.IsOutOfStock)}
+                                    />
+                                  }
+                                  label="Out of Stock (main image)"
+                                />
+                              )}
                             </Box>
                           </Grid>
                         )}
@@ -1850,6 +1902,21 @@ export default function AddItems({ fetchItems, isPOSSystem, uoms, isGarmentSyste
                                           updateSubImageMeta(item.id, "description", e.target.value)
                                         }
                                       />
+                                      {IsEcommerceWebSiteAvailable && (
+                                        <FormControlLabel
+                                          sx={{ mt: 0.5, alignItems: "flex-start", ml: 0 }}
+                                          control={
+                                            <Checkbox
+                                              size="small"
+                                              checked={!!item.isOutOfStock}
+                                              onChange={(e) =>
+                                                updateSubImageMeta(item.id, "isOutOfStock", e.target.checked)
+                                              }
+                                            />
+                                          }
+                                          label="Out of Stock"
+                                        />
+                                      )}
                                     </Box>
                                   </Box>
                                 </Grid>

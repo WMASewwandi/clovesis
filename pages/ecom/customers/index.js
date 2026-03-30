@@ -81,13 +81,14 @@ export default function ECommerceCustomers() {
                   <TableCell>Email</TableCell>
                   <TableCell>Mobile</TableCell>
                   <TableCell>Warehouse ID</TableCell>
+                  <TableCell>Registered Customer</TableCell>
                   <TableCell>Created On</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {data.length === 0 ? (
                   <TableRow sx={{ "&:last-child td, &:last-child th": { border: 0 } }}>
-                    <TableCell colSpan={7} component="th" scope="row">
+                    <TableCell colSpan={8} component="th" scope="row">
                       <Typography color="error">No ECommerce Customers Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -105,6 +106,7 @@ export default function ECommerceCustomers() {
                       <TableCell>{item.email}</TableCell>
                       <TableCell>{item.mobileNo || "—"}</TableCell>
                       <TableCell>{item.warehouseId != null ? item.warehouseId : "—"}</TableCell>
+                      <TableCell>{item.validateCustomer === true ? "Yes" : "No"}</TableCell>
                       <TableCell>{item.createdOn ? formatDate(item.createdOn) : "—"}</TableCell>
                     </TableRow>
                   ))

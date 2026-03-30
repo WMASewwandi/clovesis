@@ -21,11 +21,15 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import getDeviceName from "@/components/utils/getDeviceName";
+import DeviceNameDialog from "@/components/Authentication/DeviceNameDialog";
 
 const SignInForm = () => {
   const [showError, setShowError] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginNote, setLoginNote] = useState("");
+  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
+  const [deviceNameInput, setDeviceNameInput] = useState("");
+  const [loginResult, setLoginResult] = useState(null);
   const router = useRouter();
 
   const handleSubmit = async (event) => {
@@ -53,14 +57,16 @@ const SignInForm = () => {
         throw new Error(responseData.message || "Login failed");
       }
 
-      localStorage.setItem("token", responseData.result.accessToken);
-      localStorage.setItem("user", responseData.result.email);
-      localStorage.setItem("userid", responseData.result.id);
-      localStorage.setItem("name", responseData.result.firstName);
-      localStorage.setItem("type", responseData.result.userType);
-      localStorage.setItem("warehouse", responseData.result.warehouseId);
-      localStorage.setItem("company", responseData.result.companyId);
-      localStorage.setItem("role", responseData.result.userRole);
+      const result = responseData.result;
+
+      localStorage.setItem("token", result.accessToken);
+      localStorage.setItem("user", result.email);
+      localStorage.setItem("userid", result.id);
+      localStorage.setItem("name", result.firstName);
+      localStorage.setItem("type", result.userType);
+      localStorage.setItem("warehouse", result.warehouseId);
+      localStorage.setItem("company", result.companyId);
+      localStorage.setItem("role", result.userRole);
 
       sessionStorage.removeItem("holidayGreetingShown");
       sessionStorage.setItem("justLoggedIn", "true");
@@ -68,23 +74,65 @@ const SignInForm = () => {
       fetch(`${BASE_URL}/Company/CreateCompanyHostingFeeIfDue`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${responseData.result.accessToken}`,
+          Authorization: `Bearer ${result.accessToken}`,
           "Content-Type": "application/json",
         },
       }).catch(() => {});
+
+      if (result.isNewDevice) {
+        setLoginResult(result);
+        setDeviceNameInput(getDeviceName());
+        setDeviceDialogOpen(true);
+        return;
+      }
 
       router.push("/");
       window.location.reload();
     } catch (error) {
       const message = error.message || "Login failed";
 
-      if (message.includes("3 registered devices") || message.includes("contact admin")) {
+      if (message.includes("registered devices") || message.includes("contact admin")) {
         setLoginNote(message);
         return;
       }
 
       toast.error(message);
     }
+  };
+
+  const handleDeviceDialogCancel = () => {
+    setDeviceDialogOpen(false);
+    router.push("/");
+    window.location.reload();
+  };
+
+  const handleDeviceDialogConfirm = async () => {
+    const trimmed = deviceNameInput.trim();
+    if (!trimmed || !loginResult) return;
+
+    try {
+      const response = await fetch(
+        `${BASE_URL}/User/RenameCurrentDevice?newDeviceName=${encodeURIComponent(trimmed)}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${loginResult.accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ NewDeviceName: trimmed }),
+        }
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data?.message || "Could not save device name. You can continue anyway.");
+      }
+    } catch {
+      toast.error("Could not save device name. You can continue anyway.");
+    }
+
+    setDeviceDialogOpen(false);
+    router.push("/");
+    window.location.reload();
   };
 
   return (
@@ -254,6 +302,13 @@ const SignInForm = () => {
           </Box>
         </Grid>
       </Grid>
+      <DeviceNameDialog
+        open={deviceDialogOpen}
+        value={deviceNameInput}
+        onChange={setDeviceNameInput}
+        onCancel={handleDeviceDialogCancel}
+        onConfirm={handleDeviceDialogConfirm}
+      />
     </Box>
   );
 };

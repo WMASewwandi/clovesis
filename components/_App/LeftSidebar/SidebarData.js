@@ -40,7 +40,8 @@ export const getSidebarData = (IsGarmentSystem) => {
             ModuleId: 7,
             IsAvailable: true,
             subNav: [
-                { title: "Dashboard", path: "/dashboard/main", categoryId: 39, isAvailable: true },
+                { title: "Dashboard (Production)", path: "/dashboard/main", categoryId: 39, isAvailable: true },
+                { title: "Dashboard (Apparel)", path: "/dashboard/apparel", categoryId: 162, isAvailable: true },
                 { title: "Dashboard", path: "/dashboard/pos", categoryId: 60, isAvailable: true },
                 { title: "Dashboard", path: "/dashboard/reservation", categoryId: 61, isAvailable: true },
                 { title: "Help Desk Dashboard", path: "/dashboard/help-desk", categoryId: 107, isAvailable: true },
@@ -191,6 +192,12 @@ export const getSidebarData = (IsGarmentSystem) => {
             IsAvailable: true,
             subNav: [
                 {
+                    title: "Dashboard",
+                    path: "/dashboard/apparel",
+                    categoryId: 163,
+                    isAvailable: true
+                },
+                {
                     title: "Inquiry",
                     path: "/inquiry/inquries/",
                     categoryId: 51,
@@ -236,6 +243,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Stock Transfer Note", path: "/inventory/stock-transfer/", categoryId: 69, isAvailable: true },
                 { title: "Goods Return Note", path: "/inventory/grn-return/", categoryId: 77, isAvailable: true },
                 { title: "Stock Details", path: "/inventory/stock-details/", categoryId: 156, isAvailable: true },
+                { title: "Stock Cycle Count", path: "/inventory/stock-cycle-count/", categoryId: 162, isAvailable: true },
             ],
         },
         {
