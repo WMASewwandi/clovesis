@@ -110,6 +110,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Delivery Methods", path: "/master/delivery-methods/", categoryId: 147, isAvailable: true },
                 { title: "Department", path: "/master/department/", categoryId: 78, isAvailable: true },
                 { title: "Currency", path: "/master/currency/", categoryId: 148, isAvailable: true },
+                { title: "Distributor", path: "/master/distributor/", categoryId: 165, isAvailable: true },
             ],
         },
         {
