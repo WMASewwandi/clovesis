@@ -249,6 +249,61 @@ const getPanelImageUrl = (panels, contentType, subContentType) => {
   return fallback?.documentURL || "";
 };
 
+const getPlacketColorDisplay = (neckTypeSource, type) => {
+  if (!neckTypeSource) return "-";
+  const isInner = type === "inner";
+  const candidates = isInner
+    ? [
+        neckTypeSource.innerPlacketColorCodeName,
+        neckTypeSource.innerPlacketColorName,
+        neckTypeSource.InnerPlacketColorCodeName,
+        neckTypeSource.InnerPlacketColorName,
+      ]
+    : [
+        neckTypeSource.outerPlacketColorCodeName,
+        neckTypeSource.outerPlacketColorName,
+        neckTypeSource.OuterPlacketColorCodeName,
+        neckTypeSource.OuterPlacketColorName,
+      ];
+  const selected = candidates.find((value) => typeof value === "string" && value.trim());
+  return selected ? selected.trim() : "-";
+};
+
+const getPlacketDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawValue =
+    neckTypeSource.neck3rdRowS ??
+    neckTypeSource.Neck3rdRowS ??
+    neckTypeSource.neck3RdRowS ??
+    neckTypeSource.neck3rdRows ??
+    neckTypeSource.Neck3rdRows;
+  const n = Number(rawValue);
+  if (n === 1) return "Single Placket";
+  if (n === 2) return "Piping Single Placket";
+  if (n === 3) return "Single Color Double Placket";
+  if (n === 4) return "Double Color Double Placket";
+  if (n === 5) return "Zipper";
+  return "-";
+};
+
+const getSideVentDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawValue =
+    neckTypeSource.sideVent ??
+    neckTypeSource.sideVents ??
+    neckTypeSource.sideVentType ??
+    neckTypeSource.sideVentStatus ??
+    neckTypeSource.SideVent ??
+    neckTypeSource.SideVents ??
+    neckTypeSource.SideVentType ??
+    neckTypeSource.SideVentStatus;
+  if (typeof rawValue === "boolean") return rawValue ? "Yes" : "No";
+  const n = Number(rawValue);
+  if (n === 1) return "Yes";
+  if (n === 2) return "No";
+  return "-";
+};
+
 const mapSizeRows = (sizesList) =>
   sizesList.map((row) => ({
     twoXS: row.twoXS ?? row.TwoXS,
@@ -270,6 +325,123 @@ const mapSizeRows = (sizesList) =>
 const getQty = (value) => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : "-";
+};
+
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const getOriginSafe = (value) => {
+  try {
+    if (!value) return "";
+    return new URL(
+      value,
+      typeof window !== "undefined" ? window.location.origin : undefined
+    ).origin;
+  } catch {
+    return "";
+  }
+};
+
+const shouldUseAuthForImage = (src) => {
+  if (!src) return false;
+  const imageOrigin = getOriginSafe(src);
+  if (!imageOrigin) return false;
+  if (typeof window !== "undefined" && imageOrigin === window.location.origin) return true;
+  const apiOrigin = getOriginSafe(BASE_URL);
+  return Boolean(apiOrigin && imageOrigin === apiOrigin);
+};
+
+const fetchImageAsDataUrl = async (requestUrl, requestInit = {}) => {
+  const res = await fetch(requestUrl, {
+    method: "GET",
+    ...requestInit,
+  });
+  if (!res.ok) return "";
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (
+    contentType &&
+    !contentType.startsWith("image/") &&
+    !contentType.includes("application/octet-stream")
+  ) {
+    return "";
+  }
+  const blob = await res.blob();
+  if (
+    blob.type &&
+    !blob.type.toLowerCase().startsWith("image/") &&
+    !blob.type.toLowerCase().includes("application/octet-stream")
+  ) {
+    return "";
+  }
+  const dataUrl = await blobToDataUrl(blob);
+  return typeof dataUrl === "string" && dataUrl.startsWith("data:")
+    ? dataUrl
+    : "";
+};
+
+const tryInlineImageSource = async (src, token) => {
+  if (!src || src.startsWith("data:") || src.startsWith("blob:")) return src;
+
+  try {
+    const proxyDataUrl = await fetchImageAsDataUrl(
+      `/api/image-proxy?url=${encodeURIComponent(src)}`,
+      {
+        headers: token ? { "x-auth-token": token } : undefined,
+        credentials: "same-origin",
+      }
+    );
+    if (proxyDataUrl) return proxyDataUrl;
+  } catch {
+    // Fall back to direct browser fetches.
+  }
+
+  const requestCandidates = [
+    {
+      headers: undefined,
+      credentials: "omit",
+    },
+    ...(token && shouldUseAuthForImage(src)
+      ? [
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          },
+        ]
+      : []),
+  ];
+
+  for (const req of requestCandidates) {
+    try {
+      const dataUrl = await fetchImageAsDataUrl(src, {
+        headers: req.headers,
+        credentials: req.credentials,
+        mode: "cors",
+      });
+      if (dataUrl) return dataUrl;
+    } catch {
+      // Keep trying fallback request options.
+    }
+  }
+
+  return src;
+};
+
+const canvasSliceHasContent = (ctx, width, height) => {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = data[i + 3];
+    if (alpha === 0) continue;
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r < 250 || g < 250 || b < 250) return true;
+  }
+  return false;
 };
 
 export default function CuttingPrintPage() {
@@ -464,6 +636,7 @@ export default function CuttingPrintPage() {
             : neckJson?.result?.necKTypes != null
               ? getNeckTypeName(neckJson.result.necKTypes)
               : "";
+        const neckTypeSource = neckJson?.result || inquiryNeckTypeJson?.result || null;
         const windowTypeName = getWindowType(windowType) || "";
         const type =
           [neckTypeName, windowTypeName].filter(Boolean).join(" ") ||
@@ -484,6 +657,10 @@ export default function CuttingPrintPage() {
           sleeveFinishDisplay,
           sleeveLengthDisplay,
           collarDisplay: selectedCollarLabels.length > 0 ? selectedCollarLabels.join(" / ") : "-",
+          placketDisplay: getPlacketDisplay(neckTypeSource),
+          innerPlacketColor: getPlacketColorDisplay(neckTypeSource, "inner"),
+          outerPlacketColor: getPlacketColorDisplay(neckTypeSource, "outer"),
+          sideVentDisplay: getSideVentDisplay(neckTypeSource),
           date: formatDateForHeader(startDate),
           deliveryDate,
           type,
@@ -526,8 +703,25 @@ export default function CuttingPrintPage() {
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
+    const images = contentRef.current.querySelectorAll("img");
+
     try {
-      const images = contentRef.current.querySelectorAll("img");
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+      await Promise.all(
+        Array.from(images).map(async (img) => {
+          const inlineSrc = await tryInlineImageSource(
+            img.currentSrc || img.src,
+            token
+          );
+          if (inlineSrc && inlineSrc !== img.src) {
+            img.setAttribute("data-original-src", img.src);
+            img.src = inlineSrc;
+          }
+        })
+      );
+
       await Promise.all(
         Array.from(images).map((img) => {
           if (img.complete) return Promise.resolve();
@@ -546,6 +740,7 @@ export default function CuttingPrintPage() {
         useCORS: true,
         logging: false,
         allowTaint: true,
+        imageTimeout: 15000,
         backgroundColor: "#ffffff",
       });
 
@@ -554,12 +749,64 @@ export default function CuttingPrintPage() {
         format: "a4",
         orientation: "portrait",
       });
-      const imgData = canvas.toDataURL("image/jpeg", 0.98);
-      pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+      const pageWidthMm = 210;
+      const pageHeightMm = 297;
+      const pageHeightPx = Math.floor((canvas.width * pageHeightMm) / pageWidthMm);
+      const pageCount = Math.max(1, Math.ceil(canvas.height / pageHeightPx));
+      let hasAddedPage = false;
+
+      for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+        const sliceY = pageIndex * pageHeightPx;
+        const sliceHeight = Math.min(pageHeightPx, canvas.height - sliceY);
+        if (sliceHeight <= 0) continue;
+
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+        const pageCtx = pageCanvas.getContext("2d");
+        if (!pageCtx) continue;
+        pageCtx.fillStyle = "#ffffff";
+        pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        pageCtx.drawImage(
+          canvas,
+          0,
+          sliceY,
+          canvas.width,
+          sliceHeight,
+          0,
+          0,
+          canvas.width,
+          sliceHeight
+        );
+
+        if (!canvasSliceHasContent(pageCtx, pageCanvas.width, pageCanvas.height)) {
+          continue;
+        }
+
+        const sliceImgData = pageCanvas.toDataURL("image/jpeg", 0.98);
+        const sliceHeightMm = (sliceHeight * pageWidthMm) / canvas.width;
+        if (hasAddedPage) pdf.addPage();
+        pdf.addImage(sliceImgData, "JPEG", 0, 0, pageWidthMm, sliceHeightMm);
+        hasAddedPage = true;
+      }
+
+      if (!hasAddedPage) {
+        const fallbackData = canvas.toDataURL("image/jpeg", 0.98);
+        pdf.addImage(fallbackData, "JPEG", 0, 0, pageWidthMm, pageHeightMm);
+      }
+
       pdf.save(`Cutting_${sentQuotationId || "document"}.pdf`);
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to download PDF. Please try again.");
+    } finally {
+      Array.from(images).forEach((img) => {
+        const originalSrc = img.getAttribute("data-original-src");
+        if (originalSrc) {
+          img.src = originalSrc;
+          img.removeAttribute("data-original-src");
+        }
+      });
     }
   };
 
@@ -568,10 +815,10 @@ export default function CuttingPrintPage() {
       { label: "FABRIC", value: data?.fabricDisplay ?? "-" },
       { label: "COLOUR", value: data?.colourDisplay ?? "-" },
       { label: "PATTERN", value: data?.patternDisplay ?? "-" },
-      { label: "PLACKET", value: "-" },
-      { label: "INNER PLACKET", value: "-" },
-      { label: "OUTER PLACKET", value: "-" },
-      { label: "SIDE VENT", value: "-" },
+      { label: "PLACKET", value: data?.placketDisplay ?? "-" },
+      { label: "INNER PLACKET", value: data?.innerPlacketColor ?? "-" },
+      { label: "OUTER PLACKET", value: data?.outerPlacketColor ?? "-" },
+      { label: "SIDE VENT", value: data?.sideVentDisplay ?? "-" },
       { label: "SLEEVE", value: data?.sleeveFinishDisplay ?? "-" },
       { label: "SLEEVE TYPE", value: data?.sleeveLengthDisplay ?? "-" },
       { label: "COLLAR", value: data?.collarDisplay ?? "-" },
@@ -778,6 +1025,7 @@ export default function CuttingPrintPage() {
             </Box>
             </Box>
 
+            <Box sx={{ display: "flex", flexDirection: "column" }}>
             <Box
               sx={{
                 pageBreakBefore: "always",
@@ -787,6 +1035,7 @@ export default function CuttingPrintPage() {
                 minHeight: { sm: "297mm" },
                 pageBreakAfter: "always",
                 breakAfter: "page",
+                order: 0,
                 "@media print": { minHeight: "297mm" },
               }}
             >
@@ -925,26 +1174,44 @@ export default function CuttingPrintPage() {
                 minHeight: { sm: "297mm" },
                 pageBreakAfter: "always",
                 breakAfter: "page",
+                order: 2,
                 "@media print": { minHeight: "297mm" },
               }}
             >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minHeight: { xs: "auto", sm: "250mm" },
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: "100%", sm: "252mm" },
+                    transform: { xs: "none", sm: "rotate(-90deg) scale(0.92)" },
+                    transformOrigin: "center center",
+                    transformBox: "fill-box",
+                  }}
+                >
               <Box sx={{ border: "1px solid #000", mb: 1.2 }}>
                 <Box sx={{ p: 0.7, borderBottom: "1px solid #000", textAlign: "center", fontWeight: 700, fontSize: "0.95rem" }}>
                   STYLENAME : {data.inquiryStyleName || "-"}
                 </Box>
 
                 <Box sx={{ display: "grid", gridTemplateColumns: `60px repeat(${numQtyColumns}, 45px) 1fr 1fr 1fr 1fr 1fr 1fr 120px`, borderBottom: "1px solid #000", backgroundColor: "#f9f9f9" }}>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SIZE</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SIZE</Box>
                   {(numQtyColumns === 1 ? [null] : sizeRowsForColumns).map((_, idx) => (
-                    <Box key={`p3-qty-head-${idx}`} sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>QTY</Box>
+                    <Box key={`p3-qty-head-${idx}`} sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>QTY</Box>
                   ))}
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>FRONT</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>BACK</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SL/R</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SL/L</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>CLR</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>PKT</Box>
-                  <Box sx={{ p: 0.55, fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>MARKER LENGTH</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>FRONT</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>BACK</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SL/R</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SL/L</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>CLR</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>PKT</Box>
+                  <Box sx={{ py: 0.72, px: 0.55, fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>MARKER LENGTH</Box>
                 </Box>
 
                 {SIZE_KEYS.map(({ key, label }, idx, arr) => (
@@ -953,22 +1220,23 @@ export default function CuttingPrintPage() {
                     sx={{
                       display: "grid",
                       gridTemplateColumns: `60px repeat(${numQtyColumns}, 45px) 1fr 1fr 1fr 1fr 1fr 1fr 120px`,
+                      minHeight: "10mm",
                       borderBottom: idx === arr.length - 1 ? "none" : "1px solid #000",
                     }}
                   >
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>{label}</Box>
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>{label}</Box>
                     {(numQtyColumns === 1 ? [sizeRowsForColumns[0]] : sizeRowsForColumns).map((row, qIdx) => (
-                      <Box key={`p3-${key}-${qIdx}`} sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>
+                      <Box key={`p3-${key}-${qIdx}`} sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>
                         {getQty(row?.[key])}
                       </Box>
                     ))}
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5 }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.62, px: 0.5 }} />
                   </Box>
                 ))}
                 <Box
@@ -1028,6 +1296,8 @@ export default function CuttingPrintPage() {
                 </Box>
               </Box>
             </Box>
+                </Box>
+              </Box>
 
             <Box
               sx={{
@@ -1036,9 +1306,27 @@ export default function CuttingPrintPage() {
                 pt: 0,
                 mt: 1.5,
                 minHeight: { sm: "297mm" },
+                order: 1,
                 "@media print": { minHeight: "297mm" },
               }}
             >
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minHeight: { xs: "auto", sm: "250mm" },
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: "100%", sm: "258mm" },
+                    transform: { xs: "none", sm: "rotate(-90deg) scale(0.93)" },
+                    transformOrigin: "center center",
+                    transformBox: "fill-box",
+                  }}
+                >
               <Box sx={{ border: "1px solid #000", mb: 1.2 }}>
                 <Box sx={{ p: 0.7, borderBottom: "1px solid #000", textAlign: "center", fontWeight: 700, fontSize: "0.95rem" }}>
                   STYLENAME : {data.inquiryStyleName || "-"}
@@ -1052,22 +1340,22 @@ export default function CuttingPrintPage() {
                     backgroundColor: "#f9f9f9",
                   }}
                 >
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SIZE</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>SIZE</Box>
                   {(numQtyColumns === 1 ? [null] : sizeRowsForColumns).map((_, idx) => (
-                    <Box key={`last-qty-head-a-${idx}`} sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center", color: "#b04343" }}>
+                    <Box key={`last-qty-head-a-${idx}`} sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center", color: "#b04343" }}>
                       QTY
                     </Box>
                   ))}
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>TUBE(2) / SNG: PLY(1)</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>RATIO</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>0.5 MARKER RATIO</Box>
-                  <Box sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>PLY</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>TUBE(2) / SNG: PLY(1)</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>RATIO</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>0.5 MARKER RATIO</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>PLY</Box>
                   {(numQtyColumns === 1 ? [null] : sizeRowsForColumns).map((_, idx) => (
-                    <Box key={`last-qty-head-b-${idx}`} sx={{ p: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>
+                    <Box key={`last-qty-head-b-${idx}`} sx={{ py: 0.7, px: 0.55, borderRight: "1px solid #000", fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>
                       QTY
                     </Box>
                   ))}
-                  <Box sx={{ p: 0.55, fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>+/-</Box>
+                  <Box sx={{ py: 0.7, px: 0.55, fontWeight: 700, fontSize: "0.72rem", textAlign: "center" }}>+/-</Box>
                 </Box>
 
                 {SIZE_KEYS.map(({ key, label }, idx) => (
@@ -1076,25 +1364,26 @@ export default function CuttingPrintPage() {
                     sx={{
                       display: "grid",
                       gridTemplateColumns: `70px repeat(${numQtyColumns}, 45px) 100px 75px 95px 60px repeat(${numQtyColumns}, 45px) 60px`,
+                      minHeight: "10mm",
                       borderBottom: idx === SIZE_KEYS.length - 1 ? "none" : "1px solid #000",
                     }}
                   >
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>{label}</Box>
+                    <Box sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>{label}</Box>
                     {(numQtyColumns === 1 ? [sizeRowsForColumns[0]] : sizeRowsForColumns).map((row, qIdx) => (
-                      <Box key={`last-a-${key}-${qIdx}`} sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>
+                      <Box key={`last-a-${key}-${qIdx}`} sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>
                         {getQty(row?.[key])}
                       </Box>
                     ))}
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>2</Box>
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>0</Box>
-                    <Box sx={{ p: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center" }}>2</Box>
+                    <Box sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000" }} />
+                    <Box sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>0</Box>
+                    <Box sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000" }} />
                     {(numQtyColumns === 1 ? [sizeRowsForColumns[0]] : sizeRowsForColumns).map((row, qIdx) => (
-                      <Box key={`last-b-${key}-${qIdx}`} sx={{ p: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>
+                      <Box key={`last-b-${key}-${qIdx}`} sx={{ py: 0.6, px: 0.5, borderRight: "1px solid #000", fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>
                         {getQty(row?.[key])}
                       </Box>
                     ))}
-                    <Box sx={{ p: 0.5, fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>0</Box>
+                    <Box sx={{ py: 0.6, px: 0.5, fontSize: "0.7rem", textAlign: "center", color: "#b04343", fontWeight: 700 }}>0</Box>
                   </Box>
                 ))}
 
@@ -1129,6 +1418,9 @@ export default function CuttingPrintPage() {
                   <Box sx={{ p: 0.5, textAlign: "center", color: "#b04343", fontWeight: 700, fontSize: "1rem" }}>0</Box>
                 </Box>
               </Box>
+                </Box>
+              </Box>
+            </Box>
             </Box>
           </Box>
         ) : (

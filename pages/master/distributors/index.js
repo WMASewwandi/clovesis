@@ -11,31 +11,32 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import {
   Pagination,
-  FormControl,
   Typography,
+  FormControl,
   InputLabel,
   MenuItem,
   Select,
 } from "@mui/material";
 import { ToastContainer } from "react-toastify";
-import BASE_URL from "Base/api";
-import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
+import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
+import AddDistributorDialog from "./create";
+import EditDistributorDialog from "./edit";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
-import EditSalesPerson from "./edit";
-import AddBank from "./create";
-import { getAccountType } from "@/components/types/types";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
+import GetAllWarehouse from "@/components/utils/GetAllWarehouse";
 
-export default function Bank() {
+export default function Distributors() {
   const cId = sessionStorage.getItem("category");
   const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
-  
-  const controller = "Bank/DeleteBank";
+  const [warehouseInfo, setWarehouseInfo] = useState({});
+  const { data: warehouseList } = GetAllWarehouse();
+
+  const controller = "Distributor/DeleteDistributor";
 
   const {
-    data: banks,
+    data: distributorList,
     totalCount,
     page,
     pageSize,
@@ -43,26 +44,37 @@ export default function Bank() {
     setPage,
     setPageSize,
     setSearch,
-    fetchData: fetchBanks,
-  } = usePaginatedFetch("Bank/GetAllBanksPaged", "", 10, false, false);
+    fetchData: fetchDistributorList,
+  } = usePaginatedFetch("Distributor/GetAllDistributors", "", 10, true, false);
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
-    fetchBanks(1, event.target.value, pageSize);
     setPage(1);
+    fetchDistributorList(1, event.target.value, pageSize);
   };
 
-  const handleChangePage = (event, value) => {
+  const handlePageChange = (event, value) => {
     setPage(value);
-    fetchBanks(value, search, pageSize);
+    fetchDistributorList(value, search, pageSize);
   };
 
-  const handleChangeRowsPerPage = (event) => {
+  const handlePageSizeChange = (event) => {
     const size = event.target.value;
     setPageSize(size);
     setPage(1);
-    fetchBanks(1, search, size);
+    fetchDistributorList(1, search, size);
   };
+
+  useEffect(() => {
+    if (warehouseList) {
+      const warehouseMap = warehouseList.reduce((acc, warehouse) => {
+        acc[warehouse.id] = warehouse;
+        return acc;
+      }, {});
+      setWarehouseInfo(warehouseMap);
+    }
+  }, [warehouseList]);
+
   if (!navigate) {
     return <AccessDenied />;
   }
@@ -71,10 +83,10 @@ export default function Bank() {
     <>
       <ToastContainer />
       <div className={styles.pageTitle}>
-        <h1>Bank</h1>
+        <h1>Distributors</h1>
         <ul>
           <li>
-            <Link href="/master/bank/">Bank</Link>
+            <Link href="/master/Distributor/">Distributors</Link>
           </li>
         </ul>
       </div>
@@ -102,66 +114,63 @@ export default function Bank() {
           justifyContent="end"
           order={{ xs: 1, lg: 2 }}
         >
-          {create ? <AddBank fetchItems={fetchBanks} /> : ""}
+          <AddDistributorDialog
+            fetchItems={() => {
+              setPage(1);
+              fetchDistributorList(1, search, pageSize);
+            }}
+          />
         </Grid>
         <Grid item xs={12} order={{ xs: 3, lg: 3 }}>
           <TableContainer component={Paper}>
             <Table aria-label="simple table" className="dark-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>#</TableCell>
-                  <TableCell>Bank Name</TableCell>
-                  <TableCell>Account Username</TableCell>
-                  <TableCell>Account No</TableCell>
-                  <TableCell>Account Type</TableCell>
-                  <TableCell>Active</TableCell>
+                  <TableCell>Code</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Mobile No</TableCell>
+                  <TableCell>Warehouse</TableCell>
+                  <TableCell>Status</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {!banks || banks.length === 0 ? (
-                  <TableRow
-                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                  >
-                    <TableCell colSpan={7} component="th" scope="row">
-                      <Typography color="error">No Banks Available</Typography>
+                {distributorList.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <Typography color="error">
+                        No Distributors Available
+                      </Typography>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  banks.map((bank, index) => (
-                    <TableRow
-                      key={index}
-                      sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                    >
-                      <TableCell component="th" scope="row">
-                        {index + 1}
+                  distributorList.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{item.code || ""}</TableCell>
+                      <TableCell>{item.name || ""}</TableCell>
+                      <TableCell>{item.mobileNo || ""}</TableCell>
+                      <TableCell>
+                        {item.warehouseId && warehouseInfo[item.warehouseId]
+                          ? `${warehouseInfo[item.warehouseId].code} - ${warehouseInfo[item.warehouseId].name}`
+                          : "All Warehouses"}
                       </TableCell>
-                      <TableCell component="th" scope="row">
-                        {bank.name}
-                      </TableCell>
-                      <TableCell component="th" scope="row">
-                        {bank.accountUsername}
-                      </TableCell>
-                      <TableCell component="th" scope="row">
-                        {bank.accountNo}
-                      </TableCell>
-                      <TableCell component="th" scope="row">
-                        {getAccountType(bank.bankAccountType)}
-                      </TableCell>
-                      <TableCell component="th" scope="row">
-                        {bank.isActive ? (
+                      <TableCell>
+                        {item.isActive ? (
                           <span className="successBadge">Active</span>
                         ) : (
                           <span className="dangerBadge">Inactive</span>
                         )}
                       </TableCell>
                       <TableCell align="right">
-                        {update ? <EditSalesPerson item={bank} fetchItems={fetchBanks} /> : ""}
-                        {remove ? <DeleteConfirmationById
-                          id={bank.id}
+                        <EditDistributorDialog
+                          fetchItems={fetchDistributorList}
+                          item={item}
+                        />
+                        <DeleteConfirmationById
+                          id={item.id}
                           controller={controller}
-                          fetchItems={fetchBanks}
-                        /> : ""}
+                          fetchItems={fetchDistributorList}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -170,9 +179,9 @@ export default function Bank() {
             </Table>
             <Grid container justifyContent="space-between" mt={2} mb={2}>
               <Pagination
-                count={totalCount ? Math.ceil(totalCount / pageSize) : 1}
+                count={Math.ceil(totalCount / pageSize)}
                 page={page}
-                onChange={handleChangePage}
+                onChange={handlePageChange}
                 color="primary"
                 shape="rounded"
               />
@@ -181,7 +190,7 @@ export default function Bank() {
                 <Select
                   value={pageSize}
                   label="Page Size"
-                  onChange={handleChangeRowsPerPage}
+                  onChange={handlePageSizeChange}
                 >
                   <MenuItem value={5}>5</MenuItem>
                   <MenuItem value={10}>10</MenuItem>

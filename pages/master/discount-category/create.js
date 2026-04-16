@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
-import BorderColorIcon from "@mui/icons-material/BorderColor";
 import {
   Box,
   Checkbox,
   FormControlLabel,
-  IconButton,
-  Tooltip,
   Typography,
+  MenuItem,
+  Select,
+  FormControl,
+  FormHelperText,
 } from "@mui/material";
 import DialogContent from "@mui/material/DialogContent";
 import TextField from "@mui/material/TextField";
 import DialogTitle from "@mui/material/DialogTitle";
+import AddIcon from "@mui/icons-material/Add";
 import Grid from "@mui/material/Grid";
 import { Field, Form, Formik } from "formik";
 import { toast } from "react-toastify";
@@ -21,36 +23,42 @@ import * as Yup from "yup";
 import BASE_URL from "Base/api";
 
 const validationSchema = Yup.object().shape({
-  Name: Yup.string().required("Distributor Name is required"),
-  MobileNo: Yup.string().required("Mobile number is required"),
+  DiscountName: Yup.string().required("Discount Name is required"),
+  DiscountType: Yup.number().required("Discount Type is required"),
+  Value: Yup.number().required("Value is required").min(0, "Value must be positive"),
 });
 
-export default function EditDistributorDialog({ fetchItems, item }) {
-  const [open, setOpen] = React.useState(false);
+export default function AddDiscountCategoryDialog({
+  fetchItems,
+  externalOpen,
+  onClose: externalOnClose,
+  showButton = true,
+}) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const [scroll, setScroll] = React.useState("paper");
+  const [formKey, setFormKey] = useState(0);
+
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
 
   const handleClickOpen = (scrollType) => () => {
-    setOpen(true);
+    if (externalOpen === undefined) {
+      setInternalOpen(true);
+    }
     setScroll(scrollType);
   };
 
   const handleClose = () => {
-    setOpen(false);
-  };
-
-  const descriptionElementRef = React.useRef(null);
-  React.useEffect(() => {
-    if (open) {
-      const { current: descriptionElement } = descriptionElementRef;
-      if (descriptionElement !== null) {
-        descriptionElement.focus();
-      }
+    if (externalOnClose) {
+      externalOnClose();
+    } else if (externalOpen === undefined) {
+      setInternalOpen(false);
     }
-  }, [open]);
+    setFormKey((prev) => prev + 1);
+  };
 
   const handleSubmit = (values) => {
     const token = localStorage.getItem("token");
-    fetch(`${BASE_URL}/Distributor/UpdateDistributor`, {
+    fetch(`${BASE_URL}/DiscountCategory/Create`, {
       method: "POST",
       body: JSON.stringify(values),
       headers: {
@@ -62,30 +70,36 @@ export default function EditDistributorDialog({ fetchItems, item }) {
       .then((data) => {
         if (data.statusCode == 200) {
           toast.success(data.message);
-          setOpen(false);
-          fetchItems();
+          handleClose();
+          if (fetchItems) {
+            fetchItems();
+          }
         } else {
           toast.error(data.message);
         }
       })
       .catch((error) => {
         toast.error(
-          error.message || "Distributor Update failed. Please try again."
+          error.message || "Discount Category Creation failed. Please try again."
         );
       });
   };
 
   return (
     <>
-      <Tooltip title="Edit" placement="top">
-        <IconButton
-          onClick={handleClickOpen("paper")}
-          aria-label="edit"
-          size="small"
-        >
-          <BorderColorIcon color="primary" fontSize="inherit" />
-        </IconButton>
-      </Tooltip>
+      {showButton && (
+        <Button variant="outlined" onClick={handleClickOpen("paper")}>
+          <AddIcon
+            sx={{
+              position: "relative",
+              top: "-2px",
+            }}
+            className="mr-5px"
+          />{" "}
+          ADD NEW
+        </Button>
+      )}
+
       <Dialog
         open={open}
         onClose={handleClose}
@@ -93,24 +107,26 @@ export default function EditDistributorDialog({ fetchItems, item }) {
         aria-labelledby="scroll-dialog-title"
         aria-describedby="scroll-dialog-description"
         maxWidth="sm"
+        fullWidth
       >
         <div className="bg-black">
           <DialogTitle id="scroll-dialog-title">
-            Edit Distributor
+            Create Discount Category
           </DialogTitle>
           <DialogContent>
             <Formik
+              key={formKey}
               initialValues={{
-                Id: item.id || "",
-                Code: item.code || "",
-                Name: item.name || "",
-                MobileNo: item.mobileNo || "",
-                IsActive: item.isActive || false,
+                DiscountName: "",
+                DiscountType: 1, // Default to Value
+                Value: 0,
+                IsActive: true,
               }}
               validationSchema={validationSchema}
               onSubmit={handleSubmit}
+              enableReinitialize
             >
-              {({ errors, touched, values, setFieldValue }) => (
+              {({ errors, touched, values, setFieldValue, handleBlur }) => (
                 <Form>
                   <Grid container spacing={2} sx={{ mt: 1 }}>
                     <Grid item xs={12}>
@@ -123,15 +139,15 @@ export default function EditDistributorDialog({ fetchItems, item }) {
                           display: "block",
                         }}
                       >
-                        Code
+                        Discount Name
                       </Typography>
                       <Field
                         as={TextField}
                         fullWidth
-                        name="Code"
-                        placeholder="Auto-generated code"
-                        disabled
-                        value={values.Code}
+                        name="DiscountName"
+                        placeholder="Enter discount name"
+                        error={touched.DiscountName && Boolean(errors.DiscountName)}
+                        helperText={touched.DiscountName && errors.DiscountName}
                       />
                     </Grid>
 
@@ -145,16 +161,22 @@ export default function EditDistributorDialog({ fetchItems, item }) {
                           display: "block",
                         }}
                       >
-                        Distributor Name
+                        Discount Type
                       </Typography>
-                      <Field
-                        as={TextField}
-                        fullWidth
-                        name="Name"
-                        placeholder="Enter distributor name"
-                        error={touched.Name && Boolean(errors.Name)}
-                        helperText={touched.Name && errors.Name}
-                      />
+                      <FormControl fullWidth error={touched.DiscountType && Boolean(errors.DiscountType)}>
+                        <Select
+                          name="DiscountType"
+                          value={values.DiscountType}
+                          onChange={(e) => setFieldValue("DiscountType", e.target.value)}
+                          onBlur={handleBlur}
+                        >
+                          <MenuItem value={1}>Value</MenuItem>
+                          <MenuItem value={2}>Percentage</MenuItem>
+                        </Select>
+                        {touched.DiscountType && errors.DiscountType && (
+                          <FormHelperText>{errors.DiscountType}</FormHelperText>
+                        )}
+                      </FormControl>
                     </Grid>
 
                     <Grid item xs={12}>
@@ -167,15 +189,16 @@ export default function EditDistributorDialog({ fetchItems, item }) {
                           display: "block",
                         }}
                       >
-                        Mobile Number
+                        Value
                       </Typography>
                       <Field
                         as={TextField}
                         fullWidth
-                        name="MobileNo"
-                        placeholder="Enter mobile number"
-                        error={touched.MobileNo && Boolean(errors.MobileNo)}
-                        helperText={touched.MobileNo && errors.MobileNo}
+                        name="Value"
+                        type="number"
+                        placeholder="Enter value"
+                        error={touched.Value && Boolean(errors.Value)}
+                        helperText={touched.Value && errors.Value}
                       />
                     </Grid>
 
@@ -200,7 +223,7 @@ export default function EditDistributorDialog({ fetchItems, item }) {
                           Cancel
                         </Button>
                         <Button type="submit" variant="contained" color="primary">
-                          Update
+                          Create
                         </Button>
                       </Box>
                     </Grid>
@@ -214,3 +237,4 @@ export default function EditDistributorDialog({ fetchItems, item }) {
     </>
   );
 }
+

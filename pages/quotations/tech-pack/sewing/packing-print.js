@@ -174,6 +174,117 @@ const getWindowType = (windowType) => {
   }
 };
 
+const getPlacketColorDisplay = (neckTypeSource, type) => {
+  if (!neckTypeSource) return "-";
+  const isInner = type === "inner";
+  const candidates = isInner
+    ? [
+        neckTypeSource.innerPlacketColorCodeName,
+        neckTypeSource.innerPlacketColorName,
+        neckTypeSource.InnerPlacketColorCodeName,
+        neckTypeSource.InnerPlacketColorName,
+      ]
+    : [
+        neckTypeSource.outerPlacketColorCodeName,
+        neckTypeSource.outerPlacketColorName,
+        neckTypeSource.OuterPlacketColorCodeName,
+        neckTypeSource.OuterPlacketColorName,
+      ];
+  const selected = candidates.find((value) => typeof value === "string" && value.trim());
+  return selected ? selected.trim() : "-";
+};
+
+const getPlacketDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawValue =
+    neckTypeSource.neck3rdRowS ??
+    neckTypeSource.Neck3rdRowS ??
+    neckTypeSource.neck3RdRowS ??
+    neckTypeSource.neck3rdRows ??
+    neckTypeSource.Neck3rdRows;
+  const n = Number(rawValue);
+  if (n === 1) return "Single Placket";
+  if (n === 2) return "Piping Single Placket";
+  if (n === 3) return "Single Color Double Placket";
+  if (n === 4) return "Double Color Double Placket";
+  if (n === 5) return "Zipper";
+  return "-";
+};
+
+const getSideVentDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawValue =
+    neckTypeSource.sideVent ??
+    neckTypeSource.sideVents ??
+    neckTypeSource.sideVentType ??
+    neckTypeSource.sideVentStatus ??
+    neckTypeSource.SideVent ??
+    neckTypeSource.SideVents ??
+    neckTypeSource.SideVentType ??
+    neckTypeSource.SideVentStatus;
+  const n = Number(rawValue);
+  if (n === 1) return "Yes";
+  if (n === 2) return "No";
+  return "-";
+};
+
+const getYesNoDisplay = (rawValue) => {
+  if (typeof rawValue === "boolean") return rawValue ? "Yes" : "No";
+  const n = Number(rawValue);
+  if (n === 1) return "Yes";
+  if (n === 2) return "No";
+  return "-";
+};
+
+const getShoulderOutlineDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  return getYesNoDisplay(
+    neckTypeSource.shoulderOutline ??
+      neckTypeSource.shoulderOutlines ??
+      neckTypeSource.ShoulderOutline ??
+      neckTypeSource.ShoulderOutlines
+  );
+};
+
+const getAHoleOutlineDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  return getYesNoDisplay(
+    neckTypeSource.aHoleOutline ??
+      neckTypeSource.aholeOutline ??
+      neckTypeSource.AHoleOutline ??
+      neckTypeSource.AholeOutline
+  );
+};
+
+const getButtonTypeDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawValue =
+    neckTypeSource.buttonType ??
+    neckTypeSource.buttonTypes ??
+    neckTypeSource.ButtonType ??
+    neckTypeSource.ButtonTypes;
+  const n = Number(rawValue);
+  if (n === 1) return "Glass";
+  if (n === 2) return "Client's";
+  return "-";
+};
+
+const getButtonsDisplay = (neckTypeSource) => {
+  if (!neckTypeSource) return "-";
+  const rawButtonCount =
+    neckTypeSource.poloButton ??
+    neckTypeSource.pOLOButton ??
+    neckTypeSource.POLOButton;
+  const buttonCount = String(rawButtonCount ?? "").trim();
+  const buttonType = getButtonTypeDisplay(neckTypeSource);
+  const hasButtonCount = Boolean(buttonCount && buttonCount !== "0");
+  const hasButtonType = buttonType !== "-";
+  if (hasButtonCount && hasButtonType) return `${buttonCount} (${buttonType})`;
+  if (hasButtonCount) return buttonCount;
+  if (hasButtonType) return buttonType;
+  return "-";
+};
+
 const getPanelImageUrl = (panels, contentType, subContentType) => {
   if (!Array.isArray(panels)) return "";
 
@@ -196,6 +307,112 @@ const formatSizeQty = (val) => {
   if (val == null || val === "" || Number(val) === 0) return "-";
   const n = Number(val);
   return Number.isNaN(n) ? "-" : String(Math.round(n));
+};
+
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+const getOriginSafe = (value) => {
+  try {
+    if (!value) return "";
+    return new URL(value, typeof window !== "undefined" ? window.location.origin : undefined).origin;
+  } catch {
+    return "";
+  }
+};
+
+const shouldUseAuthForImage = (src) => {
+  if (!src) return false;
+  const imageOrigin = getOriginSafe(src);
+  if (!imageOrigin) return false;
+  if (typeof window !== "undefined" && imageOrigin === window.location.origin) return true;
+  const apiOrigin = getOriginSafe(BASE_URL);
+  return Boolean(apiOrigin && imageOrigin === apiOrigin);
+};
+
+const fetchImageAsDataUrl = async (requestUrl, requestInit = {}) => {
+  const res = await fetch(requestUrl, {
+    method: "GET",
+    ...requestInit,
+  });
+  if (!res.ok) return "";
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (
+    contentType &&
+    !contentType.startsWith("image/") &&
+    !contentType.includes("application/octet-stream")
+  ) {
+    return "";
+  }
+  const blob = await res.blob();
+  if (
+    blob.type &&
+    !blob.type.toLowerCase().startsWith("image/") &&
+    !blob.type.toLowerCase().includes("application/octet-stream")
+  ) {
+    return "";
+  }
+  const dataUrl = await blobToDataUrl(blob);
+  return typeof dataUrl === "string" && dataUrl.startsWith("data:")
+    ? dataUrl
+    : "";
+};
+
+const tryInlineImageSource = async (src, token) => {
+  if (!src || src.startsWith("data:") || src.startsWith("blob:")) return src;
+
+  // 1) Try through local proxy first (bypasses browser CORS restrictions).
+  try {
+    const proxyDataUrl = await fetchImageAsDataUrl(
+      `/api/image-proxy?url=${encodeURIComponent(src)}`,
+      {
+        headers: token ? { "x-auth-token": token } : undefined,
+        credentials: "same-origin",
+      }
+    );
+    if (proxyDataUrl) return proxyDataUrl;
+  } catch {
+    // Fall through to direct browser fetch attempts.
+  }
+
+  // 2) Direct browser fetch attempts (works when CORS allows it).
+  const requestCandidates = [
+    {
+      headers: undefined,
+      credentials: "omit",
+    },
+    ...(token && shouldUseAuthForImage(src)
+      ? [
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            credentials: "include",
+          },
+        ]
+      : []),
+  ];
+
+  try {
+    for (const req of requestCandidates) {
+      try {
+        const dataUrl = await fetchImageAsDataUrl(src, {
+          headers: req.headers,
+          credentials: req.credentials,
+          mode: "cors",
+        });
+        if (dataUrl) return dataUrl;
+      } catch {
+        // Keep trying fallback request options.
+      }
+    }
+    return src;
+  } catch {
+    return src;
+  }
 };
 
 export default function SewingPackingPrintPage() {
@@ -428,6 +645,7 @@ export default function SewingPackingPrintPage() {
             : neckJson?.result?.necKTypes != null
               ? getNeckTypeName(neckJson.result.necKTypes)
             : "";
+        const neckTypeSource = neckJson?.result || inquiryNeckTypeJson?.result || null;
         const windowTypeName = getWindowType(windowType) || "";
         const type =
           [neckTypeName, windowTypeName].filter(Boolean).join(" ") ||
@@ -448,6 +666,13 @@ export default function SewingPackingPrintPage() {
           patternDisplay,
           sleeveDisplay,
           collarDisplay: selectedCollarLabels.length > 0 ? selectedCollarLabels.join(" / ") : "-",
+          placketDisplay: getPlacketDisplay(neckTypeSource),
+          innerPlacketColor: getPlacketColorDisplay(neckTypeSource, "inner"),
+          outerPlacketColor: getPlacketColorDisplay(neckTypeSource, "outer"),
+          shoulderOutlineDisplay: getShoulderOutlineDisplay(neckTypeSource),
+          aHoleOutlineDisplay: getAHoleOutlineDisplay(neckTypeSource),
+          sideVentDisplay: getSideVentDisplay(neckTypeSource),
+          buttonsDisplay: getButtonsDisplay(neckTypeSource),
           date: formatDateForHeader(startDate),
           deliveryDate,
           type,
@@ -482,15 +707,15 @@ export default function SewingPackingPrintPage() {
       { label: "FABRIC", value: headerData?.fabricDisplay ?? "-" },
       { label: "COLOUR", value: headerData?.colourDisplay ?? "-" },
       { label: "PATTERN", value: headerData?.patternDisplay ?? "-" },
-      { label: "PLACKET", value: "-" },
-      { label: "INNER PLACKET", value: "-" },
-      { label: "OUTER PLACKET", value: "-" },
-      { label: "SHOULDER OUTLINE", value: "-" },
-      { label: "A/HOLE OUTLINE", value: "-" },
-      { label: "SIDE VENT", value: "-" },
+      { label: "PLACKET", value: headerData?.placketDisplay ?? "-" },
+      { label: "INNER PLACKET", value: headerData?.innerPlacketColor ?? "-" },
+      { label: "OUTER PLACKET", value: headerData?.outerPlacketColor ?? "-" },
+      { label: "SHOULDER OUTLINE", value: headerData?.shoulderOutlineDisplay ?? "-" },
+      { label: "A/HOLE OUTLINE", value: headerData?.aHoleOutlineDisplay ?? "-" },
+      { label: "SIDE VENT", value: headerData?.sideVentDisplay ?? "-" },
       { label: "COLLAR", value: headerData?.collarDisplay ?? "-" },
       { label: "SLEEVE", value: headerData?.sleeveDisplay ?? "-" },
-      { label: "BUTTONS", value: "-" },
+      { label: "BUTTONS", value: headerData?.buttonsDisplay ?? "-" },
       { label: "NECK TAPE", value: "-" },
       { label: "LABELS", value: "-" },
     ],
@@ -512,9 +737,25 @@ export default function SewingPackingPrintPage() {
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
+    const images = contentRef.current.querySelectorAll("img");
 
     try {
-      const images = contentRef.current.querySelectorAll("img");
+      const token =
+        typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+      await Promise.all(
+        Array.from(images).map(async (img) => {
+          const inlineSrc = await tryInlineImageSource(
+            img.currentSrc || img.src,
+            token
+          );
+          if (inlineSrc && inlineSrc !== img.src) {
+            img.setAttribute("data-original-src", img.src);
+            img.src = inlineSrc;
+          }
+        })
+      );
+
       await Promise.all(
         Array.from(images).map((img) => {
           if (img.complete) {
@@ -535,6 +776,7 @@ export default function SewingPackingPrintPage() {
         useCORS: true,
         logging: false,
         allowTaint: true,
+        imageTimeout: 15000,
         backgroundColor: "#ffffff",
       });
 
@@ -549,6 +791,14 @@ export default function SewingPackingPrintPage() {
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to download PDF. Please try again.");
+    } finally {
+      Array.from(images).forEach((img) => {
+        const originalSrc = img.getAttribute("data-original-src");
+        if (originalSrc) {
+          img.src = originalSrc;
+          img.removeAttribute("data-original-src");
+        }
+      });
     }
   };
 
