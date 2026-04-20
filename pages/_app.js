@@ -355,7 +355,12 @@ function MyApp({ Component, pageProps }) {
     );
   }
 
-  if (token == null && landingVisible) {
+  // Exclude standalone print/share pages from layout and token check
+  const noLayoutRoutes = ["/crm/customer/quote", "/crm/customer/invoice", "/inventory/purchase-order/print", "/inventory/grn/print", "/inventory/shipment/print", "/inventory/stock-cycle-count/print", "/quotations/tech-pack/sewing/packing-print", "/quotations/tech-pack/sewing/emb-sub-print", "/quotations/tech-pack/sewing/cutting-print", "/verified", "/userverified", "/authentication/forgot-password"];
+  const shouldUseLayout = !noLayoutRoutes.includes(router.pathname);
+  const shouldCheckToken = !noLayoutRoutes.includes(router.pathname);
+
+  if (token == null && landingVisible && shouldCheckToken) {
     return (
       <div className={`landing-page ${landingSlideUp ? "slide-up" : ""}`}>
         <div className="landing-content">
@@ -365,11 +370,6 @@ function MyApp({ Component, pageProps }) {
       </div>
     );
   }
-
-  // Exclude standalone print/share pages from layout and token check
-  const noLayoutRoutes = ["/crm/customer/quote", "/crm/customer/invoice", "/inventory/purchase-order/print", "/inventory/grn/print", "/inventory/shipment/print", "/inventory/stock-cycle-count/print", "/quotations/tech-pack/sewing/packing-print", "/quotations/tech-pack/sewing/emb-sub-print", "/quotations/tech-pack/sewing/cutting-print", "/verified", "/userverified"];
-  const shouldUseLayout = !noLayoutRoutes.includes(router.pathname);
-  const shouldCheckToken = !noLayoutRoutes.includes(router.pathname);
 
   if (token == null && shouldCheckToken) {
     if (ProjectNo === 1) {

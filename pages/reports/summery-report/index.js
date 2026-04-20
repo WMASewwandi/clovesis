@@ -29,6 +29,7 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 
 import UnifiedSummaryReportModal from "@/components/UIElements/Modal/Reports/Summery/UnifiedSummaryReportModal";
+import MatrimonialSummaryReportModal from "@/components/UIElements/Modal/Reports/Summery/MatrimonialSummaryReportModal";
 import CompanyWiseProfit from "@/components/UIElements/Modal/Reports/Summery/CompanyWiseProfit";
 import ProfitabilityReport from "@/components/UIElements/Modal/Reports/Summery/ProfitabilityReport";
 import OutstandingReport from "@/components/UIElements/Modal/Reports/Summery/OutstandingReport";
@@ -56,6 +57,9 @@ const componentMap = {
   BankHistoryReport: UnifiedSummaryReportModal,
   ShiftSummaryReport: UnifiedSummaryReportModal,
   StockMovementReport: UnifiedSummaryReportModal,
+  MatrimonialProfileQualityReport: MatrimonialSummaryReportModal,
+  MatrimonialSubscriptionSummaryReport: MatrimonialSummaryReportModal,
+  MatrimonialEngagementSummaryReport: MatrimonialSummaryReportModal,
 };
 
 // Frontend-only categorization for Summary Reports.
@@ -89,6 +93,11 @@ const REPORT_MODULE_MAP = {
   ReservationAppointmentTypeReport: "Reservation",
   ReservationTypeReport: "Reservation",
   ReservationSalesReport: "Reservation",
+
+  // Matrimonial
+  MatrimonialProfileQualityReport: "Matrimonial",
+  MatrimonialSubscriptionSummaryReport: "Matrimonial",
+  MatrimonialEngagementSummaryReport: "Matrimonial",
 };
 
 const getReportModuleName = (report) => {
@@ -104,6 +113,7 @@ const getReportModuleName = (report) => {
     // Force all incoming categories/modules into the 3 requested groups.
     if (norm.includes("invent") || norm.includes("stock") || norm.includes("purchase")) return "Inventory";
     if (norm.includes("reservation")) return "Reservation";
+    if (norm.includes("matrimonial")) return "Matrimonial";
     if (norm.includes("sale") || norm.includes("customer")) return "Sales";
     if (norm.includes("finan") || norm.includes("cash") || norm.includes("bank") || norm.includes("profit") || norm.includes("fiscal") || norm.includes("shift")) return "Finance";
     // Unknown explicit module -> keep visible under Sales by default.
@@ -194,7 +204,8 @@ const SummeryReports = () => {
       return acc;
     }, {});
 
-    const preferredOrder = ["Inventory", "Sales", "Finance", "Reservation"];
+    // Keep a consistent module ordering (as requested).
+    const preferredOrder = ["Inventory", "Sales", "Finance", "Reservation", "Matrimonial"];
     
     const modulesWithReports = Object.keys(groups).filter(
       (moduleName) => groups[moduleName] && groups[moduleName].length > 0

@@ -27,6 +27,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import WorkIcon from '@mui/icons-material/Work';
 import FactoryIcon from '@mui/icons-material/Factory';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 
 
 export const getSidebarData = (IsGarmentSystem) => {
@@ -250,6 +251,19 @@ export const getSidebarData = (IsGarmentSystem) => {
             ],
         },
         {
+            title: "Assets",
+            path: "/assets/assets/",
+            icon: <InventoryIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 26,
+            IsAvailable: true,
+            subNav: [
+                { title: "Asset Categories", path: "/assets/category/", categoryId: 172, isAvailable: true },
+                { title: "Asset Locations", path: "/assets/location/", categoryId: 173, isAvailable: true },
+            ],
+        },
+        {
             title: "Sales",
             path: "/sales/sales/",
             icon: <ReceiptIcon />,
@@ -440,6 +454,22 @@ export const getSidebarData = (IsGarmentSystem) => {
             subNav: [
                 { title: "Work Track", path: "/work-track/", categoryId: 153, isAvailable: true },
                 { title: "Technician", path: "/work-track/technician/", categoryId: 154, isAvailable: true }
+            ],
+        },
+        {
+            title: "Matrimonial",
+            path: "/matrimonial/matrimonial/",
+            icon: <FavoriteIcon />,
+            iconClosed: <ArrowRight />,
+            iconOpened: <ArrowDown />,
+            ModuleId: 25,
+            IsAvailable: true,
+            subNav: [
+                { title: "Dashboard", path: "/matrimonial/dashboard/", categoryId: 175, isAvailable: true },
+                { title: "Registered Accounts", path: "/matrimonial/matrimonial/", categoryId: 172, isAvailable: true },
+                { title: "Bank Transfer Approvals", path: "/matrimonial/bank-transfers/", categoryId: 173, isAvailable: true },
+                { title: "Success Stories", path: "/matrimonial/success-stories/", categoryId: 174, isAvailable: true },
+                { title: "Packages", path: "/matrimonial/packages/", categoryId: 176, isAvailable: true },
             ],
         }, {
             title: "Administrator",
