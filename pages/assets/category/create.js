@@ -19,7 +19,7 @@ import { Field, Form, Formik } from "formik";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { assetCategoryValidationSchema } from "./validation";
+import { assetCategoryValidationSchema } from "@/utils/validations/assets/categoryValidation";
 
 const style = {
   position: "absolute",

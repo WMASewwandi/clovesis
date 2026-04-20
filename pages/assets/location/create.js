@@ -19,7 +19,7 @@ import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ParentLocationAutocomplete from "./ParentLocationAutocomplete";
-import { assetLocationValidationSchema } from "./validation";
+import { assetLocationValidationSchema } from "@/utils/validations/assets/locationValidation";
 
 const style = {
   position: "absolute",

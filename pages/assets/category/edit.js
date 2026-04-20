@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import ParentCategoryAutocomplete from "./ParentCategoryAutocomplete";
-import { assetCategoryValidationSchema } from "./validation";
+import { assetCategoryValidationSchema } from "@/utils/validations/assets/categoryValidation";
 
 const style = {
   position: "absolute",
