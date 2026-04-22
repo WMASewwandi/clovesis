@@ -272,7 +272,7 @@ export const getSidebarData = (IsGarmentSystem) => {
             ModuleId: 3,
             IsAvailable: true,
             subNav: [
-                { title: "Invoice", path: "/sales/invoice/", categoryId: 22, isAvailable: true },
+                { title: "Invoice", path: "/sales/invoice/", categoryId: 22, isAvailable: true },                
                 { title: "Customer Credit/Debit Notes", path: "/sales/credit-note/", categoryId: 23, isAvailable: true },
                 { title: "Receipt", path: "/sales/receipt/", categoryId: 24, isAvailable: true },
                 { title: "Shift", path: "/sales/shift/", categoryId: 26, isAvailable: true },
@@ -284,6 +284,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Shift Summary", path: "/sales/summary/", categoryId: 104, isAvailable: true },
                 { title: "Cash In/Out", path: "/sales/cash-in-out/", categoryId: 117, isAvailable: true },
                 { title: "Bank Payments", path: "/sales/bank-payments/", categoryId: 118, isAvailable: true },
+                { title: "Sales Order", path: "/sales/sales-order/", categoryId: 177, isAvailable: true }
             ],
         },
         {
