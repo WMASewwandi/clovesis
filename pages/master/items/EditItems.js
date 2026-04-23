@@ -30,6 +30,13 @@ import DownloadIcon from "@mui/icons-material/Download";
 import AddIcon from "@mui/icons-material/Add";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
+/** Optional leading + then digits only (e.g. +94771234567). */
+function sanitizeSupplierMobileInput(raw) {
+  const s = String(raw ?? "");
+  const digits = s.replace(/\D/g, "");
+  return s.trim().startsWith("+") ? `+${digits}` : digits;
+}
+
 // Controlled Category Modal Component
 const CreateCategoryModal = ({ open, onClose, fetchItems, IsEcommerceWebSiteAvailable }) => {
   const [image, setImage] = useState("");
@@ -68,7 +75,12 @@ const CreateCategoryModal = ({ open, onClose, fetchItems, IsEcommerceWebSiteAvai
         if (data.statusCode == 200) {
           toast.success(data.message);
           onClose();
-          if (fetchItems) fetchItems();
+          const newId =
+            data.result?.id ??
+            data.result?.Id ??
+            data.Result?.id ??
+            data.Result?.Id;
+          if (fetchItems) fetchItems(newId);
         } else {
           toast.error(data.message);
         }
@@ -386,6 +398,7 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
     }
     const payload = {
       ...values,
+      MobileNo: sanitizeSupplierMobileInput(values.MobileNo),
       BankId: selectedBank?.id || null,
       BankName: selectedBank?.name || "",
       BankAccountUserName: selectedBank?.accountUsername || "",
@@ -429,7 +442,12 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
           }}
           validationSchema={Yup.object().shape({
             Name: Yup.string().required("Name is required"),
-            MobileNo: Yup.string().required("Mobile No is required"),
+            MobileNo: Yup.string()
+              .required("Mobile No is required")
+              .matches(
+                /^\+?\d+$/,
+                "Use digits only; you may start with + for country code"
+              ),
           })}
           onSubmit={handleSubmit}
         >
@@ -460,14 +478,23 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
                     <Typography sx={{ fontWeight: "500", fontSize: "14px", mb: "5px" }}>
                       Mobile No
                     </Typography>
-                    <Field
-                      as={TextField}
-                      fullWidth
-                      name="MobileNo"
-                      size="small"
-                      error={touched.MobileNo && Boolean(errors.MobileNo)}
-                      helperText={touched.MobileNo && errors.MobileNo}
-                    />
+                    <Field name="MobileNo">
+                      {({ field, meta }) => (
+                        <TextField
+                          fullWidth
+                          name={field.name}
+                          value={field.value}
+                          onBlur={field.onBlur}
+                          onChange={(e) =>
+                            setFieldValue("MobileNo", sanitizeSupplierMobileInput(e.target.value))
+                          }
+                          size="small"
+                          inputProps={{ inputMode: "tel", autoComplete: "tel" }}
+                          error={meta.touched && Boolean(meta.error)}
+                          helperText={meta.touched && meta.error}
+                        />
+                      )}
+                    </Field>
                   </Grid>
                   {isPOSSystem && (
                     <Grid item xs={12} mt={1}>
@@ -565,9 +592,13 @@ const CreateUOMModal = ({ open, onClose, fetchItems }) => {
   }, [open]);
 
   const handleSubmit = (values) => {
+    const payload = {
+      ...values,
+      Value: Math.max(0, Number(values.Value) || 0),
+    };
     fetch(`${BASE_URL}/UnitOfMeasure/CreateUnitOfMeasure`, {
       method: "POST",
-      body: JSON.stringify(values),
+      body: JSON.stringify(payload),
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -603,6 +634,10 @@ const CreateUOMModal = ({ open, onClose, fetchItems }) => {
           validationSchema={Yup.object().shape({
             Description: Yup.string().required("Description is required"),
             Name: Yup.string().required("Name is required"),
+            Value: Yup.number()
+              .typeError("Value must be a number")
+              .min(0, "Value cannot be negative")
+              .required("Value is required"),
           })}
           onSubmit={handleSubmit}
         >
@@ -640,7 +675,32 @@ const CreateUOMModal = ({ open, onClose, fetchItems }) => {
                   </Grid>
                   <Grid item xs={12} mt={1}>
                     <Typography sx={{ fontWeight: "500", fontSize: "14px", mb: "5px" }}>Value</Typography>
-                    <Field as={TextField} fullWidth type="number" name="Value" size="small" />
+                    <Field name="Value">
+                      {({ field, meta, form }) => (
+                        <TextField
+                          fullWidth
+                          type="number"
+                          name={field.name}
+                          value={field.value === "" || field.value === undefined ? "" : field.value}
+                          onBlur={field.onBlur}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === "") {
+                              form.setFieldValue("Value", "");
+                              return;
+                            }
+                            const n = Number(raw);
+                            if (!Number.isNaN(n)) {
+                              form.setFieldValue("Value", Math.max(0, n));
+                            }
+                          }}
+                          size="small"
+                          inputProps={{ min: 0, step: "any" }}
+                          error={meta.touched && Boolean(meta.error)}
+                          helperText={meta.touched && meta.error}
+                        />
+                      )}
+                    </Field>
                   </Grid>
                   <Grid item xs={12} mt={1}>
                     <FormControlLabel
@@ -687,6 +747,18 @@ const validationSchema = Yup.object().shape({
   SubCategoryId: Yup.number().required("Sub Category is required"),
   Supplier: Yup.number().required("Supplier is required"),
   UOM: Yup.number().required("Unit of Measure is required"),
+  ReorderLevel: Yup.mixed()
+    .nullable()
+    .test(
+      "reorder-non-negative",
+      "Reorder Level cannot be negative",
+      (val) => {
+        if (val === null || val === undefined || val === "") return true;
+        const n = Number(val);
+        if (Number.isNaN(n)) return false;
+        return n >= 0;
+      }
+    ),
 });
 
 export default function EditItems({
@@ -810,7 +882,7 @@ export default function EditItems({
     }
   };
 
-  const fetchSubCategoryList = async () => {
+  const fetchSubCategoryList = async (categoryIdOverride) => {
     try {
       const response = await fetch(
         `${BASE_URL}/SubCategory/GetAllSubCategory`,
@@ -828,8 +900,14 @@ export default function EditItems({
       }
 
       const data = await response.json();
+      const id =
+        categoryIdOverride !== undefined &&
+        categoryIdOverride !== null &&
+        categoryIdOverride !== ""
+          ? categoryIdOverride
+          : catId;
       const filteredItems = data.result.filter(
-        (item) => item.categoryId === catId
+        (item) => item.categoryId == id
       );
       setSubCategoryList(filteredItems);
     } catch (error) {
@@ -905,9 +983,10 @@ export default function EditItems({
   };
 
   const handleCategorySelect = (event) => {
-    setSelectedCat(event.target.value);
-    setCatId(event.target.value);
-    fetchSubCategoryList();
+    const v = event.target.value;
+    setSelectedCat(v);
+    setCatId(v);
+    fetchSubCategoryList(v);
   };
 
   const handleTabChange = (event, newValue) => {
@@ -1000,12 +1079,18 @@ export default function EditItems({
     });
   };
 
-  const handleCategoryCreated = async () => {
+  const handleCategoryCreated = async (setFieldValue, createdId) => {
     await fetchCategoryList();
+    if (createdId == null || createdId === "" || !setFieldValue) return;
+    setFieldValue("CategoryId", createdId);
+    setSelectedCat(createdId);
+    setCatId(createdId);
+    setFieldValue("SubCategoryId", "");
+    await fetchSubCategoryList(createdId);
   };
 
   const handleSubCategoryCreated = async (setFieldValue, createdId) => {
-    await fetchSubCategoryList();
+    await fetchSubCategoryList(catId);
     if (createdId && setFieldValue) {
       setFieldValue("SubCategoryId", createdId);
     }
@@ -1069,7 +1154,15 @@ export default function EditItems({
         : "",
     );
     formData.append("ShipmentTarget", values.ShipmentTarget ? values.ShipmentTarget : "");
-    formData.append("ReorderLevel", values.ReorderLevel ?values.ReorderLevel : "");
+    {
+      const rl = values.ReorderLevel;
+      const rlNum =
+        rl != null && rl !== "" ? Math.max(0, Number(rl)) : null;
+      formData.append(
+        "ReorderLevel",
+        rlNum != null && !Number.isNaN(rlNum) ? String(rlNum) : ""
+      );
+    }
     formData.append("CategoryId", values.CategoryId);
     formData.append("SubCategoryId", values.SubCategoryId);
     formData.append("Supplier", values.Supplier);
@@ -1174,7 +1267,12 @@ export default function EditItems({
               CategoryId: item.categoryId || "",
               SubCategoryId: item.subCategoryId || "",
               ShipmentTarget: item.shipmentTarget || null,
-              ReorderLevel: item.reorderLevel || null,
+              ReorderLevel: (() => {
+                const raw = item.reorderLevel;
+                if (raw == null || raw === "") return null;
+                const n = Number(raw);
+                return Number.isNaN(n) ? null : Math.max(0, n);
+              })(),
               Supplier: item.supplier || "",
               UOM: item.uom || "",
               Barcode: item.barcode || null,
@@ -1514,10 +1612,20 @@ export default function EditItems({
                           name="ReorderLevel"
                           size="small"
                           type="number"
+                          inputProps={{ min: 0, step: 1 }}
                           onChange={(e) => {
                             const value = e.target.value;
-                            setFieldValue("ReorderLevel", value === '' ? null : value);
+                            if (value === "") {
+                              setFieldValue("ReorderLevel", null);
+                              return;
+                            }
+                            const n = Number(value);
+                            if (!Number.isNaN(n)) {
+                              setFieldValue("ReorderLevel", Math.max(0, n));
+                            }
                           }}
+                          error={touched.ReorderLevel && Boolean(errors.ReorderLevel)}
+                          helperText={touched.ReorderLevel && errors.ReorderLevel}
                         />
                       </Grid>
                       {isGarmentSystem && (
@@ -2165,7 +2273,9 @@ export default function EditItems({
         <CreateCategoryModal
           open={createCategoryOpen}
           onClose={() => setCreateCategoryOpen(false)}
-          fetchItems={handleCategoryCreated}
+          fetchItems={(createdId) =>
+            handleCategoryCreated(window.currentSetFieldValue, createdId)
+          }
           IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable}
         />
       )}

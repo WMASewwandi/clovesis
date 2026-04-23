@@ -22,7 +22,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import ParentCategoryAutocomplete from "./ParentCategoryAutocomplete";
-import { assetCategoryValidationSchema } from "@/utils/validations/assets/categoryValidation";
+import { assetCategoryValidationSchema } from "../../../components/utils/assetCategoryValidation";
 
 const style = {
   position: "absolute",
@@ -97,7 +97,6 @@ export default function EditAssetCategory({ item, fetchItems, categoryTree }) {
         : null,
       isActive: values.IsActive,
     };
-
     try {
       // PUT /asset-categories/{id} — id in URL path, body is the request DTO
       const response = await fetch(`${BASE_URL}/asset-categories/${item.id}`, {

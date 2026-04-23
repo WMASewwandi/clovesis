@@ -21,7 +21,7 @@ import FacebookIcon from '@mui/icons-material/Facebook';
 import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import getDeviceName from "@/components/utils/getDeviceName";
-import { getDeviceId } from "@/components/utils/getDeviceId";
+import { getDeviceIdentity } from "@/components/utils/getDeviceId";
 import DeviceNameDialog from "@/components/Authentication/DeviceNameDialog";
 import TwoFactorChallengeDialog from "@/components/Authentication/TwoFactorChallengeDialog";
 
@@ -94,16 +94,27 @@ const SignInForm = () => {
     setSubmitting(true);
 
     try {
-      const deviceId = getDeviceId();
+      const identity = await getDeviceIdentity();
       const response = await fetch(`${BASE_URL}/User/SignIn`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(identity.deviceFingerprint
+            ? { "X-Device-Fingerprint": identity.deviceFingerprint }
+            : {}),
+          ...(identity.browserInstanceId
+            ? { "X-Browser-Instance-Id": identity.browserInstanceId }
+            : {}),
+        },
         body: JSON.stringify({
           Email: email,
           Password: password,
           DeviceName: getDeviceName(),
-          DeviceIdentifier: deviceId,
-          DeviceId: deviceId,
+          DeviceIdentifier: identity.deviceIdentifier,
+          DeviceId: identity.deviceIdentifier,
+          DeviceFingerprint: identity.deviceFingerprint,
+          BrowserInstanceId: identity.browserInstanceId,
         }),
       });
       const responseData = await response.json();
@@ -232,18 +243,29 @@ const SignInForm = () => {
 
   const handleVerifyTwoFactorLogin = async (otp) => {
     try {
-      const deviceId = getDeviceId();
+      const identity = await getDeviceIdentity();
       const response = await fetch(`${BASE_URL}/User/VerifyTwoFactorLogin`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          ...(identity.deviceFingerprint
+            ? { "X-Device-Fingerprint": identity.deviceFingerprint }
+            : {}),
+          ...(identity.browserInstanceId
+            ? { "X-Browser-Instance-Id": identity.browserInstanceId }
+            : {}),
+        },
         body: JSON.stringify({
           Email: twoFactorState.email,
           ChallengeToken: twoFactorState.challengeToken,
           Channel: twoFactorState.sentChannel,
           Otp: otp,
           DeviceName: getDeviceName(),
-          DeviceIdentifier: deviceId,
-          DeviceId: deviceId,
+          DeviceIdentifier: identity.deviceIdentifier,
+          DeviceId: identity.deviceIdentifier,
+          DeviceFingerprint: identity.deviceFingerprint,
+          BrowserInstanceId: identity.browserInstanceId,
         }),
       });
       const data = await response.json();
@@ -278,20 +300,35 @@ const SignInForm = () => {
     if (!trimmed || !loginResult) return;
 
     try {
-      const deviceId = getDeviceId();
+      const identity = await getDeviceIdentity();
       const renameUrl =
         `${BASE_URL}/User/RenameCurrentDevice?newDeviceName=${encodeURIComponent(trimmed)}` +
-        `&deviceIdentifier=${encodeURIComponent(deviceId)}`;
+        `&deviceIdentifier=${encodeURIComponent(identity.deviceIdentifier || "")}` +
+        (identity.deviceFingerprint
+          ? `&deviceFingerprint=${encodeURIComponent(identity.deviceFingerprint)}`
+          : "") +
+        (identity.browserInstanceId
+          ? `&browserInstanceId=${encodeURIComponent(identity.browserInstanceId)}`
+          : "");
       const response = await fetch(renameUrl, {
         method: "PUT",
+        credentials: "include",
         headers: {
           Authorization: `Bearer ${loginResult.accessToken}`,
           "Content-Type": "application/json",
+          ...(identity.deviceFingerprint
+            ? { "X-Device-Fingerprint": identity.deviceFingerprint }
+            : {}),
+          ...(identity.browserInstanceId
+            ? { "X-Browser-Instance-Id": identity.browserInstanceId }
+            : {}),
         },
         body: JSON.stringify({
           NewDeviceName: trimmed,
-          DeviceIdentifier: deviceId,
-          DeviceId: deviceId,
+          DeviceIdentifier: identity.deviceIdentifier,
+          DeviceId: identity.deviceIdentifier,
+          DeviceFingerprint: identity.deviceFingerprint,
+          BrowserInstanceId: identity.browserInstanceId,
         }),
       });
       if (!response.ok) {

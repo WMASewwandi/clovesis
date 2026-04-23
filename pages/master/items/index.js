@@ -112,6 +112,7 @@ export default function Items() {
   };
 
   const fetchItemsList = async (page = 1, search = "", size = pageSize) => {
+    setPage(page);
     try {
       const token = localStorage.getItem("token");
       const skip = (page - 1) * size;

@@ -33,11 +33,17 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import SmsOutlinedIcon from "@mui/icons-material/SmsOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
+import PhoneAndroidOutlinedIcon from "@mui/icons-material/PhoneAndroidOutlined";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { QRCodeCanvas } from "qrcode.react";
+import { useRouter } from "next/router";
 import BASE_URL from "Base/api";
 import { toast } from "react-toastify";
 import ChangePasswordForm from "@/components/Authentication/ChangePasswordForm";
 import { getDeviceId, resolveDeviceDisplayId } from "@/components/utils/getDeviceId";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
+
+const VALID_SECTIONS = ["personal", "devices", "settings", "login-activities", "two-factor"];
 
 const TWO_FACTOR_CHANNELS = {
   isTwoFactorEmailEnabled: {
@@ -55,13 +61,59 @@ const TWO_FACTOR_CHANNELS = {
     verifiedKey: "isTwoFactorSmsVerified",
     label: "SMS",
   },
+  isTwoFactorAuthenticatorEnabled: {
+    apiChannel: "Authenticator",
+    verifiedKey: "isTwoFactorAuthenticatorVerified",
+    label: "Authenticator",
+  },
+};
+
+// Initial state for the authenticator (TOTP) setup dialog. Lives next to the
+// existing OTP-channel dialog because the UX is meaningfully different — the
+// user scans a QR code and reads a rolling code from their app instead of
+// receiving an OTP from us.
+const INITIAL_AUTHENTICATOR_DIALOG = {
+  open: false,
+  loading: false,
+  verifying: false,
+  error: "",
+  secretKey: "",
+  otpAuthUri: "",
+  issuer: "",
+  accountName: "",
+  code: "",
+  attemptsLeft: null,
+  maxAttempts: null,
+  locked: false,
+  lockoutEndsAt: "",
+};
+
+const INITIAL_DISABLE_AUTHENTICATOR_DIALOG = {
+  open: false,
+  password: "",
+  showPassword: false,
+  submitting: false,
+  error: "",
 };
 
 const PersonalInformation = () => {
+  const router = useRouter();
   const [profileImg, setProfileImg] = useState(null);
   const [user, setUser] = useState(null);
   const [devices, setDevices] = useState([]);
   const [activeSection, setActiveSection] = useState("personal");
+
+  // Sync the active tab with the ?section= query param so deep links from
+  // elsewhere in the app (e.g. the top navbar "Change Password" menu item)
+  // open the correct profile section.
+  useEffect(() => {
+    if (!router.isReady) return;
+    const queryValue = router.query?.section;
+    const requested = Array.isArray(queryValue) ? queryValue[0] : queryValue;
+    if (requested && VALID_SECTIONS.includes(requested) && requested !== activeSection) {
+      setActiveSection(requested);
+    }
+  }, [router.isReady, router.query?.section]);
   const {
     data: loginActivities,
     totalCount: loginActivitiesTotal,
@@ -76,10 +128,18 @@ const PersonalInformation = () => {
     isTwoFactorEmailEnabled: false,
     isTwoFactorWhatsAppEnabled: false,
     isTwoFactorSmsEnabled: false,
+    isTwoFactorAuthenticatorEnabled: false,
     isTwoFactorEmailVerified: false,
     isTwoFactorWhatsAppVerified: false,
     isTwoFactorSmsVerified: false,
+    isTwoFactorAuthenticatorVerified: false,
   });
+  const [authenticatorDialog, setAuthenticatorDialog] = useState(
+    INITIAL_AUTHENTICATOR_DIALOG
+  );
+  const [disableAuthenticatorDialog, setDisableAuthenticatorDialog] = useState(
+    INITIAL_DISABLE_AUTHENTICATOR_DIALOG
+  );
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
   const [twoFactorUpdatingKey, setTwoFactorUpdatingKey] = useState("");
   const [verifyDialog, setVerifyDialog] = useState({
@@ -167,9 +227,11 @@ const PersonalInformation = () => {
       isTwoFactorEmailEnabled: !!result.isTwoFactorEmailEnabled,
       isTwoFactorWhatsAppEnabled: !!result.isTwoFactorWhatsAppEnabled,
       isTwoFactorSmsEnabled: !!result.isTwoFactorSmsEnabled,
+      isTwoFactorAuthenticatorEnabled: !!result.isTwoFactorAuthenticatorEnabled,
       isTwoFactorEmailVerified: !!result.isTwoFactorEmailVerified,
       isTwoFactorWhatsAppVerified: !!result.isTwoFactorWhatsAppVerified,
       isTwoFactorSmsVerified: !!result.isTwoFactorSmsVerified,
+      isTwoFactorAuthenticatorVerified: !!result.isTwoFactorAuthenticatorVerified,
     });
   };
 
@@ -218,6 +280,7 @@ const PersonalInformation = () => {
           isTwoFactorEmailEnabled: nextSettings.isTwoFactorEmailEnabled,
           isTwoFactorWhatsAppEnabled: nextSettings.isTwoFactorWhatsAppEnabled,
           isTwoFactorSmsEnabled: nextSettings.isTwoFactorSmsEnabled,
+          isTwoFactorAuthenticatorEnabled: nextSettings.isTwoFactorAuthenticatorEnabled,
         }),
       });
       const data = await response.json();
@@ -252,6 +315,13 @@ const PersonalInformation = () => {
       return;
     }
 
+    // Authenticator (TOTP) uses a dedicated QR-code setup dialog instead of
+    // the OTP send/verify flow used by Email/WhatsApp/SMS.
+    if (key === "isTwoFactorAuthenticatorEnabled") {
+      await openAuthenticatorSetupDialog();
+      return;
+    }
+
     setVerifyDialog({
       open: true,
       key,
@@ -268,6 +338,162 @@ const PersonalInformation = () => {
       attemptsLeft: null,
       maxAttempts: null,
     });
+  };
+
+  // ---- Google Authenticator (TOTP) handlers ----
+
+  const openAuthenticatorSetupDialog = async () => {
+    setAuthenticatorDialog({ ...INITIAL_AUTHENTICATOR_DIALOG, open: true, loading: true });
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${BASE_URL}/User/SetupAuthenticator`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      const data = await response.json();
+      if (data?.statusCode === 200 && data.result?.otpAuthUri) {
+        setAuthenticatorDialog((prev) => ({
+          ...prev,
+          loading: false,
+          secretKey: data.result.secretKey || "",
+          otpAuthUri: data.result.otpAuthUri || "",
+          issuer: data.result.issuer || "",
+          accountName: data.result.accountName || "",
+          error: "",
+        }));
+      } else {
+        const msg = data?.message || "Could not start authenticator setup.";
+        toast.error(msg);
+        setAuthenticatorDialog((prev) => ({ ...prev, loading: false, error: msg }));
+      }
+    } catch (error) {
+      const msg = error.message || "Could not start authenticator setup.";
+      toast.error(msg);
+      setAuthenticatorDialog((prev) => ({ ...prev, loading: false, error: msg }));
+    }
+  };
+
+  const closeAuthenticatorDialog = () => {
+    setAuthenticatorDialog(INITIAL_AUTHENTICATOR_DIALOG);
+  };
+
+  const handleAuthenticatorCodeChange = (event) => {
+    const value = event.target.value.replace(/[^0-9]/g, "").slice(0, 8);
+    setAuthenticatorDialog((prev) => ({ ...prev, code: value, error: "" }));
+  };
+
+  const handleVerifyAuthenticatorSetup = async () => {
+    if (!authenticatorDialog.code || authenticatorDialog.code.length < 6) {
+      setAuthenticatorDialog((prev) => ({
+        ...prev,
+        error: "Please enter the 6-digit code from your authenticator app.",
+      }));
+      return;
+    }
+    setAuthenticatorDialog((prev) => ({ ...prev, verifying: true, error: "" }));
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${BASE_URL}/User/VerifyAuthenticatorSetup`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: authenticatorDialog.code.trim() }),
+      });
+      const data = await response.json();
+      if (data?.statusCode === 200) {
+        if (data.result) applyTwoFactorResult(data.result);
+        toast.success(data.message || "Google Authenticator enabled.");
+        setAuthenticatorDialog(INITIAL_AUTHENTICATOR_DIALOG);
+      } else {
+        const msg = data?.message || "Invalid authenticator code.";
+        toast.error(msg);
+        const lockInfo = extractLockoutInfo(data, msg);
+        setAuthenticatorDialog((prev) => ({
+          ...prev,
+          verifying: false,
+          code: "",
+          error: msg,
+          ...lockInfo,
+        }));
+      }
+    } catch (error) {
+      const msg = error.message || "Verification failed.";
+      toast.error(msg);
+      setAuthenticatorDialog((prev) => ({
+        ...prev,
+        verifying: false,
+        code: "",
+        error: msg,
+      }));
+    }
+  };
+
+  const handleCopyAuthenticatorSecret = async () => {
+    if (!authenticatorDialog.secretKey) return;
+    try {
+      await navigator.clipboard.writeText(authenticatorDialog.secretKey);
+      toast.success("Secret key copied to clipboard.");
+    } catch {
+      toast.error("Could not copy. You can select and copy it manually.");
+    }
+  };
+
+  const openDisableAuthenticatorDialog = () => {
+    setDisableAuthenticatorDialog({ ...INITIAL_DISABLE_AUTHENTICATOR_DIALOG, open: true });
+  };
+
+  const closeDisableAuthenticatorDialog = () => {
+    if (disableAuthenticatorDialog.submitting) return;
+    setDisableAuthenticatorDialog(INITIAL_DISABLE_AUTHENTICATOR_DIALOG);
+  };
+
+  const handleDisableAuthenticatorSubmit = async () => {
+    if (!disableAuthenticatorDialog.password) {
+      setDisableAuthenticatorDialog((prev) => ({
+        ...prev,
+        error: "Please enter your password.",
+      }));
+      return;
+    }
+    setDisableAuthenticatorDialog((prev) => ({ ...prev, submitting: true, error: "" }));
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${BASE_URL}/User/DisableAuthenticator`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: disableAuthenticatorDialog.password }),
+      });
+      const data = await response.json();
+      if (data?.statusCode === 200) {
+        if (data.result) applyTwoFactorResult(data.result);
+        toast.success(data.message || "Google Authenticator removed.");
+        setDisableAuthenticatorDialog(INITIAL_DISABLE_AUTHENTICATOR_DIALOG);
+      } else {
+        const msg = data?.message || "Could not disable authenticator.";
+        toast.error(msg);
+        setDisableAuthenticatorDialog((prev) => ({
+          ...prev,
+          submitting: false,
+          error: msg,
+        }));
+      }
+    } catch (error) {
+      const msg = error.message || "Could not disable authenticator.";
+      toast.error(msg);
+      setDisableAuthenticatorDialog((prev) => ({
+        ...prev,
+        submitting: false,
+        error: msg,
+      }));
+    }
   };
 
   const closeVerifyDialog = () => {
@@ -1099,6 +1325,16 @@ const PersonalInformation = () => {
       iconBg: "#F1ECFE",
       comingSoon: true,
     },
+    {
+      key: "isTwoFactorAuthenticatorEnabled",
+      verifiedKey: "isTwoFactorAuthenticatorVerified",
+      title: "Authentication Using Google Authenticator",
+      description:
+        "Use Google Authenticator, Microsoft Authenticator, Authy, or any compatible TOTP app to generate a 6-digit code during sign-in.",
+      icon: <PhoneAndroidOutlinedIcon sx={{ fontSize: 22, color: "#1F8E3D" }} />,
+      iconBg: "#E6F4EA",
+      supportsRemove: true,
+    },
   ];
 
   const renderTwoFactorSection = () => {
@@ -1252,6 +1488,18 @@ const PersonalInformation = () => {
 
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, alignSelf: { xs: "flex-end", sm: "center" } }}>
                       {isUpdating && <CircularProgress size={18} />}
+                      {method.supportsRemove && verified && (
+                        <Button
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          onClick={openDisableAuthenticatorDialog}
+                          disabled={isUpdating || twoFactorLoading}
+                          sx={{ textTransform: "none", borderRadius: "8px" }}
+                        >
+                          Remove
+                        </Button>
+                      )}
                       <Switch
                         checked={method.comingSoon ? false : enabled}
                         disabled={method.comingSoon || isUpdating || twoFactorLoading}
@@ -1331,6 +1579,13 @@ const PersonalInformation = () => {
                       setActiveSection(section.value);
                       if (section.value === "login-activities") {
                         setActivityPage(1);
+                      }
+                      if (router.isReady) {
+                        router.replace(
+                          { pathname: router.pathname, query: { ...router.query, section: section.value } },
+                          undefined,
+                          { shallow: true }
+                        );
                       }
                     }}
                     startIcon={section.icon}
@@ -1664,6 +1919,253 @@ const PersonalInformation = () => {
             sx={{ textTransform: "none", color: "#fff !important" }}
           >
             {editProfileDialog.saving ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Google Authenticator (TOTP) setup dialog */}
+      <Dialog
+        open={authenticatorDialog.open}
+        onClose={authenticatorDialog.verifying || authenticatorDialog.loading ? undefined : closeAuthenticatorDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: "16px" } }}
+      >
+        <DialogTitle sx={{ pr: 6, fontWeight: 700 }}>
+          Set up Google Authenticator
+          <IconButton
+            onClick={closeAuthenticatorDialog}
+            disabled={authenticatorDialog.verifying || authenticatorDialog.loading}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+            size="small"
+            aria-label="Close"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {authenticatorDialog.loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : (
+            <>
+              <Typography sx={{ fontSize: "14px", color: "text.secondary", mb: 2 }}>
+                1. Open Google Authenticator (or Microsoft Authenticator / Authy) on
+                your phone and scan the QR code below.
+              </Typography>
+
+              {authenticatorDialog.otpAuthUri && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "center",
+                    p: 2,
+                    backgroundColor: "#fff",
+                    border: "1px solid #E2E8F0",
+                    borderRadius: "12px",
+                    mb: 2,
+                  }}
+                >
+                  <QRCodeCanvas
+                    value={authenticatorDialog.otpAuthUri}
+                    size={184}
+                    includeMargin
+                    level="M"
+                  />
+                </Box>
+              )}
+
+              <Typography sx={{ fontSize: "13px", color: "text.secondary", mb: 1 }}>
+                Can&apos;t scan? Enter this key manually:
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  p: 1.25,
+                  borderRadius: "10px",
+                  backgroundColor: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  mb: 2,
+                  wordBreak: "break-all",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontFamily: "monospace",
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    flex: 1,
+                    letterSpacing: "1px",
+                  }}
+                >
+                  {authenticatorDialog.secretKey}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={handleCopyAuthenticatorSecret}
+                  aria-label="Copy secret key"
+                >
+                  <ContentCopyIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              <Typography sx={{ fontSize: "14px", color: "text.secondary", mb: 1 }}>
+                2. Enter the 6-digit code shown in the app to finish setup.
+              </Typography>
+
+              {authenticatorDialog.locked && authenticatorDialog.error && (
+                <Alert severity="error" sx={{ mb: 2, borderRadius: "10px" }}>
+                  {authenticatorDialog.error}
+                </Alert>
+              )}
+
+              {!authenticatorDialog.locked &&
+                authenticatorDialog.error &&
+                typeof authenticatorDialog.attemptsLeft === "number" && (
+                  <Alert
+                    severity={authenticatorDialog.attemptsLeft <= 1 ? "error" : "warning"}
+                    sx={{ mb: 2, borderRadius: "10px" }}
+                  >
+                    {authenticatorDialog.error}
+                    {typeof authenticatorDialog.maxAttempts === "number"
+                      ? ` (${authenticatorDialog.attemptsLeft} of ${authenticatorDialog.maxAttempts} attempts remaining)`
+                      : ` (${authenticatorDialog.attemptsLeft} attempt${authenticatorDialog.attemptsLeft === 1 ? "" : "s"} remaining)`}
+                  </Alert>
+                )}
+
+              <TextField
+                fullWidth
+                autoFocus
+                label="Authenticator code"
+                placeholder="6-digit code"
+                value={authenticatorDialog.code}
+                onChange={handleAuthenticatorCodeChange}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !authenticatorDialog.locked) handleVerifyAuthenticatorSetup();
+                }}
+                inputProps={{
+                  inputMode: "numeric",
+                  maxLength: 8,
+                  style: { letterSpacing: "0.4em", fontSize: 18, textAlign: "center" },
+                }}
+                error={
+                  !!authenticatorDialog.error &&
+                  !authenticatorDialog.locked &&
+                  typeof authenticatorDialog.attemptsLeft !== "number"
+                }
+                helperText={
+                  !authenticatorDialog.locked &&
+                  typeof authenticatorDialog.attemptsLeft !== "number" &&
+                  authenticatorDialog.error
+                    ? authenticatorDialog.error
+                    : " "
+                }
+                disabled={authenticatorDialog.verifying || authenticatorDialog.locked}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={closeAuthenticatorDialog}
+            disabled={authenticatorDialog.verifying || authenticatorDialog.loading}
+            sx={{ textTransform: "none", color: "#475569" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleVerifyAuthenticatorSetup}
+            variant="contained"
+            disabled={
+              authenticatorDialog.loading ||
+              authenticatorDialog.verifying ||
+              authenticatorDialog.locked ||
+              authenticatorDialog.code.length < 6
+            }
+            startIcon={
+              authenticatorDialog.verifying ? <CircularProgress size={16} color="inherit" /> : null
+            }
+            sx={{ textTransform: "none", color: "#fff !important" }}
+          >
+            {authenticatorDialog.verifying ? "Verifying..." : "Verify & Enable"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Remove Google Authenticator dialog – password confirmation */}
+      <Dialog
+        open={disableAuthenticatorDialog.open}
+        onClose={closeDisableAuthenticatorDialog}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{ sx: { borderRadius: "16px" } }}
+      >
+        <DialogTitle sx={{ pr: 6, fontWeight: 700 }}>
+          Remove Google Authenticator
+          <IconButton
+            onClick={closeDisableAuthenticatorDialog}
+            disabled={disableAuthenticatorDialog.submitting}
+            sx={{ position: "absolute", right: 8, top: 8 }}
+            size="small"
+            aria-label="Close"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ fontSize: "14px", color: "text.secondary", mb: 2 }}>
+            For your security, please confirm your password to remove Google
+            Authenticator from this account. You will need to set it up again
+            next time.
+          </Typography>
+
+          {disableAuthenticatorDialog.error && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: "10px" }}>
+              {disableAuthenticatorDialog.error}
+            </Alert>
+          )}
+
+          <TextField
+            fullWidth
+            autoFocus
+            label="Password"
+            type="password"
+            value={disableAuthenticatorDialog.password}
+            onChange={(e) =>
+              setDisableAuthenticatorDialog((prev) => ({
+                ...prev,
+                password: e.target.value,
+                error: "",
+              }))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleDisableAuthenticatorSubmit();
+            }}
+            disabled={disableAuthenticatorDialog.submitting}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={closeDisableAuthenticatorDialog}
+            disabled={disableAuthenticatorDialog.submitting}
+            sx={{ textTransform: "none", color: "#475569" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleDisableAuthenticatorSubmit}
+            variant="contained"
+            color="error"
+            disabled={disableAuthenticatorDialog.submitting || !disableAuthenticatorDialog.password}
+            startIcon={
+              disableAuthenticatorDialog.submitting ? <CircularProgress size={16} color="inherit" /> : null
+            }
+            sx={{ textTransform: "none", color: "#fff !important" }}
+          >
+            {disableAuthenticatorDialog.submitting ? "Removing..." : "Remove"}
           </Button>
         </DialogActions>
       </Dialog>

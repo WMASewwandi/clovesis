@@ -39,15 +39,29 @@ const validationSchema = Yup.object().shape({
   Name: Yup.string().required("Category Name is required"),
 });
 
-export default function AddCategory({ fetchItems, IsEcommerceWebSiteAvailable }) {
-  const [open, setOpen] = React.useState(false);
+export default function AddCategory({
+  fetchItems,
+  IsEcommerceWebSiteAvailable,
+  hideButton = false,
+  open: controlledOpen,
+  onClose: controlledOnClose,
+}) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isControlled = typeof controlledOpen === "boolean";
+  const open = isControlled ? controlledOpen : internalOpen;
   const [image, setImage] = useState("");
   const [file, setFile] = useState(null);
-  const handleOpen = () => setOpen(true);
+  const handleOpen = () => {
+    if (!isControlled) setInternalOpen(true);
+  };
   const handleClose = () => {
-    setOpen(false);
+    if (isControlled) {
+      controlledOnClose?.();
+    } else {
+      setInternalOpen(false);
+    }
     setImage("");
-    setFile(null)
+    setFile(null);
   };
 
   const inputRef = useRef(null);
@@ -84,10 +98,13 @@ export default function AddCategory({ fetchItems, IsEcommerceWebSiteAvailable })
         const msg = data.message ?? data.Message ?? "";
         if (sc === 200) {
           toast.success(msg);
-          setOpen(false);
-          fetchItems();
-          setImage("");
-          setFile(null);
+          const newId =
+            data.result?.id ??
+            data.result?.Id ??
+            data.Result?.id ??
+            data.Result?.Id;
+          handleClose();
+          fetchItems?.(newId);
         } else {
           toast.error(msg);
         }
@@ -99,9 +116,11 @@ export default function AddCategory({ fetchItems, IsEcommerceWebSiteAvailable })
 
   return (
     <>
-      <Button variant="outlined" onClick={handleOpen}>
-        + new category
-      </Button>
+      {!hideButton && (
+        <Button variant="outlined" onClick={handleOpen}>
+          + new category
+        </Button>
+      )}
       <Modal
         open={open}
         onClose={handleClose}
@@ -228,7 +247,7 @@ export default function AddCategory({ fetchItems, IsEcommerceWebSiteAvailable })
                 </Box>
                 <Box display="flex" justifyContent="space-between">
                   <Button
-                    type="submit"
+                    type="button"
                     variant="contained"
                     onClick={handleClose}
                     color="error"

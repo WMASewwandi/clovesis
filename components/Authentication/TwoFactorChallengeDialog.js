@@ -20,6 +20,7 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import PhoneAndroidOutlinedIcon from "@mui/icons-material/PhoneAndroidOutlined";
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -29,24 +30,27 @@ const CHANNEL_ICON = {
   Email: <EmailOutlinedIcon sx={{ fontSize: 18 }} />,
   WhatsApp: <WhatsAppIcon sx={{ fontSize: 18 }} />,
   Sms: <SmsOutlinedIcon sx={{ fontSize: 18 }} />,
+  Authenticator: <PhoneAndroidOutlinedIcon sx={{ fontSize: 18 }} />,
 };
 
 const CHANNEL_LABEL = {
   Email: "Email",
   WhatsApp: "WhatsApp",
   Sms: "SMS",
+  Authenticator: "Authenticator App",
 };
 
 const CHANNEL_DESCRIPTION = {
   Email: "Send the code to your email inbox",
   WhatsApp: "Send the code to your WhatsApp number",
   Sms: "Send the code as a text message",
+  Authenticator: "Use the code from Google Authenticator",
 };
 
-// All channels we want to display in the picker. WhatsApp is the only one
-// currently implemented; Email and SMS are surfaced as "Coming Soon" so users
-// know what's planned but can't pick them yet.
-const ALL_CHANNELS = ["WhatsApp", "Email", "Sms"];
+// All channels we want to display in the picker. WhatsApp and Authenticator
+// are currently implemented; Email and SMS are surfaced as "Coming Soon" so
+// users know what's planned but can't pick them yet.
+const ALL_CHANNELS = ["WhatsApp", "Authenticator", "Email", "Sms"];
 const COMING_SOON_CHANNELS = new Set(["Email", "Sms"]);
 
 // How long the user has to wait between OTP resends. Matches the
@@ -191,7 +195,9 @@ const TwoFactorChallengeDialog = ({
     const result = await onResend(channel);
     setPickingChannel(null);
     if (result?.success) {
-      startResendCooldown();
+      // Authenticator codes come from the user's app, so there's nothing to
+      // resend or rate-limit.
+      if (channel !== "Authenticator") startResendCooldown();
       return;
     }
     const msg = result?.message || "Could not send the verification code.";
@@ -244,7 +250,7 @@ const TwoFactorChallengeDialog = ({
     if (result?.success) {
       setOtp("");
       setAttemptsLeft(null);
-      startResendCooldown();
+      if (channel !== "Authenticator") startResendCooldown();
       return;
     }
     const msg = result?.message || "Could not send the verification code.";
@@ -264,10 +270,14 @@ const TwoFactorChallengeDialog = ({
     ? "Two-Factor Authentication"
     : "Two-Factor Authentication";
 
+  const isAuthenticatorStep = sentChannel === "Authenticator";
+
   const headerSubtitle = locked
     ? "Too many failed attempts. Please wait before trying again."
     : showSelectStep
     ? "Choose how to receive your verification code."
+    : isAuthenticatorStep
+    ? "Open your authenticator app and enter the current 6-digit code."
     : `We sent a ${expiresInMinutes}-minute code via ${sentLabel}${sentRecipient ? ` to ${sentRecipient}` : ""}.`;
 
   const renderChannelOption = (channel) => {
@@ -347,7 +357,9 @@ const TwoFactorChallengeDialog = ({
             )}
           </Box>
           <Typography variant="caption" sx={{ color: "text.secondary" }}>
-            {isAvailable && recipient
+            {channel === "Authenticator"
+              ? CHANNEL_DESCRIPTION[channel]
+              : isAvailable && recipient
               ? `Send to ${recipient}`
               : CHANNEL_DESCRIPTION[channel]}
           </Typography>
@@ -525,40 +537,46 @@ const TwoFactorChallengeDialog = ({
               sx={{ mb: 1 }}
             />
 
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-              <Typography variant="caption" color="text.secondary">
-                Didn't receive it?
-              </Typography>
-              <Button
-                size="small"
-                onClick={handleResend}
-                disabled={
-                  resending || verifying || !sentChannel || locked || resendIn > 0
-                }
-                sx={{ textTransform: "none", fontWeight: 600 }}
-              >
-                {resending
-                  ? "Sending..."
-                  : resendIn > 0
-                  ? `Resend code in ${resendIn}s`
-                  : "Resend code"}
-              </Button>
-            </Box>
+            {!isAuthenticatorStep && (
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Didn't receive it?
+                </Typography>
+                <Button
+                  size="small"
+                  onClick={handleResend}
+                  disabled={
+                    resending || verifying || !sentChannel || locked || resendIn > 0
+                  }
+                  sx={{ textTransform: "none", fontWeight: 600 }}
+                >
+                  {resending
+                    ? "Sending..."
+                    : resendIn > 0
+                    ? `Resend code in ${resendIn}s`
+                    : "Resend code"}
+                </Button>
+              </Box>
+            )}
 
             {availableChannels.length > 1 && !locked && (
               <Box sx={{ mb: 2 }}>
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-                  Or send the code to:
+                  Or use a different method:
                 </Typography>
                 <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                   {availableChannels.map((c) => {
                     const isCurrent = c.channel === sentChannel;
                     const isLoading = switchingChannel === c.channel;
+                    const labelText =
+                      c.channel === "Authenticator"
+                        ? CHANNEL_LABEL[c.channel]
+                        : `${CHANNEL_LABEL[c.channel] || c.channel}${c.recipient ? ` · ${c.recipient}` : ""}`;
                     return (
                       <Chip
                         key={c.channel}
                         icon={isLoading ? <CircularProgress size={14} /> : CHANNEL_ICON[c.channel]}
-                        label={`${CHANNEL_LABEL[c.channel] || c.channel}${c.recipient ? ` · ${c.recipient}` : ""}`}
+                        label={labelText}
                         onClick={isCurrent || verifying ? undefined : () => handleSwitchChannel(c.channel)}
                         color={isCurrent ? "primary" : "default"}
                         variant={isCurrent ? "filled" : "outlined"}

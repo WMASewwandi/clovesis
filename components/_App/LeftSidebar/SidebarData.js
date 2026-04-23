@@ -12,6 +12,7 @@ import {
     AssignmentTurnedIn as ProjectIcon,
 } from "@mui/icons-material";
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import SubjectIcon from '@mui/icons-material/Subject';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import { ProjectNo } from "Base/catelogue";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -253,14 +254,15 @@ export const getSidebarData = (IsGarmentSystem) => {
         {
             title: "Assets",
             path: "/assets/assets/",
-            icon: <InventoryIcon />,
+            icon: <SubjectIcon />,
             iconClosed: <ArrowRight />,
             iconOpened: <ArrowDown />,
             ModuleId: 26,
             IsAvailable: true,
             subNav: [
-                { title: "Asset Categories", path: "/assets/category/", categoryId: 172, isAvailable: true },
-                { title: "Asset Locations", path: "/assets/location/", categoryId: 173, isAvailable: true },
+                { title: "Asset Categories", path: "/assets/category/", categoryId: 177, isAvailable: true },
+                { title: "Asset Locations", path: "/assets/location/", categoryId: 178, isAvailable: true },
+                { title: "Assets", path: "/assets/asset/", categoryId: 179, isAvailable: true },
             ],
         },
         {
@@ -284,7 +286,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Shift Summary", path: "/sales/summary/", categoryId: 104, isAvailable: true },
                 { title: "Cash In/Out", path: "/sales/cash-in-out/", categoryId: 117, isAvailable: true },
                 { title: "Bank Payments", path: "/sales/bank-payments/", categoryId: 118, isAvailable: true },
-                { title: "Sales Order", path: "/sales/sales-order/", categoryId: 177, isAvailable: true }
+                { title: "Sales Order", path: "/sales/sales-order/", categoryId: 180, isAvailable: true },
+                { title: "Sales Quotation", path: "/sales/sales-quotation/", categoryId: 181, isAvailable: true },
             ],
         },
         {
@@ -459,7 +462,7 @@ export const getSidebarData = (IsGarmentSystem) => {
         },
         {
             title: "Matrimonial",
-            path: "/matrimonial/matrimonial/",
+            path: "/matrimonial/matrimonials/",
             icon: <FavoriteIcon />,
             iconClosed: <ArrowRight />,
             iconOpened: <ArrowDown />,
@@ -470,7 +473,7 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Registered Accounts", path: "/matrimonial/matrimonial/", categoryId: 172, isAvailable: true },
                 { title: "Bank Transfer Approvals", path: "/matrimonial/bank-transfers/", categoryId: 173, isAvailable: true },
                 { title: "Success Stories", path: "/matrimonial/success-stories/", categoryId: 174, isAvailable: true },
-                { title: "Packages", path: "/matrimonial/packages/", categoryId: 176, isAvailable: true },
+                //{ title: "Packages", path: "/matrimonial/packages/", categoryId: 176, isAvailable: true },
             ],
         }, {
             title: "Administrator",
