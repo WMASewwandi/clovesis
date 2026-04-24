@@ -126,6 +126,7 @@ import { ThemeProvider, CssBaseline, CircularProgress } from "@mui/material";
 import Layout from "@/components/_App/Layout";
 import { useRouter } from "next/router";
 import { ProjectNo } from "Base/catelogue";
+import BASE_URL from "Base/api";
 import Calendar from "./reservation/calendar";
 import getSettingValueByName from "@/components/utils/getSettingValueByName";
 import logoutUser from "@/components/utils/logoutUser";
@@ -216,6 +217,32 @@ function MyApp({ Component, pageProps }) {
         window.removeEventListener("click", handleKeyDownOrClick);
       };
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || token != null) {
+      return;
+    }
+
+    const appOrigin = window.location.origin;
+    if (!appOrigin) {
+      return;
+    }
+
+    fetch(`${BASE_URL}/AppSetting/SaveCorsLink`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        webLink: appOrigin,
+        isActive: true,
+      }),
+    })
+      .then((response) => response.json())
+      .catch(() => {
+        // Non-blocking fire-and-forget for landing flow.
+      });
   }, [token]);
 
   useEffect(() => {

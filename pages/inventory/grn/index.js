@@ -105,6 +105,9 @@ const GRN = () => {
     return <AccessDenied />;
   }
 
+  const tableColumnCount =
+    8 + (IsSupplierSalesRef ? 1 : 0) + 2;
+
   const openGRNPrintPopup = (item) => {
     const query = new URLSearchParams({
       id: String(item.id ?? ""),
@@ -181,7 +184,7 @@ const GRN = () => {
               <TableBody>
                 {grnList.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={tableColumnCount} align="center">
                       <Typography color="error">
                         No Goods Receive Notes Available
                       </Typography>
