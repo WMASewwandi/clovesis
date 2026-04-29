@@ -299,8 +299,21 @@ const SignInForm = () => {
     const trimmed = deviceNameInput.trim();
     if (!trimmed || !loginResult) return;
 
+    const token = loginResult.accessToken || loginResult.AccessToken;
+    const deviceRowId =
+      loginResult.currentLoggedInDeviceId ?? loginResult.CurrentLoggedInDeviceId ?? null;
+
+    const isRenameSuccess = (data) => {
+      const sc = data?.statusCode ?? data?.StatusCode;
+      return Number(sc) === 200;
+    };
+
     try {
       const identity = await getDeviceIdentity();
+      const idQuery =
+        deviceRowId != null
+          ? `&loggedInDeviceIpId=${encodeURIComponent(String(deviceRowId))}`
+          : "";
       const renameUrl =
         `${BASE_URL}/User/RenameCurrentDevice?newDeviceName=${encodeURIComponent(trimmed)}` +
         `&deviceIdentifier=${encodeURIComponent(identity.deviceIdentifier || "")}` +
@@ -309,12 +322,13 @@ const SignInForm = () => {
           : "") +
         (identity.browserInstanceId
           ? `&browserInstanceId=${encodeURIComponent(identity.browserInstanceId)}`
-          : "");
+          : "") +
+        idQuery;
       const response = await fetch(renameUrl, {
-        method: "PUT",
+        method: "POST",
         credentials: "include",
         headers: {
-          Authorization: `Bearer ${loginResult.accessToken}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
           ...(identity.deviceFingerprint
             ? { "X-Device-Fingerprint": identity.deviceFingerprint }
@@ -329,14 +343,17 @@ const SignInForm = () => {
           DeviceId: identity.deviceIdentifier,
           DeviceFingerprint: identity.deviceFingerprint,
           BrowserInstanceId: identity.browserInstanceId,
+          ...(deviceRowId != null ? { LoggedInDeviceIpId: deviceRowId } : {}),
         }),
       });
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        toast.error(data?.message || "Could not save device name. You can continue anyway.");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !isRenameSuccess(data)) {
+        toast.error(data?.message || "Could not save device name. Please try again.");
+        return;
       }
     } catch {
-      toast.error("Could not save device name. You can continue anyway.");
+      toast.error("Could not save device name. Please try again.");
+      return;
     }
 
     setDeviceDialogOpen(false);

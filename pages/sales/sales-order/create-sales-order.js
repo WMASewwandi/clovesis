@@ -30,6 +30,7 @@ import SearchItemByName from "@/components/utils/SearchItemByName";
 import { formatDate } from "@/components/utils/formatHelper";
 import AddCustomerDialog from "@/components/UIElements/Modal/AddCustomerDialog";
 import GetAllSalesPersons from "@/components/utils/GetAllSalesPerson";
+import useShiftCheck from "@/components/utils/useShiftCheck";
 
 const SalesOrderCreate = () => {
   const today = new Date();
@@ -50,6 +51,7 @@ const SalesOrderCreate = () => {
   const searchRef = useRef(null);
   const qtyRefs = useRef([]);
   const router = useRouter();
+  const { result: shiftResult, message: shiftMessage } = useShiftCheck();
 
   const { data: customerList } = useApi("/Customer/GetAllCustomer");
   const { data: salesPersonList } = GetAllSalesPersons();
@@ -162,6 +164,11 @@ const SalesOrderCreate = () => {
   };
 
   const handleSubmit = async () => {
+    if (shiftResult) {
+      toast.warning(shiftMessage);
+      return;
+    }
+
     if (!customer || !orderDate) {
       if (!customer) toast.error("Please Select Customer.");
       if (!orderDate) toast.error("Please Select Order Date.");

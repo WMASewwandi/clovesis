@@ -18,11 +18,22 @@ import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import DeleteConfirmationById from "@/components/UIElements/Modal/DeleteConfirmationById";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import useShiftCheck from "@/components/utils/useShiftCheck";
+import { toast, ToastContainer } from "react-toastify";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
 
 export default function SalesOrder() {
   const cId = sessionStorage.getItem("category");
-  const { navigate, create, update, remove } = IsPermissionEnabled(cId);
+  const name = localStorage.getItem("name");
+  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
+  const { result: shiftResult, message: shiftMessage } = useShiftCheck();
+  const { data: reportName } = GetReportSettingValueByName("SalesOrder");
+  const { data: isCustomReportsEnabled } = IsAppSettingEnabled("IsCustomReportsEnabled");
   const [deleteSalesOrderId, setDeleteSalesOrderId] = React.useState(null);
   const router = useRouter();
   const {
@@ -57,6 +68,10 @@ export default function SalesOrder() {
   };
 
   const navigateToCreate = () => {
+    if (shiftResult) {
+      toast.warning(shiftMessage);
+      return;
+    }
     router.push({
       pathname: "/sales/sales-order/create-sales-order",
     });
@@ -69,12 +84,26 @@ export default function SalesOrder() {
     });
   };
 
+  const openSalesOrderPrintPopup = (item) => {
+    const query = new URLSearchParams({
+      id: String(item.id ?? ""),
+      documentNumber: item.documentNo ?? "",
+    });
+
+    window.open(
+      `/sales/sales-order/print?${query.toString()}`,
+      `sales-order-print-${item.id}`,
+      "popup=yes,width=1200,height=900,scrollbars=yes,resizable=yes"
+    );
+  };
+
   if (!navigate) {
     return <AccessDenied />;
   }
 
   return (
     <>
+      <ToastContainer />
       <div className={styles.pageTitle}>
         <h1>Sales Order</h1>
         <ul>
@@ -128,61 +157,89 @@ export default function SalesOrder() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  salesOrderList.map((item, index) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{formatDate(item.documentDate)}</TableCell>
-                      <TableCell>{item.documentNo}</TableCell>
-                      <TableCell>{item.warehouseName}</TableCell>
-                      <TableCell>{formatCurrency(item.netTotal)}</TableCell>
-                      <TableCell>{item.customerName}</TableCell>
-                      <TableCell>{item.remark}</TableCell>
-                      <TableCell align="right">
-                        {update ? (
-                          item.receiptId == null ? (
-                            <Tooltip title="Edit Sales Order" placement="top">
-                              <IconButton aria-label="edit" size="small" onClick={() => navigateToEdit(item.id)}>
-                                <EditIcon color="primary" fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip title="Cannot edit after receipt created" placement="top">
-                              <span>
-                                <IconButton aria-label="edit-disabled" size="small" disabled>
-                                  <EditIcon color="disabled" fontSize="inherit" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          )
-                        ) : (
-                          ""
-                        )}
-                        {remove ? (
-                          item.receiptId == null ? (
-                            <Tooltip title="Delete Sales Order" placement="top">
-                              <IconButton
-                                aria-label="delete"
-                                size="small"
-                                onClick={() => setDeleteSalesOrderId(item.id)}
-                              >
-                                <DeleteIcon color="error" fontSize="inherit" />
-                              </IconButton>
-                            </Tooltip>
-                          ) : (
-                            <Tooltip title="Cannot delete after receipt created" placement="top">
-                              <span>
-                                <IconButton aria-label="delete-disabled" size="small" disabled>
-                                  <DeleteIcon color="disabled" fontSize="inherit" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          )
-                        ) : (
-                          ""
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  salesOrderList.map((item, index) => {
+                    const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${reportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{formatDate(item.documentDate)}</TableCell>
+                        <TableCell>{item.documentNo}</TableCell>
+                        <TableCell>{item.warehouseName}</TableCell>
+                        <TableCell>{formatCurrency(item.netTotal)}</TableCell>
+                        <TableCell>{item.customerName}</TableCell>
+                        <TableCell>{item.remark}</TableCell>
+                        <TableCell align="right">
+                          <Box display="flex" justifyContent="end" alignItems="center" gap={0.5}>
+                            {update ? (
+                              item.receiptId == null ? (
+                                <Tooltip title="Edit Sales Order" placement="top">
+                                  <IconButton aria-label="edit" size="small" onClick={() => navigateToEdit(item.id)}>
+                                    <EditIcon color="primary" fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Cannot edit after receipt created" placement="top">
+                                  <span>
+                                    <IconButton aria-label="edit-disabled" size="small" disabled>
+                                      <EditIcon color="disabled" fontSize="inherit" />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                              )
+                            ) : (
+                              ""
+                            )}
+                            {remove ? (
+                              item.receiptId == null ? (
+                                <Tooltip title="Delete Sales Order" placement="top">
+                                  <IconButton
+                                    aria-label="delete"
+                                    size="small"
+                                    onClick={() => setDeleteSalesOrderId(item.id)}
+                                  >
+                                    <DeleteIcon color="error" fontSize="inherit" />
+                                  </IconButton>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Cannot delete after receipt created" placement="top">
+                                  <span>
+                                    <IconButton aria-label="delete-disabled" size="small" disabled>
+                                      <DeleteIcon color="disabled" fontSize="inherit" />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                              )
+                            ) : (
+                              ""
+                            )}
+                            {print ? (
+                              isCustomReportsEnabled ? (
+                                <Tooltip title="Print" placement="top">
+                                  <a href={`${Report}${reportLink}`} target="_blank" rel="noopener noreferrer">
+                                    <IconButton aria-label="print" size="small">
+                                      <LocalPrintshopIcon color="primary" fontSize="medium" />
+                                    </IconButton>
+                                  </a>
+                                </Tooltip>
+                              ) : (
+                                <Tooltip title="Print" placement="top">
+                                  <IconButton
+                                    aria-label="print"
+                                    size="small"
+                                    onClick={() => openSalesOrderPrintPopup(item)}
+                                  >
+                                    <LocalPrintshopIcon color="primary" fontSize="medium" />
+                                  </IconButton>
+                                </Tooltip>
+                              )
+                            ) : (
+                              ""
+                            )}
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

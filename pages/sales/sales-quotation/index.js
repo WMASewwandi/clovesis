@@ -35,10 +35,17 @@ import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import CancelSalesQuotationById from "./CancelSalesQuotationById";
+import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import { Report } from "Base/report";
+import { Catelogue } from "Base/catelogue";
 
 export default function SalesQuotation() {
   const cId = typeof window !== "undefined" ? sessionStorage.getItem("category") : null;
-  const { navigate, create, update, remove } = IsPermissionEnabled(cId);
+  const name = typeof window !== "undefined" ? localStorage.getItem("name") : "";
+  const { navigate, create, update, remove, print } = IsPermissionEnabled(cId);
+  const { data: reportName } = GetReportSettingValueByName("SalesQuotation");
+  const { data: isCustomReportsEnabled } = IsAppSettingEnabled("IsCustomReportsEnabled");
   const router = useRouter();
 
   const {
@@ -102,53 +109,17 @@ export default function SalesQuotation() {
     window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
-  const escapeHtml = (s) =>
-    String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+  const openSalesQuotationPrintPopup = (item) => {
+    const query = new URLSearchParams({
+      id: String(item.id ?? ""),
+      documentNumber: item.documentNo ?? "",
+    });
 
-  const openClientPrintView = (item, variant) => {
-    const isReceipt = variant === "receipt";
-    const w = window.open("", "_blank", "noopener,noreferrer,width=420,height=640");
-    if (!w) return;
-
-    const rows = [
-      ["Quotation No.", item.documentNo || "—"],
-      ["Date", formatDate(item.documentDate)],
-      ["Customer", item.customerName || "—"],
-      ["Salesperson", item.salesPersonName || "—"],
-      ["Net total (Rs)", formatCurrency(item.netTotal)],
-    ];
-    if (item.remark) rows.push(["Remark", item.remark]);
-
-    const tableBody = rows
-      .map(
-        ([k, v]) =>
-          `<tr><td style="padding:6px 8px;border-bottom:1px solid #e0e0e0;color:#555;width:38%;">${escapeHtml(k)}</td>` +
-          `<td style="padding:6px 8px;border-bottom:1px solid #e0e0e0;">${escapeHtml(v)}</td></tr>`
-      )
-      .join("");
-
-    const containerStyle = isReceipt
-      ? "max-width:280px;margin:24px auto;padding:16px 14px;border:1px dashed #90a4ae;border-radius:4px;font-family:system-ui,sans-serif;font-size:13px;background:#fafafa;"
-      : "max-width:520px;margin:24px auto;padding:24px;border:1px solid #ccc;border-radius:8px;font-family:system-ui,sans-serif;font-size:14px;";
-
-    const title = isReceipt ? "Quotation receipt" : "Sales quotation";
-
-    w.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"/><title>${escapeHtml(title)}</title></head>
-<body style="margin:0;background:#fff;color:#222;">
-  <div style="${containerStyle}">
-    <h1 style="margin:0 0 12px;font-size:${isReceipt ? "15px" : "18px"};font-weight:600;">${escapeHtml(title)}</h1>
-    <table style="width:100%;border-collapse:collapse;">${tableBody}</table>
-    <p style="margin:16px 0 0;font-size:11px;color:#888;">Generated from APEXFLOW (preview only).</p>
-  </div>
-  <script>window.onload=function(){window.print();};</script>
-</body></html>`);
-    w.document.close();
-    w.focus();
+    window.open(
+      `/sales/sales-quotation/print?${query.toString()}`,
+      `sales-quotation-print-${item.id}`,
+      "popup=yes,width=1200,height=900,scrollbars=yes,resizable=yes"
+    );
   };
 
   if (!navigate) {
@@ -227,7 +198,9 @@ export default function SalesQuotation() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  quotationList.map((item, index) => (
+                  quotationList.map((item, index) => {
+                    const reportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${reportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
+                    return (
                     <TableRow key={item.id}>
                       <TableCell>{(page - 1) * pageSize + index + 1}</TableCell>
                       <TableCell>{formatDate(item.documentDate)}</TableCell>
@@ -250,26 +223,34 @@ export default function SalesQuotation() {
                               <WhatsAppIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Print (browser preview)" placement="top">
-                            <IconButton
-                              size="small"
-                              aria-label="print quotation preview"
-                              onClick={() => openClientPrintView(item, "print")}
-                              sx={{ color: "#7b68ee" }}
-                            >
-                              <LocalPrintshopIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Receipt view (browser print)" placement="top">
-                            <IconButton
-                              size="small"
-                              aria-label="quotation receipt preview"
-                              onClick={() => openClientPrintView(item, "receipt")}
-                              sx={{ color: "#7b68ee" }}
-                            >
-                              <ReceiptLongIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          {print ? (
+                            isCustomReportsEnabled ? (
+                              <Tooltip title="Print" placement="top">
+                                <a href={`${Report}${reportLink}`} target="_blank" rel="noopener noreferrer">
+                                  <IconButton
+                                    size="small"
+                                    aria-label="print quotation"
+                                    sx={{ color: "#7b68ee" }}
+                                  >
+                                    <LocalPrintshopIcon fontSize="small" />
+                                  </IconButton>
+                                </a>
+                              </Tooltip>
+                            ) : (
+                              <Tooltip title="Print" placement="top">
+                                <IconButton
+                                  size="small"
+                                  aria-label="print quotation"
+                                  onClick={() => openSalesQuotationPrintPopup(item)}
+                                  sx={{ color: "#7b68ee" }}
+                                >
+                                  <LocalPrintshopIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )
+                          ) : (
+                            ""
+                          )}
                           {update && (
                             <IconButton
                               size="small"
@@ -292,7 +273,7 @@ export default function SalesQuotation() {
                         </Box>
                       </TableCell>
                     </TableRow>
-                  ))
+                  )})
                 )}
               </TableBody>
             </Table>

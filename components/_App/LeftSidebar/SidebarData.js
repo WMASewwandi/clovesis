@@ -286,7 +286,8 @@ export const getSidebarData = (IsGarmentSystem) => {
                 { title: "Shift Summary", path: "/sales/summary/", categoryId: 104, isAvailable: true },
                 { title: "Cash In/Out", path: "/sales/cash-in-out/", categoryId: 117, isAvailable: true },
                 { title: "Bank Payments", path: "/sales/bank-payments/", categoryId: 118, isAvailable: true },
-                { title: "Sales Order", path: "/sales/sales-order/", categoryId: 180, isAvailable: true }
+                { title: "Sales Order", path: "/sales/sales-order/", categoryId: 180, isAvailable: true },
+                { title: "Sales Quotation", path: "/sales/sales-quotation/", categoryId: 181, isAvailable: true },
             ],
         },
         {
