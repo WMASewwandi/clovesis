@@ -36,6 +36,7 @@ const ShipmentEdit = () => {
   const [remark, setRemark] = useState("");
   const [status, setStatus] = useState(null);
   const [currencyId, setCurrencyId] = useState("");
+  const [exchangeRateInput, setExchangeRateInput] = useState("");
   const [currencies, setCurrencies] = useState([]);
   const router = useRouter();
   const { data: isSupplierInvolvedToShipment } = IsAppSettingEnabled(
@@ -48,16 +49,28 @@ const ShipmentEdit = () => {
     [currencies, currencyId]
   );
 
-  const exchangeRate = selectedCurrency?.exchangeRate ?? null;
+  const effectiveExchangeRate = useMemo(() => {
+    const rate = parseFloat(exchangeRateInput);
+    if (isNaN(rate) || rate <= 0) {
+      return null;
+    }
+    return rate;
+  }, [exchangeRateInput]);
+
+  const isExchangeRateInvalid =
+    showSupplierFields &&
+    (!exchangeRateInput ||
+      exchangeRateInput === "" ||
+      effectiveExchangeRate == null);
 
   const getCalculatedUnitPrice = (row) => {
     if (!showSupplierFields) {
       return row.unitPrice;
     }
-    if (row.supplierUnitPrice == null || exchangeRate == null) {
+    if (row.supplierUnitPrice == null || effectiveExchangeRate == null) {
       return null;
     }
-    return parseFloat(row.supplierUnitPrice) * parseFloat(exchangeRate);
+    return parseFloat(row.supplierUnitPrice) * effectiveExchangeRate;
   };
 
   const applyLineTotals = (row) => {
@@ -177,7 +190,68 @@ const ShipmentEdit = () => {
   useEffect(() => {
     if (shipmentLineDetails.length === 0) return;
     setShipmentLineDetails((prev) => recalculateAllLines(prev));
-  }, [showSupplierFields, currencyId, exchangeRate]);
+  }, [showSupplierFields, currencyId, effectiveExchangeRate]);
+
+  useEffect(() => {
+    if (!currencyId || currencies.length === 0) return;
+    const currency = currencies.find((c) => c.id === Number(currencyId));
+    if (currency) {
+      setExchangeRateInput(
+        currency.exchangeRate != null ? String(currency.exchangeRate) : ""
+      );
+    }
+  }, [currencyId, currencies]);
+
+  const handleCurrencyChange = (newCurrencyId) => {
+    setCurrencyId(newCurrencyId);
+    const currency = currencies.find((c) => c.id === Number(newCurrencyId));
+    setExchangeRateInput(
+      currency?.exchangeRate != null ? String(currency.exchangeRate) : ""
+    );
+  };
+
+  const updateCurrencyExchangeRate = async () => {
+    if (!selectedCurrency || effectiveExchangeRate == null) {
+      return { ok: false, message: "Invalid currency or exchange rate." };
+    }
+
+    const payload = {
+      Id: selectedCurrency.id,
+      Code: selectedCurrency.code,
+      Name: selectedCurrency.currencyName || selectedCurrency.name,
+      Description: selectedCurrency.description || "",
+      Symbol: selectedCurrency.symbol,
+      IsActive: selectedCurrency.isActive !== false,
+      ExchangeRate: effectiveExchangeRate,
+    };
+
+    const response = await fetch(`${BASE_URL}/Currency/UpdateCurrency`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const jsonResponse = await response.json().catch(() => ({}));
+
+    if (response.ok && jsonResponse.statusCode === 200) {
+      setCurrencies((prev) =>
+        prev.map((currency) =>
+          currency.id === selectedCurrency.id
+            ? { ...currency, exchangeRate: effectiveExchangeRate }
+            : currency
+        )
+      );
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      message: jsonResponse.message || "Failed to update currency exchange rate.",
+    };
+  };
 
   const handleChange = (index, field, value) => {
     if (showSupplierFields && field === "unitPrice") {
@@ -255,12 +329,12 @@ const ShipmentEdit = () => {
     }
 
     if (showSupplierFields && !currencyId) {
-      toast.info("Please select a currency with an exchange rate.");
+      toast.error("Please select a currency.");
       return;
     }
 
-    if (showSupplierFields && exchangeRate == null) {
-      toast.info("Selected currency does not have an exchange rate.");
+    if (showSupplierFields && isExchangeRateInvalid) {
+      toast.error("Please enter an exchange rate greater than zero.");
       return;
     }
 
@@ -313,6 +387,15 @@ const ShipmentEdit = () => {
 
     try {
       setIsSubmitting(true);
+
+      if (showSupplierFields) {
+        const currencyUpdate = await updateCurrencyExchangeRate();
+        if (!currencyUpdate.ok) {
+          toast.error(currencyUpdate.message);
+          return;
+        }
+      }
+
       const response = await fetch(
         `${BASE_URL}/ShipmentNote/UpdateShipmentNote`,
         {
@@ -549,7 +632,7 @@ const ShipmentEdit = () => {
                   >
                     <Select
                       value={currencyId}
-                      onChange={(e) => setCurrencyId(e.target.value)}
+                      onChange={(e) => handleCurrencyChange(e.target.value)}
                       sx={{ width: "50%" }}
                       size="small"
                       displayEmpty
@@ -563,65 +646,33 @@ const ShipmentEdit = () => {
                         </MenuItem>
                       ))}
                     </Select>
-                    <Box
+                    <TextField
+                      type="number"
+                      value={exchangeRateInput}
+                      onChange={(e) => setExchangeRateInput(e.target.value)}
+                      size="small"
+                      placeholder="0.00"
+                      label="Exc. Rate"
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: 0, step: "0.0001" }}
+                      error={isExchangeRateInvalid}
                       sx={{
                         width: "50%",
-                        height: 40,
-                        boxSizing: "border-box",
-                        px: 1.25,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 0.5,
-                        borderRadius: 1,
-                        border: "1px solid",
-                        borderColor:
-                          selectedCurrency?.exchangeRate != null
-                            ? "#757fef"
-                            : "divider",
-                        bgcolor:
-                          selectedCurrency?.exchangeRate != null
-                            ? "rgba(117, 127, 239, 0.08)"
-                            : "action.hover",
-                      }}
-                    >
-                      <Typography
-                        variant="caption"
-                        noWrap
-                        sx={{
-                          color: "text.secondary",
-                          fontWeight: 600,
-                          letterSpacing: 0.3,
-                          textTransform: "uppercase",
+                        "& .MuiInputBase-root": {
+                          height: 40,
+                        },
+                        "& .MuiInputLabel-root": {
                           fontSize: "11px",
-                          lineHeight: 1,
-                        }}
-                      >
-                        Exc. Rate
-                      </Typography>
-                      <Typography
-                        noWrap
-                        sx={{
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                        },
+                        "& input": {
                           fontWeight: 700,
                           fontSize: "14px",
-                          color:
-                            selectedCurrency?.exchangeRate != null
-                              ? "#757fef"
-                              : "text.disabled",
-                          lineHeight: 1,
-                        }}
-                      >
-                        {selectedCurrency?.exchangeRate != null
-                          ? Number(selectedCurrency.exchangeRate).toLocaleString(
-                              "en-US",
-                              {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 4,
-                              }
-                            )
-                          : "—"}
-                      </Typography>
-                    </Box>
+                          color: isExchangeRateInvalid ? undefined : "#757fef",
+                        },
+                      }}
+                    />
                   </Box>
                 </Box>
               </Grid>
@@ -809,7 +860,7 @@ const ShipmentEdit = () => {
               <LoadingButton
                 loading={isSubmitting}
                 handleSubmit={() => handleSubmit()}
-                disabled={isDisable}
+                disabled={isDisable || (showSupplierFields && isExchangeRateInvalid)}
               />
             </Grid>
           </Grid>
