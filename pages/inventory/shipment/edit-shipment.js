@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Grid from "@mui/material/Grid";
 import {
+  Box,
   Button,
   MenuItem,
   Paper,
@@ -23,6 +24,7 @@ import BASE_URL from "Base/api";
 import { useRouter } from "next/router";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
+import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
 const ShipmentEdit = () => {
   const [shipmentLineDetails, setShipmentLineDetails] = useState([]);
@@ -33,7 +35,47 @@ const ShipmentEdit = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [remark, setRemark] = useState("");
   const [status, setStatus] = useState(null);
+  const [currencyId, setCurrencyId] = useState("");
+  const [currencies, setCurrencies] = useState([]);
   const router = useRouter();
+  const { data: isSupplierInvolvedToShipment } = IsAppSettingEnabled(
+    "IsSupplierInvolvedToShipment"
+  );
+  const showSupplierFields = isSupplierInvolvedToShipment === true;
+
+  const selectedCurrency = useMemo(
+    () => currencies.find((c) => c.id === Number(currencyId)),
+    [currencies, currencyId]
+  );
+
+  const exchangeRate = selectedCurrency?.exchangeRate ?? null;
+
+  const getCalculatedUnitPrice = (row) => {
+    if (!showSupplierFields) {
+      return row.unitPrice;
+    }
+    if (row.supplierUnitPrice == null || exchangeRate == null) {
+      return null;
+    }
+    return parseFloat(row.supplierUnitPrice) * parseFloat(exchangeRate);
+  };
+
+  const applyLineTotals = (row) => {
+    const unitPrice = getCalculatedUnitPrice(row);
+    const additionalCost = row.additionalCost || 0;
+    const freightDutyCost = row.freightDutyCost || 0;
+    const receivedQty = row.receivedQty || 0;
+    const cost = (unitPrice || 0) + additionalCost + freightDutyCost;
+
+    return {
+      ...row,
+      unitPrice,
+      costPrice: cost,
+      lineTotal: receivedQty * cost,
+    };
+  };
+
+  const recalculateAllLines = (lines) => lines.map((row) => applyLineTotals(row));
   const shipmentStatusTypes = [
     { name: "Order", value: 1 },
     { name: "Invoice", value: 2 },
@@ -50,6 +92,36 @@ const ShipmentEdit = () => {
     });
   };
   const { id } = router.query;
+
+  const fetchCurrencies = async () => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/Currency/GetAllCurrency?SkipCount=0&MaxResultCount=1000&Search=null`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch currencies");
+      }
+
+      const data = await response.json();
+      let list = [];
+      if (data.result?.items) {
+        list = data.result.items;
+      } else if (Array.isArray(data.result)) {
+        list = data.result;
+      }
+      setCurrencies(list.filter((currency) => currency.isActive !== false));
+    } catch (error) {
+      console.error("Error fetching currencies:", error);
+    }
+  };
 
   const fetchShipmentNote = async () => {
     try {
@@ -76,7 +148,6 @@ const ShipmentEdit = () => {
           ...row,
           receivedQty: row.receivedQty === 0 ? null : row.receivedQty,
           unitPrice: row.unitPrice === 0 ? null : row.unitPrice,
-          lineTotal: parseFloat(row.receivedQty || 0) * parseFloat(row.unitPrice || 0),
           damagedQty: row.damagedQty || null,
         })
       );
@@ -85,16 +156,34 @@ const ShipmentEdit = () => {
       setReferenceNo(result.referanceNo);
       setRemark(result.remark);
       setStatus(result.status);
+      setCurrencyId(result.currencyId ?? "");
       setShipmentLineDetails(shipmentDetailsWithLineTotal);
     } catch (error) {
       console.error("Error fetching :", error);
     }
   };
   useEffect(() => {
-    fetchShipmentNote();
-  }, []);
+    if (id) {
+      fetchShipmentNote();
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (showSupplierFields) {
+      fetchCurrencies();
+    }
+  }, [showSupplierFields]);
+
+  useEffect(() => {
+    if (shipmentLineDetails.length === 0) return;
+    setShipmentLineDetails((prev) => recalculateAllLines(prev));
+  }, [showSupplierFields, currencyId, exchangeRate]);
 
   const handleChange = (index, field, value) => {
+    if (showSupplierFields && field === "unitPrice") {
+      return;
+    }
+
     const updatedShipmentLineDetails = [...shipmentLineDetails];
     
     if (field === "damagedQty") {
@@ -135,14 +224,9 @@ const ShipmentEdit = () => {
     }
     updatedShipmentLineDetails[index][field] = parsedValue;
 
-    const unitPrice = updatedShipmentLineDetails[index].unitPrice || 0;
-    const additionalCost = updatedShipmentLineDetails[index].additionalCost || 0;
-    const freightDutyCost = updatedShipmentLineDetails[index].freightDutyCost || 0;
-    const receivedQty = updatedShipmentLineDetails[index].receivedQty || 0;
-    
-    const cost = unitPrice + additionalCost + freightDutyCost;
-    updatedShipmentLineDetails[index].costPrice = cost;
-    updatedShipmentLineDetails[index].lineTotal = receivedQty * cost;
+    updatedShipmentLineDetails[index] = applyLineTotals(
+      updatedShipmentLineDetails[index]
+    );
 
     setShipmentLineDetails(updatedShipmentLineDetails);
   };
@@ -163,8 +247,20 @@ const ShipmentEdit = () => {
 
     if (hasInvalidValues) {
       toast.info(
-        "Please enter valid values (0 or greater) for Received Quantity and Unit Cost."
+        showSupplierFields
+          ? "Please enter valid received quantities. Unit cost requires supplier price and currency exchange rate."
+          : "Please enter valid values (0 or greater) for Received Quantity and Unit Cost."
       );
+      return;
+    }
+
+    if (showSupplierFields && !currencyId) {
+      toast.info("Please select a currency with an exchange rate.");
+      return;
+    }
+
+    if (showSupplierFields && exchangeRate == null) {
+      toast.info("Selected currency does not have an exchange rate.");
       return;
     }
 
@@ -189,6 +285,9 @@ const ShipmentEdit = () => {
       warehouseName: order.warehouseName,
       shipmentDate: order.shipmentDate,
       status: status,
+      ...(showSupplierFields && currencyId
+        ? { CurrencyId: Number(currencyId) }
+        : {}),
       shipmentNoteLineDetails: shipmentLineDetails.map((row) => ({
         Id: row.id,
         shipmentNoteId: row.shipmentNoteId,
@@ -425,6 +524,108 @@ const ShipmentEdit = () => {
                 ))}
               </Select>
             </Grid>
+            {showSupplierFields ? (
+              <Grid item xs={12} lg={6} mt={1}>
+                <Box display="flex" justifyContent="space-between">
+                  <Typography
+                    component="label"
+                    sx={{
+                      fontWeight: "500",
+                      p: 1,
+                      fontSize: "14px",
+                      display: "block",
+                      width: "35%",
+                    }}
+                  >
+                    Currency
+                  </Typography>
+                  <Box
+                    sx={{
+                      width: "60%",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Select
+                      value={currencyId}
+                      onChange={(e) => setCurrencyId(e.target.value)}
+                      sx={{ width: "50%" }}
+                      size="small"
+                      displayEmpty
+                    >
+                      <MenuItem value="">
+                        <em>Select Currency</em>
+                      </MenuItem>
+                      {currencies.map((currency) => (
+                        <MenuItem key={currency.id} value={currency.id}>
+                          {currency.currencyName || currency.name} ({currency.code})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    <Box
+                      sx={{
+                        width: "50%",
+                        height: 40,
+                        boxSizing: "border-box",
+                        px: 1.25,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 0.5,
+                        borderRadius: 1,
+                        border: "1px solid",
+                        borderColor:
+                          selectedCurrency?.exchangeRate != null
+                            ? "#757fef"
+                            : "divider",
+                        bgcolor:
+                          selectedCurrency?.exchangeRate != null
+                            ? "rgba(117, 127, 239, 0.08)"
+                            : "action.hover",
+                      }}
+                    >
+                      <Typography
+                        variant="caption"
+                        noWrap
+                        sx={{
+                          color: "text.secondary",
+                          fontWeight: 600,
+                          letterSpacing: 0.3,
+                          textTransform: "uppercase",
+                          fontSize: "11px",
+                          lineHeight: 1,
+                        }}
+                      >
+                        Exc. Rate
+                      </Typography>
+                      <Typography
+                        noWrap
+                        sx={{
+                          fontWeight: 700,
+                          fontSize: "14px",
+                          color:
+                            selectedCurrency?.exchangeRate != null
+                              ? "#757fef"
+                              : "text.disabled",
+                          lineHeight: 1,
+                        }}
+                      >
+                        {selectedCurrency?.exchangeRate != null
+                          ? Number(selectedCurrency.exchangeRate).toLocaleString(
+                              "en-US",
+                              {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 4,
+                              }
+                            )
+                          : "—"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+            ) : null}
             <Grid item xs={12} mt={2}>
               <TableContainer component={Paper}>
                 <Table
@@ -440,6 +641,9 @@ const ShipmentEdit = () => {
                         Product&nbsp;Name{" "}
                       </TableCell>
                       <TableCell sx={{ color: "#fff" }}>Ordered Qty</TableCell>
+                      {showSupplierFields ? (
+                        <TableCell sx={{ color: "#fff" }}>Supplier Price</TableCell>
+                      ) : null}
                       <TableCell sx={{ color: "#fff" }}>Unit Cost</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Received Qty</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Damaged Qty</TableCell>
@@ -473,12 +677,24 @@ const ShipmentEdit = () => {
                         <TableCell sx={{ p: 1 }} component="th" scope="row">
                           {row.qty}
                         </TableCell>
+                        {showSupplierFields ? (
+                          <TableCell sx={{ p: 1 }} align="right">
+                            {row.supplierUnitPrice != null
+                              ? formatCurrency(row.supplierUnitPrice)
+                              : "—"}
+                          </TableCell>
+                        ) : null}
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             type="number"
-                            value={row.unitPrice === null || row.unitPrice === undefined ? "" : row.unitPrice}
+                            value={
+                              row.unitPrice === null || row.unitPrice === undefined
+                                ? ""
+                                : row.unitPrice
+                            }
                             fullWidth
                             size="small"
+                            disabled={showSupplierFields}
                             inputProps={{ min: 0, step: "0.01" }}
                             onChange={(e) =>
                               handleChange(
@@ -578,7 +794,7 @@ const ShipmentEdit = () => {
                       </TableRow>
                     ))}
                     <TableRow>
-                      <TableCell align="right" colSpan={8}>
+                      <TableCell align="right" colSpan={showSupplierFields ? 11 : 10}>
                         Total
                       </TableCell>
                       <TableCell align="right">

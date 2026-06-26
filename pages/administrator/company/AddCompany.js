@@ -99,26 +99,31 @@ export default function AddCompany({ fetchItems }) {
     }
   }, [open]);
 
-  const validateA4Size = (file) => {
+  const validateLetterheadDimensions = (file) => {
+    const minWidthPrint = 2480;
+    const minWidthRelaxed = 690;
     return new Promise((resolve, reject) => {
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         const width = img.width;
         const height = img.height;
-        // A4 aspect ratio: 210mm x 297mm = 0.707 (width/height)
-        // Allow ±5% tolerance
-        const aspectRatio = width / height;
-        const a4Ratio = 210 / 297; // 0.707
-        const tolerance = 0.05;
-
-        if (Math.abs(aspectRatio - a4Ratio) <= tolerance) {
+        if (width >= minWidthPrint || width >= minWidthRelaxed) {
           resolve(true);
         } else {
-          reject(new Error(`Image must be A4 size (210mm x 297mm / 2480 x 3508 px at 300 DPI). Current dimensions: ${width} x ${height}px`));
+          reject(
+            new Error(
+              `Letterhead width must be at least ${minWidthRelaxed}px (or ${minWidthPrint}px+ for print). Any height is allowed. Current: ${width} × ${height}px`
+            )
+          );
         }
       };
-      img.onerror = () => reject(new Error("Invalid image file"));
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Invalid image file"));
+      };
+      img.src = objectUrl;
     });
   };
 
@@ -133,7 +138,7 @@ export default function AddCompany({ fetchItems }) {
     }
 
     try {
-      await validateA4Size(file);
+      await validateLetterheadDimensions(file);
       setLetterheadFile(file);
       setLetterheadImage(URL.createObjectURL(file));
     } catch (error) {
@@ -151,6 +156,7 @@ export default function AddCompany({ fetchItems }) {
     formData.append("ContactNumber", values.ContactNumber);
     formData.append("CompanyLogo", logo ? logo : null);
     formData.append("LetterHeadImage", letterheadFile ? letterheadFile : null);
+    formData.append("UsersUrl", values.UsersUrl || "");
     formData.append("LandingPage", values.LandingPage);
     formData.append("RenewalDate", values.RenewalDate ? Number(values.RenewalDate) : "");
     formData.append("RenewalMonth", values.BillingType === "2" && values.RenewalMonth ? Number(values.RenewalMonth) : "");
@@ -171,7 +177,12 @@ export default function AddCompany({ fetchItems }) {
 
       const data = await response.json();
       if (data.statusCode == 200) {
-        toast.success(data.message);
+        const generatedKey = data.result?.apiKey;
+        toast.success(
+          generatedKey
+            ? `${data.message}. API Key: ${generatedKey}`
+            : data.message
+        );
         setOpen(false);
         fetchItems();
       } else {
@@ -219,6 +230,7 @@ export default function AddCompany({ fetchItems }) {
               ContactPerson: "",
               ContactNumber: "",
               Description: "",
+              UsersUrl: "",
               LandingPage: "1",
               RenewalDate: "",
               RenewalMonth: "",
@@ -349,6 +361,24 @@ export default function AddCompany({ fetchItems }) {
                             <MenuItem value="2">Quick Access</MenuItem>
                           </Field>
                         </Grid>
+                        <Grid item xs={12} mt={1}>
+                          <Typography
+                            sx={{
+                              fontWeight: "500",
+                              fontSize: "14px",
+                              mb: "5px",
+                            }}
+                          >
+                            Users URL
+                          </Typography>
+                          <Field
+                            as={TextField}
+                            fullWidth
+                            name="UsersUrl"
+                            size="small"
+                            placeholder="https://your-company.apexflow.example"
+                          />
+                        </Grid>
                         <Grid item xs={12} mb={3} mt={1}>
                           <Typography
                             sx={{
@@ -431,7 +461,7 @@ export default function AddCompany({ fetchItems }) {
                       </Grid>
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          Upload Letterhead Image (A4 size: 210mm x 297mm / 2480 x 3508 px at 300 DPI)
+                          Upload Letterhead Image (min width 690px, or 2480px+ for print quality; any height)
                         </Typography>
                         <Button
                           component="label"

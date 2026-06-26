@@ -1,11 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Pagination,
-  FormControl,
-  Typography,
-  InputLabel,
-  MenuItem,
-  Select,
   Accordion,
   AccordionDetails,
   AccordionSummary,
@@ -127,40 +121,31 @@ const getReportModuleName = (report) => {
   return "Sales";
 };
 
+/** Load all enabled summary reports in one request (no UI pagination). */
+const SUMMARY_REPORTS_FETCH_SIZE = 10000;
+
 const SummeryReports = () => {
   const [role, setRole] = useState(null);
   const [expandedModule, setExpandedModule] = useState(null);
 
   const {
     data: reports,
-    totalCount,
-    page,
-    pageSize,
     search,
-    setPage,
-    setPageSize,
     setSearch,
     fetchData: fetchReports,
     loading,
     error,
-  } = usePaginatedFetch(role ? `ReportSetting/GetAllEnabledSummaryReportsByRoleIdPage?roleId=${role}` : null, "", 10, false, false);
+  } = usePaginatedFetch(
+    role ? `ReportSetting/GetAllEnabledSummaryReportsByRoleIdPage?roleId=${role}` : null,
+    "",
+    SUMMARY_REPORTS_FETCH_SIZE,
+    false,
+    false
+  );
 
   const handleSearchChange = (event) => {
     setSearch(event.target.value);
-    fetchReports(1, event.target.value, pageSize);
-    setPage(1);
-  };
-
-  const handlePageChange = (event, value) => {
-    setPage(value);
-    fetchReports(value, search, pageSize);
-  };
-
-  const handlePageSizeChange = (event) => {
-    const size = event.target.value;
-    setPageSize(size);
-    setPage(1);
-    fetchReports(1, search, size);
+    fetchReports(1, event.target.value, SUMMARY_REPORTS_FETCH_SIZE);
   };
 
   useEffect(() => {
@@ -315,9 +300,7 @@ const SummeryReports = () => {
                         <TableBody>
                           {moduleReports.map((report, index) => (
                             <TableRow key={report.id || `${moduleName}-${index}`}>
-                              <TableCell>
-                                {(page - 1) * pageSize + index + 1}
-                              </TableCell>
+                              <TableCell>{index + 1}</TableCell>
                               <TableCell>{report.title || report.name}</TableCell>
                               <TableCell align="right">{report.component}</TableCell>
                             </TableRow>
@@ -330,27 +313,6 @@ const SummeryReports = () => {
               ))}
             </>
           )}
-          <Grid container justifyContent="space-between" mt={2} mb={2}>
-            <Pagination
-              count={totalCount ? Math.ceil(totalCount / pageSize) : 1}
-              page={page}
-              onChange={handlePageChange}
-              color="primary"
-              shape="rounded"
-            />
-            <FormControl size="small" sx={{ mr: 2, width: "100px" }}>
-              <InputLabel>Page Size</InputLabel>
-              <Select
-                value={pageSize}
-                label="Page Size"
-                onChange={handlePageSizeChange}
-              >
-                <MenuItem value={5}>5</MenuItem>
-                <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={25}>25</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
         </Grid>
       </Grid>
     </>

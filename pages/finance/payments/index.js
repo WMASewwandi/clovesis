@@ -21,7 +21,6 @@ import useApi from "@/components/utils/useApi";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import { Catelogue } from "Base/catelogue";
 import ShareReports from "@/components/UIElements/Modal/Reports/ShareReports";
-import { Report } from "Base/report";
 import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import { useRouter } from "next/router";
 
@@ -103,6 +102,19 @@ export default function Payments() {
     });
   };
 
+  const openPaymentPrintPopup = (item) => {
+    const query = new URLSearchParams({
+      id: String(item.id ?? ""),
+      documentNumber: item.documentNo ?? "",
+    });
+
+    window.open(
+      `/finance/payments/print?${query.toString()}`,
+      `payment-print-${item.id}`,
+      "popup=yes,width=1200,height=900,scrollbars=yes,resizable=yes"
+    );
+  };
+
   if (!navigate) {
     return <AccessDenied />;
   }
@@ -159,7 +171,6 @@ export default function Payments() {
                 ) : (
                   payments.map((item, index) => {
                     const whatsapp = `/PrintDocuments?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${PaymentReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
-                    const PaymentReportLink = `/PrintDocumentsLocal?InitialCatalog=${Catelogue}&documentNumber=${item.documentNo}&reportName=${PaymentReportName}&warehouseId=${item.warehouseId}&currentUser=${name}`;
                     return (
                       <TableRow key={index}>
                         <TableCell>{item.documentNo}</TableCell>
@@ -172,14 +183,19 @@ export default function Payments() {
                         <TableCell align="right">
                           <Box display="flex" justifyContent="end" gap={1}>
                             <ShareReports url={whatsapp} mobile={item.supplierContactNo} />
-                            {print ? <>
+                            {print ? (
                               <Tooltip title="Print" placement="top">
-                                <a href={`${Report}` + PaymentReportLink} target="_blank">
-                                  <IconButton aria-label="print" size="small">
-                                    <LocalPrintshopIcon color="primary" fontSize="medium" />
-                                  </IconButton>
-                                </a>
-                              </Tooltip></> : ""}
+                                <IconButton
+                                  aria-label="print"
+                                  size="small"
+                                  onClick={() => openPaymentPrintPopup(item)}
+                                >
+                                  <LocalPrintshopIcon color="primary" fontSize="medium" />
+                                </IconButton>
+                              </Tooltip>
+                            ) : (
+                              ""
+                            )}
                           </Box>
                         </TableCell>
                       </TableRow>

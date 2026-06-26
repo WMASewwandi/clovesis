@@ -16,7 +16,7 @@ import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AccessDenied from "@/components/UIElements/Permission/AccessDenied";
 import BASE_URL from "Base/api";
-import { formatCurrency } from "@/components/utils/formatHelper";
+import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 
 export default function CashInOut() {
   const cId = sessionStorage.getItem("category")
@@ -211,6 +211,7 @@ export default function CashInOut() {
               <TableHead>
                 <TableRow>
                   <TableCell>Shift</TableCell>
+                  <TableCell>Date</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Warehouse</TableCell>
                   <TableCell>Created By</TableCell>
@@ -224,7 +225,7 @@ export default function CashInOut() {
               <TableBody>
                 {cashInOut.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9}>
+                    <TableCell colSpan={10}>
                       <Typography color="error">No Data Available</Typography>
                     </TableCell>
                   </TableRow>
@@ -232,6 +233,7 @@ export default function CashInOut() {
                   cashInOut.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell>{item.shiftCode}</TableCell>
+                      <TableCell>{formatDate(item.createdOn)}</TableCell>
                       <TableCell>{item.description}</TableCell>
                       <TableCell>{item.warehouseName}</TableCell>
                       <TableCell>{item.createdUser}</TableCell>

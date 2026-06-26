@@ -266,6 +266,7 @@ const getButtonTypeDisplay = (neckTypeSource) => {
   const n = Number(rawValue);
   if (n === 1) return "Glass";
   if (n === 2) return "Client's";
+  if (n === 3) return "Colour";
   return "-";
 };
 

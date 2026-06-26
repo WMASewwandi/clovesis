@@ -52,6 +52,12 @@ export const getModule = (type) => {
       return "Matrimonial";
     case 26:
       return "Assets";
+    case 27:
+      return "Travel";
+    case 28:
+      return "Reserved Customers";
+    case 29:
+      return "Service Management";
     default:
       return "N/A";
   }

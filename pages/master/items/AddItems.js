@@ -195,6 +195,7 @@ function areDuplicateItemFormValuesUnchanged(current, snapshot) {
 
 export default function AddItems({
   fetchItems,
+  onMasterLookupRefresh,
   isPOSSystem,
   uoms,
   isGarmentSystem,
@@ -519,6 +520,9 @@ export default function AddItems({
   const handleRemoveImage = () => {
     setSelectedImage(null);
     setSelectedFile(null);
+    if (typeof window !== "undefined" && window.currentSetFieldValue) {
+      window.currentSetFieldValue("IsWebView", false);
+    }
   };
 
   const handleSubImagesUpload = (event) => {
@@ -589,6 +593,10 @@ export default function AddItems({
   };
 
   const handleSubmit = (values) => {
+    if (values.IsWebView && !selectedFile) {
+      toast.warning("Please upload an item image before enabling Show in web.");
+      return;
+    }
     if (values.IsWebView && values.AveragePrice === null) {
       toast.warning("Please enter the average price for web view.");
       return;
@@ -691,7 +699,7 @@ export default function AddItems({
       },
     })
       .then((response) => response.json())
-      .then((data) => {
+      .then(async (data) => {
         if (data.statusCode == 200) {
           toast.success(data.message);
           clearDuplicateContext();
@@ -702,6 +710,13 @@ export default function AddItems({
             });
             return [];
           });
+          if (typeof onMasterLookupRefresh === "function") {
+            try {
+              await onMasterLookupRefresh();
+            } catch {
+              //
+            }
+          }
           fetchItems();
         } else {
           toast.error(data.message);
@@ -1354,12 +1369,22 @@ export default function AddItems({
                             {IsEcommerceWebSiteAvailable && (
                               <Grid item xs={12} lg={6} mt={1}>
                                 <FormControlLabel
+                                  disabled={!selectedFile && !values.IsWebView}
                                   control={
                                     <Field
                                       as={Checkbox}
                                       name="IsWebView"
                                       checked={values.IsWebView}
-                                      onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                      disabled={!selectedFile && !values.IsWebView}
+                                      onChange={() => {
+                                        if (!values.IsWebView && !selectedFile) {
+                                          toast.warning(
+                                            "Please upload an item image before enabling Show in web."
+                                          );
+                                          return;
+                                        }
+                                        setFieldValue("IsWebView", !values.IsWebView);
+                                      }}
                                     />
                                   }
                                   label="Show in web"

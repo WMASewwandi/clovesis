@@ -27,6 +27,7 @@ import { ToastContainer } from "react-toastify";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AddIcon from "@mui/icons-material/Add";
 import BASE_URL from "Base/api";
 import { useRouter } from "next/router";
 import useApi from "@/components/utils/useApi";
@@ -34,6 +35,7 @@ import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
 import LoadingButton from "@/components/UIElements/Buttons/LoadingButton";
 import SearchItemByName from "@/components/utils/SearchItemByName";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
+import IsPermissionEnabled from "@/components/utils/IsPermissionEnabled";
 import AddOutletItem from "./add-outlet";
 import AddCustomColorItem from "./add-custom-color";
 import useShiftCheck from "@/components/utils/useShiftCheck";
@@ -43,6 +45,8 @@ import { Catelogue } from "Base/catelogue";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import AddCustomerDialog from "@/components/UIElements/Modal/AddCustomerDialog";
 import GetAllSalesPersons from "@/components/utils/GetAllSalesPerson";
+import AddItems from "@/pages/master/items/AddItems";
+import GetAllItemDetails from "@/components/utils/GetAllItemDetails";
 
 const InvoiceCreate = () => {
   const today = new Date();
@@ -91,7 +95,8 @@ const InvoiceCreate = () => {
   const { data: IsCostPriceVisible } = IsAppSettingEnabled(
     "IsCostPriceVisible"
   );
-  // --- OLD APP SETTING REMOVED ---
+  const { approve1: hasCostPricePermission } = IsPermissionEnabled(22);
+  const showCostPrice = IsCostPriceVisible && hasCostPricePermission;
   const { data: IsExpireDateAvailable } = IsAppSettingEnabled(
     "IsExpireDateAvailable"
   );
@@ -127,6 +132,17 @@ const InvoiceCreate = () => {
 
   const { data: isCustomerCreditLimit } = IsAppSettingEnabled(
     "IsCustomerCreditLimit"
+  );
+
+  const { data: IsPOSSystem } = IsAppSettingEnabled("IsPOSSystem");
+  const { data: IsGarmentSystem } = IsAppSettingEnabled("IsGarmentSystem");
+  const { data: IsBarcodeEnabled } = IsAppSettingEnabled("IsBarcodeEnabled");
+  const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled(
+    "IsEcommerceWebSiteAvailable"
+  );
+  const { uoms } = GetAllItemDetails();
+  const { data: chartOfAccounts } = useApi(
+    "/ChartOfAccounts/GetAllChartOfAccountsForDropdown"
   );
 
   const {
@@ -195,6 +211,16 @@ const InvoiceCreate = () => {
 
   const searchRef = useRef(null);
   const qtyRefs = useRef([]);
+  const itemButtonRef = useRef(null);
+
+  const handleOpenItemModal = () => {
+    if (itemButtonRef.current) {
+      const button = itemButtonRef.current.querySelector("button");
+      if (button) {
+        button.click();
+      }
+    }
+  };
 
   const handleQtyRef = (el, index) => {
     qtyRefs.current[index] = el;
@@ -525,6 +551,26 @@ const InvoiceCreate = () => {
     if (invalidCCCost) return toast.error("Please Add Cost Price for All Custom Color Items.");
     if (invalidCCSell) return toast.error("Please Add Selling Price for All Custom Color Items.");
 
+    const invalidNonInvSell = selectedRows.some(
+      (row) =>
+        row.isNonInventory &&
+        (!row.sellingPrice || parseFloat(row.sellingPrice) <= 0)
+    );
+    if (invalidNonInvSell) {
+      return toast.error("Please Add Selling Price for All Non-Inventory Items.");
+    }
+
+    if (showCostPrice) {
+      const invalidNonInvCost = selectedRows.some(
+        (row) =>
+          row.isNonInventory &&
+          (!row.costPrice || parseFloat(row.costPrice) <= 0)
+      );
+      if (invalidNonInvCost) {
+        return toast.error("Please Add Cost Price for All Non-Inventory Items.");
+      }
+    }
+
     const invoiceLines = [
       ...selectedRows.map((row, i) => ({
         DocumentNo: invNo,
@@ -555,6 +601,9 @@ const InvoiceCreate = () => {
 
     const underCostMessages = invoiceLines
       .map((line) => {
+        if (line.StockBalanceId === 0 && line.ItemType === 1 && !showCostPrice) {
+          return null;
+        }
         if (parseFloat(line.UnitPrice) <= parseFloat(line.CostPrice)) {
           return `Please enter selling price greater than cost price for product "${line.ProductName}".`;
         }
@@ -792,9 +841,30 @@ const InvoiceCreate = () => {
   };
 
 
+  const handleCostPriceChange = (index, newPrice) => {
+    const updatedRows = [...selectedRows];
+    const row = updatedRows[index];
+    if (!row?.isNonInventory) return;
+
+    row.costPrice = newPrice;
+
+    const x = parseFloat(newPrice) / 2;
+    const y = parseFloat(row.sellingPrice) - parseFloat(newPrice);
+
+    if (y > x && isAllowProfitMessageDisplay) {
+      toast.info("Profit exceeds 50% of the cost price.");
+    }
+
+    setSelectedRows(updatedRows);
+  };
+
   const handleSellingPriceChange = (index, newPrice) => {
     const updatedRows = [...selectedRows];
     const row = updatedRows[index];
+
+    if (row.isNonInventory && !showCostPrice) {
+      row.costPrice = newPrice;
+    }
 
     const x = parseFloat(row.costPrice) / 2;
     const y = parseFloat(newPrice) - parseFloat(row.costPrice);
@@ -1257,9 +1327,17 @@ const InvoiceCreate = () => {
               </Grid>
             </Grid>
 
-            <Grid item xs={12} mt={3}>
-              <Grid item xs={12} gap={1} mt={3} mb={1} display="flex">
-                <Box sx={isSalesOrderSelected ? { pointerEvents: "none", opacity: 0.6, width: "100%" } : { width: "100%" }}>
+            <Grid item xs={12} mt={3} mb={1}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+                <Box
+                  sx={{
+                    flex: 1,
+                    minWidth: 200,
+                    ...(isSalesOrderSelected
+                      ? { pointerEvents: "none", opacity: 0.6 }
+                      : {}),
+                  }}
+                >
                   {isBookingSystem ?
                     (!isItemSearch ?
                       <SearchPackageByName
@@ -1290,6 +1368,19 @@ const InvoiceCreate = () => {
                       onSelect={handleSearchItemSelect}
                     />}
                 </Box>
+                <Button
+                  variant="outlined"
+                  onClick={handleOpenItemModal}
+                  startIcon={<AddIcon />}
+                  sx={{ flexShrink: 0 }}
+                  disabled={isSalesOrderSelected}
+                >
+                  Add Item
+                </Button>
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Grid item xs={12} gap={1} display="flex">
                 {isBookingSystem && (
                   <Button disabled={isSalesOrderSelected} variant={isItemSearch ? "contained" : "outlined"} size="small" color={isItemSearch ? "warning" : "secondary"} onClick={() => { setIsItemSearch(prev => !prev); setStock([]); setSelectedItem(); }}>
                     Items
@@ -1332,7 +1423,7 @@ const InvoiceCreate = () => {
                         <TableCell sx={{ color: "#fff" }}>Exp Date</TableCell>
                       )}
                       <TableCell sx={{ color: "#fff" }}>Qty</TableCell>
-                      {IsCostPriceVisible && (<TableCell sx={{ color: "#fff" }}>
+                      {showCostPrice && (<TableCell sx={{ color: "#fff" }}>
                         Cost Price
                       </TableCell>)}
                       <TableCell sx={{ color: "#fff" }}>
@@ -1434,9 +1525,28 @@ const InvoiceCreate = () => {
 
 
                         </TableCell>
-                        {IsCostPriceVisible && (<TableCell>
-                          {formatCurrency(row.costPrice)}
-                        </TableCell>)}
+                        {showCostPrice && (
+                          <TableCell sx={{ p: 1 }}>
+                            {row.isNonInventory ? (
+                              <TextField
+                                sx={{ width: "100px" }}
+                                type="number"
+                                size="small"
+                                disabled={isSalesOrderSelected}
+                                value={row.costPrice}
+                                onChange={(e) =>
+                                  handleCostPriceChange(index, e.target.value)
+                                }
+                                inputProps={{
+                                  min: 0,
+                                  step: "0.01",
+                                }}
+                              />
+                            ) : (
+                              formatCurrency(row.costPrice)
+                            )}
+                          </TableCell>
+                        )}
                         <TableCell sx={{ p: 1 }}>
                           <TextField
                             sx={{ width: "100px" }}
@@ -1606,7 +1716,7 @@ const InvoiceCreate = () => {
                     )}
                     <TableCell>{isOutlet ? "Available Value" : "Stock Balance"}</TableCell>
 
-                    {IsCostPriceVisible && (
+                    {showCostPrice && (
                       <TableCell>Cost Price</TableCell>
                     )}
 
@@ -1644,7 +1754,7 @@ const InvoiceCreate = () => {
                           ) : (
                             <TableCell>{item.bookBalanceQuantity}</TableCell>
                           )}
-                          {IsCostPriceVisible && (
+                          {showCostPrice && (
                             <TableCell>Rs. {formatCurrency(item.costPrice)}</TableCell>
                           )}
 
@@ -1684,6 +1794,20 @@ const InvoiceCreate = () => {
           </Box>
         </Box>
       </Modal>
+
+      <Box sx={{ display: "none" }}>
+        <div ref={itemButtonRef}>
+          <AddItems
+            fetchItems={() => {}}
+            isPOSSystem={IsPOSSystem}
+            uoms={uoms || []}
+            isGarmentSystem={IsGarmentSystem}
+            chartOfAccounts={chartOfAccounts || []}
+            barcodeEnabled={IsBarcodeEnabled}
+            IsEcommerceWebSiteAvailable={IsEcommerceWebSiteAvailable}
+          />
+        </div>
+      </Box>
     </>
   );
 };

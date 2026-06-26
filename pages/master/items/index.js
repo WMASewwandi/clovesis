@@ -36,8 +36,8 @@ export default function Items() {
   const { data: isBarcodeEnabled } = IsAppSettingEnabled(`IsBarcodeEnabled`);
   const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled(`IsEcommerceWebSiteAvailable`);
   const [searchTerm, setSearchTerm] = useState("");
-  const { data: supplierList } = GetAllSuppliers();
-  const { categories, subCategories, uoms } = GetAllItemDetails();
+  const { data: supplierList, refetch: refetchSuppliers } = GetAllSuppliers();
+  const { categories, subCategories, uoms, refetch: refetchItemDetails } = GetAllItemDetails();
   const [chartOfAccInfo, setChartOfAccInfo] = useState({});
   const [supplierInfo, setSupplierInfo] = useState({});
   const [uomInfo, setUOMInfo] = useState({});
@@ -90,7 +90,11 @@ export default function Items() {
       setChartOfAccInfo(accMap);
       setChartOfAccounts(accountList);
     }
-  }, [uoms, supplierList, accountList]);
+  }, [uoms, categories, subCategories, supplierList, accountList]);
+
+  const refreshItemTableLookups = async () => {
+    await Promise.all([refetchItemDetails(), refetchSuppliers()]);
+  };
 
   const handleSearchChange = (event) => {
     const value = event.target.value;
@@ -171,6 +175,7 @@ export default function Items() {
           {create ? (
             <AddItems
               fetchItems={fetchItemsList}
+              onMasterLookupRefresh={refreshItemTableLookups}
               isPOSSystem={isPOSSystem}
               uoms={uoms}
               isGarmentSystem={isGarmentSystem}

@@ -13,6 +13,13 @@ import useApi from "@/components/utils/useApi";
 import TotalSalesCard from "./TotalSalesCard";
 import TotalOutstandingCard from "./TotalOutstandingCard";
 
+const getOrganizationName = (row) =>
+  row?.organization ??
+  row?.Organization ??
+  row?.company ??
+  row?.Company ??
+  "-";
+
 const OutstandingCustomers = ({ totalProfit, totalProfitMargin, totalSales, totalCustomers }) => {
   const [customersOutstanding, setCustomersOutstanding] = useState([]);
   const { data: customerOutstandingList } = useApi(
@@ -93,6 +100,15 @@ const OutstandingCustomers = ({ totalProfit, totalProfitMargin, totalSales, tota
                     padding: "15px 10px",
                   }}
                 >
+                  Organization
+                </TableCell>
+                <TableCell
+                  sx={{
+                    borderBottom: "1px solid #F7FAFF",
+                    fontSize: "13.5px",
+                    padding: "15px 10px",
+                  }}
+                >
                   Total Outstanding Amount
                 </TableCell>
               </TableRow>
@@ -101,7 +117,7 @@ const OutstandingCustomers = ({ totalProfit, totalProfitMargin, totalSales, tota
             <TableBody>
               {customersOutstanding.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={2}>
+                  <TableCell colSpan={3}>
                     <Typography variant="h6" color="error">
                       No outstanding customer data available.
                     </Typography>
@@ -123,6 +139,16 @@ const OutstandingCustomers = ({ totalProfit, totalProfitMargin, totalSales, tota
                     </TableCell>
                     <TableCell
                       sx={{
+                        fontSize: "13px",
+                        borderBottom: "1px solid #F7FAFF",
+                        color: "#260944",
+                        padding: "9px 10px",
+                      }}
+                    >
+                      {getOrganizationName(customer)}
+                    </TableCell>
+                    <TableCell
+                      sx={{
                         fontWeight: 500,
                         borderBottom: "1px solid #F7FAFF",
                         fontSize: "12px",
@@ -139,6 +165,7 @@ const OutstandingCustomers = ({ totalProfit, totalProfitMargin, totalSales, tota
                   <TableCell sx={{ fontWeight: 600, padding: "10px" }}>
                     Total
                   </TableCell>
+                  <TableCell sx={{ padding: "10px" }} />
                   <TableCell sx={{ fontWeight: 600, padding: "10px" }}>
                     Rs. {formatCurrency(totalOutstandingSum)}
                   </TableCell>

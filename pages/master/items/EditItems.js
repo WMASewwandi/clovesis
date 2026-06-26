@@ -30,11 +30,15 @@ import DownloadIcon from "@mui/icons-material/Download";
 import AddIcon from "@mui/icons-material/Add";
 import IsAppSettingEnabled from "@/components/utils/IsAppSettingEnabled";
 
-/** Optional leading + then digits only (e.g. +94771234567). */
+/** Digits with optional international + (E.164). + may be leading or after separators, e.g. (+94) 771. */
 function sanitizeSupplierMobileInput(raw) {
-  const s = String(raw ?? "");
+  const s = String(raw ?? "").trim();
+  const hasPlus = /[+\uFF0B]/.test(s);
   const digits = s.replace(/\D/g, "");
-  return s.trim().startsWith("+") ? `+${digits}` : digits;
+  if (!digits) {
+    return hasPlus ? "+" : "";
+  }
+  return hasPlus ? `+${digits}` : digits;
 }
 
 // Controlled Category Modal Component
@@ -398,6 +402,8 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
     }
     const payload = {
       ...values,
+      FirstName: String(values.FirstName ?? "").trim(),
+      LastName: String(values.LastName ?? "").trim(),
       MobileNo: sanitizeSupplierMobileInput(values.MobileNo),
       BankId: selectedBank?.id || null,
       BankName: selectedBank?.name || "",
@@ -434,14 +440,22 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
     <Modal open={open} onClose={onClose}>
       <Box sx={style} className="bg-black">
         <Formik
+          key={String(open)}
           initialValues={{
+            FirstName: "",
+            LastName: "",
             Name: "",
             MobileNo: "",
             PayableAccount: null,
             IsActive: true,
           }}
           validationSchema={Yup.object().shape({
-            Name: Yup.string().required("Name is required"),
+            FirstName: Yup.string()
+              .trim()
+              .required("First name is required")
+              .max(150, "Max 150 characters"),
+            LastName: Yup.string().max(150, "Max 150 characters"),
+            Name: Yup.string().required("Display name is required"),
             MobileNo: Yup.string()
               .required("Mobile No is required")
               .matches(
@@ -462,12 +476,38 @@ const CreateSupplierModal = ({ open, onClose, fetchItems, isPOSSystem, banks, is
                   </Grid>
                   <Grid item xs={12} mt={1}>
                     <Typography sx={{ fontWeight: "500", fontSize: "14px", mb: "5px" }}>
-                      Supplier Name
+                      First name
                     </Typography>
                     <Field
                       as={TextField}
                       fullWidth
                       inputRef={inputRef}
+                      name="FirstName"
+                      size="small"
+                      error={touched.FirstName && Boolean(errors.FirstName)}
+                      helperText={touched.FirstName && errors.FirstName}
+                    />
+                  </Grid>
+                  <Grid item xs={12} mt={1}>
+                    <Typography sx={{ fontWeight: "500", fontSize: "14px", mb: "5px" }}>
+                      Last name
+                    </Typography>
+                    <Field
+                      as={TextField}
+                      fullWidth
+                      name="LastName"
+                      size="small"
+                      error={touched.LastName && Boolean(errors.LastName)}
+                      helperText={touched.LastName && errors.LastName}
+                    />
+                  </Grid>
+                  <Grid item xs={12} mt={1}>
+                    <Typography sx={{ fontWeight: "500", fontSize: "14px", mb: "5px" }}>
+                      Display name
+                    </Typography>
+                    <Field
+                      as={TextField}
+                      fullWidth
                       name="Name"
                       size="small"
                       error={touched.Name && Boolean(errors.Name)}

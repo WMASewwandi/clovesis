@@ -104,42 +104,13 @@ const GRNCreate = () => {
   const { data: IsEnableCreditGRN } =
     IsAppSettingEnabled("IsEnableCreditGRN");
 
-  const handleDiscountChange = (e) => {
-    const raw = e.target.value;
-    let value = parseFloat(raw);
-    if (Number.isNaN(value)) value = 0;
-    if (value > 100) value = 100;
-    if (value < 0) value = 0;
-    setFinalDiscountPercent(value);
-  };
+  const { data: AllowCostLessThanSelling } = IsAppSettingEnabled(
+    "AllowCostLessThanSelling"
+  );
 
-  const navigateToBack = () => {
-    router.push({
-      pathname: "/inventory/grn",
-    });
-  };
-
-  const handleOpenSerialNo = (list, rowIndex) => {
-    setOpen(true);
-    setEditingRowIndex(rowIndex);
-    setSerialNumbers(list);
-  }
-
-  const handleSaveSerials = () => {
-    const updatedRows = [...selectedRows];
-    updatedRows[editingRowIndex].itemsSerialNo = serialNumbers;
-    setSelectedRows(updatedRows);
-
-    const emptySerials = serialNumbers.filter(
-      (item, index) => !item.SerialNo || item.SerialNo.trim() === ""
-    );
-
-    if (emptySerials.length > 0) {
-      toast.warning("Please Enter Serial No For All");
-    } else {
-      setOpen(false);
-    }
-  };
+  const { data: IsProfitVisibleOnGRNAndPO } = IsAppSettingEnabled(
+    "IsProfitVisibleOnGRNAndPO"
+  );
 
   const {
     data: itemList,
@@ -162,6 +133,192 @@ const GRNCreate = () => {
   const { data: IsEcommerceWebSiteAvailable } = IsAppSettingEnabled("IsEcommerceWebSiteAvailable");
   const { uoms } = GetAllItemDetails();
 
+  useEffect(() => {
+    const lineTotalSum = selectedRows.reduce(
+      (sum, row) => sum + (Number(row.totalPrice) || 0),
+      0
+    );
+    const orderDiscount = (lineTotalSum * finalDiscountPercent) / 100;
+    const afterOrderDiscount = lineTotalSum - orderDiscount;
+    setFinalDiscountAmount(orderDiscount);
+    setFinalGrossTotal(afterOrderDiscount);
+    setGrossTotal(lineTotalSum);
+  }, [selectedRows, finalDiscountPercent]);
+
+  useEffect(() => {
+    if (goodsRNo) {
+      setGrnNo(goodsRNo);
+    }
+    if (itemList) {
+      setItems(itemList);
+    }
+    if (supplierList) {
+      setSuppliers(supplierList);
+    }
+  }, [goodsRNo, itemList, supplierList]);
+
+  // Fetch Sales Person list by supplier when supplier is selected
+  useEffect(() => {
+    if (!supplier?.id) {
+      setSalesPersons([]);
+      setSalesPerson(null);
+      return;
+    }
+
+    const fetchSalesPersonsBySupplier = async () => {
+      setLoadingSalesPersons(true);
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch(
+          `${BASE_URL}/SalesPerson/GetSalesPersonsBySupplier?supplierId=${supplier.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        if (response.ok) {
+          const json = await response.json();
+          const list = Array.isArray(json) ? json : (json?.result || json?.data || []);
+          setSalesPersons(Array.isArray(list) ? list : []);
+        } else {
+          setSalesPersons([]);
+        }
+      } catch (err) {
+        console.error("Error fetching sales persons:", err);
+        setSalesPersons([]);
+      } finally {
+        setLoadingSalesPersons(false);
+      }
+    };
+
+    fetchSalesPersonsBySupplier();
+  }, [supplier?.id]);
+
+  useEffect(() => {
+    if (supplier && supplier.id) {
+      setLoadingItems(true);
+
+      const fetchItemsBySupplier = async () => {
+        try {
+          const token = localStorage.getItem("token");
+          if (!token) {
+            toast.error("Unauthorized access. Please login.");
+            return;
+          }
+
+          const response = await fetch(
+            `${BASE_URL}/Items/GetAllItemsBySupplierId?supplierId=${supplier.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            const jsonResponse = await response.json();
+            if (jsonResponse && jsonResponse.result) {
+              setFilteredItems(jsonResponse.result);
+            } else {
+              toast.error("No data available for this supplier.");
+            }
+          } else {
+            toast.error("Failed to fetch items for the selected supplier.");
+          }
+        } catch (error) {
+          console.error("Error fetching items:", error);
+          toast.error("An error occurred while fetching items.");
+        } finally {
+          setLoadingItems(false);
+        }
+      };
+
+      fetchItemsBySupplier();
+    } else {
+      setFilteredItems([]);
+    }
+  }, [supplier]);
+
+  const calculateProfit = (sellingPrice, costPrice) => {
+    const sp = parseFloat(sellingPrice);
+    const cp = parseFloat(costPrice);
+    if (Number.isNaN(sp) || Number.isNaN(cp)) return 0;
+    return sp - cp;
+  };
+
+  const calculateProfitMargin = (sellingPrice, costPrice) => {
+    const sp = parseFloat(sellingPrice);
+    const cp = parseFloat(costPrice);
+    if (Number.isNaN(sp) || Number.isNaN(cp) || sp <= 0) return 0;
+    return ((sp - cp) / sp) * 100;
+  };
+
+  const computeRowLineFinancials = (row, overrides = {}) => {
+    const qty = parseFloat(overrides.quantity ?? row.quantity) || 0;
+    const unitPrice = parseFloat(overrides.averagePrice ?? row.averagePrice) || 0;
+    const freightCost = parseFloat(overrides.freight ?? row.freight) || 0;
+    const free = parseFloat(overrides.free ?? row.free) || 0;
+
+    const discountRaw =
+      overrides.discount !== undefined ? overrides.discount : row.discount;
+    const discountPercent =
+      discountRaw === "" || discountRaw === null || discountRaw === undefined
+        ? 0
+        : parseFloat(discountRaw) || 0;
+
+    const lineDiscountAmount = (unitPrice * qty * discountPercent) / 100;
+    const qtyPlusFree = qty + free;
+    const costPrice =
+      qtyPlusFree > 0
+        ? ((unitPrice + freightCost) * qty - lineDiscountAmount) / qtyPlusFree
+        : 0;
+    const totalPrice = costPrice * qty;
+
+    return {
+      discountAmount: lineDiscountAmount.toFixed(2),
+      totalPrice,
+      costPrice,
+    };
+  };
+
+  const handleDiscountChange = (e) => {
+    const raw = e.target.value;
+    let value = parseFloat(raw);
+    if (Number.isNaN(value)) value = 0;
+    if (value > 100) value = 100;
+    if (value < 0) value = 0;
+    setFinalDiscountPercent(value);
+  };
+
+  const navigateToBack = () => {
+    router.push({
+      pathname: "/inventory/grn",
+    });
+  };
+
+  const handleOpenSerialNo = (list, rowIndex) => {
+    setOpen(true);
+    setEditingRowIndex(rowIndex);
+    setSerialNumbers(list);
+  };
+
+  const handleSaveSerials = () => {
+    const updatedRows = [...selectedRows];
+    updatedRows[editingRowIndex].itemsSerialNo = serialNumbers;
+    setSelectedRows(updatedRows);
+
+    const emptySerials = serialNumbers.filter(
+      (item, index) => !item.SerialNo || item.SerialNo.trim() === ""
+    );
+
+    if (emptySerials.length > 0) {
+      toast.warning("Please Enter Serial No For All");
+    } else {
+      setOpen(false);
+    }
+  };
 
   const handleSubmit = async () => {
     const data = {
@@ -198,6 +355,8 @@ const GRNCreate = () => {
         CostPrice: row.costPrice,
         SellingPrice: row.sellingPrice,
         MaximumSellingPrice: row.maxSellingPrice,
+        Profit: calculateProfit(row.sellingPrice, row.costPrice),
+        ProfitMargin: calculateProfitMargin(row.sellingPrice, row.costPrice),
         Qty: row.quantity,
         Free: row.free || 0,
         DiscountRate: row.discount,
@@ -245,6 +404,21 @@ const GRNCreate = () => {
     if (invalidRows.length > 0) {
       toast.error("All line details must have a selling price.");
       return;
+    }
+
+    if (!AllowCostLessThanSelling) {
+      const sellingNotAboveCost = selectedRows.some((row) => {
+        const sp = parseFloat(row.sellingPrice);
+        const cp = parseFloat(row.costPrice);
+        if (Number.isNaN(sp) || Number.isNaN(cp)) return false;
+        return sp <= cp;
+      });
+      if (sellingNotAboveCost) {
+        toast.error(
+          "Please Enter Selling Price greater than Cost Price."
+        );
+        return;
+      }
     }
 
     if (IsExpireDateAvailable) {
@@ -370,114 +544,6 @@ const GRNCreate = () => {
     }
   };
 
-  useEffect(() => {
-    const lineTotalSum = selectedRows.reduce(
-      (sum, row) => sum + (Number(row.totalPrice) || 0),
-      0
-    );
-    const orderDiscount = (lineTotalSum * finalDiscountPercent) / 100;
-    const afterOrderDiscount = lineTotalSum - orderDiscount;
-    setFinalDiscountAmount(orderDiscount);
-    setFinalGrossTotal(afterOrderDiscount);
-    setGrossTotal(lineTotalSum);
-  }, [selectedRows, finalDiscountPercent]);
-
-  useEffect(() => {
-    if (goodsRNo) {
-      setGrnNo(goodsRNo);
-    }
-    if (itemList) {
-      setItems(itemList);
-    }
-    if (supplierList) {
-      setSuppliers(supplierList);
-    }
-  }, [goodsRNo, itemList, supplierList]);
-
-  // Fetch Sales Person list by supplier when supplier is selected
-  useEffect(() => {
-    if (!supplier?.id) {
-      setSalesPersons([]);
-      setSalesPerson(null);
-      return;
-    }
-
-    const fetchSalesPersonsBySupplier = async () => {
-      setLoadingSalesPersons(true);
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return;
-
-        const response = await fetch(
-          `${BASE_URL}/SalesPerson/GetSalesPersonsBySupplier?supplierId=${supplier.id}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (response.ok) {
-          const json = await response.json();
-          const list = Array.isArray(json) ? json : (json?.result || json?.data || []);
-          setSalesPersons(Array.isArray(list) ? list : []);
-        } else {
-          setSalesPersons([]);
-        }
-      } catch (err) {
-        console.error("Error fetching sales persons:", err);
-        setSalesPersons([]);
-      } finally {
-        setLoadingSalesPersons(false);
-      }
-    };
-
-    fetchSalesPersonsBySupplier();
-  }, [supplier?.id]);
-
-  useEffect(() => {
-    if (supplier && supplier.id) {
-      setLoadingItems(true);
-
-      const fetchItemsBySupplier = async () => {
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) {
-            toast.error("Unauthorized access. Please login.");
-            return;
-          }
-
-          const response = await fetch(
-            `${BASE_URL}/Items/GetAllItemsBySupplierId?supplierId=${supplier.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (response.ok) {
-            const jsonResponse = await response.json();
-            if (jsonResponse && jsonResponse.result) {
-              setFilteredItems(jsonResponse.result);
-            } else {
-              toast.error("No data available for this supplier.");
-            }
-          } else {
-            toast.error("Failed to fetch items for the selected supplier.");
-          }
-        } catch (error) {
-          console.error("Error fetching items:", error);
-          toast.error("An error occurred while fetching items.");
-        } finally {
-          setLoadingItems(false);
-        }
-      };
-
-      fetchItemsBySupplier();
-    } else {
-      setFilteredItems([]);
-    }
-  }, [supplier]);
-
   const handleRemarkChange = (index, value) => {
     const updatedRows = [...selectedRows];
     updatedRows[index].remark = value;
@@ -512,20 +578,10 @@ const GRNCreate = () => {
 
     row.quantity = newQuantity;
 
-    const avg = Number(row.averagePrice) || 0;
-    const discount = Number(row.discount) || 0;
-    const discountAmount = ((avg * newQuantity * discount) / 100).toFixed(2);
-    row.discountAmount = discountAmount;
-    const total = row.averagePrice * newQuantity - parseFloat(discountAmount);
-    row.totalPrice = total;
-
-    const x = parseFloat(avg);
-    const y = x * parseFloat(newQuantity) - parseFloat(discountAmount);
-    const z = parseFloat(newQuantity) + parseFloat(row.free || 0);
-
-    const costP = y / z;
-
-    row.costPrice = costP;
+    const financials = computeRowLineFinancials(row, { quantity: newQuantity });
+    row.discountAmount = financials.discountAmount;
+    row.totalPrice = financials.totalPrice;
+    row.costPrice = financials.costPrice;
 
     if (!Array.isArray(row.itemsSerialNo)) row.itemsSerialNo = [];
 
@@ -550,8 +606,6 @@ const GRNCreate = () => {
 
     setSelectedRows(updatedRows);
     setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
-
-
   };
 
   const handleDeleteRow = (index) => {
@@ -565,20 +619,14 @@ const GRNCreate = () => {
     setFreight(newPrice);
     const updatedRows = [...selectedRows];
     const row = updatedRows[index];
-
     const oldTotalPrice = parseFloat(row.totalPrice) || 0;
-    const averagePrice = parseFloat(row.averagePrice) || 0;
-    const quantity = parseFloat(row.quantity) || 0;
-    // const costPF = averagePrice + (parseFloat(newPrice) || 0);
-    const x = parseFloat(averagePrice) + parseFloat(newPrice);
-    const y = x * row.quantity - parseFloat(row.discountAmount);
-    const z = parseFloat(row.quantity) + parseFloat(row.free || 0);
 
-    const costP = y / z;
-
-    row.costPrice = costP;
     row.freight = newPrice;
-    row.totalPrice = costP * quantity;
+
+    const financials = computeRowLineFinancials(row, { freight: newPrice });
+    row.discountAmount = financials.discountAmount;
+    row.totalPrice = financials.totalPrice;
+    row.costPrice = financials.costPrice;
 
     setSelectedRows(updatedRows);
     setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
@@ -586,30 +634,48 @@ const GRNCreate = () => {
 
   const handleUnitPriceChange = (index, newPrice) => {
     const updatedRows = [...selectedRows];
-    const row = { ...updatedRows[index] };
-
+    const row = updatedRows[index];
     const oldTotalPrice = parseFloat(row.totalPrice) || 0;
-    const quantity = parseFloat(row.quantity) || 0;
-    const freightCost = parseFloat(freight) || 0;
-    const unitPrice = parseFloat(newPrice) || 0;
-    const avg = Number(unitPrice) || 0;
-    const discount = Number(row.discount) || 0;
-    const discountAmount = ((avg * row.quantity * discount) / 100).toFixed(2);
-    row.discountAmount = discountAmount;
-    const x = Number(newPrice) + parseFloat(freightCost || 0);
-    const y = x * row.quantity - parseFloat(row.discountAmount);
-    const z = parseFloat(row.quantity) + parseFloat(row.free || 0);
 
-    const costP = y / z;
-    row.costPrice = costP;
-    row.averagePrice = unitPrice;
-    const total = newPrice * row.quantity - parseFloat(discountAmount);
-    row.totalPrice = total;
+    row.averagePrice = parseFloat(newPrice) || 0;
 
-    updatedRows[index] = row;
+    const financials = computeRowLineFinancials(row, { averagePrice: newPrice });
+    row.discountAmount = financials.discountAmount;
+    row.totalPrice = financials.totalPrice;
+    row.costPrice = financials.costPrice;
 
     setSelectedRows(updatedRows);
     setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
+  };
+
+  const handleLineDiscountChange = (index, value) => {
+    const updatedRows = [...selectedRows];
+    const row = updatedRows[index];
+    const oldTotalPrice = parseFloat(row.totalPrice) || 0;
+
+    row.discount = value;
+
+    const financials = computeRowLineFinancials(row, { discount: value });
+    row.discountAmount = financials.discountAmount;
+    row.totalPrice = financials.totalPrice;
+    row.costPrice = financials.costPrice;
+
+    setSelectedRows(updatedRows);
+    setTotal((prevTotal) => prevTotal - oldTotalPrice + row.totalPrice);
+  };
+
+  const handleFreeQtyChange = (index, value) => {
+    const updatedRows = [...selectedRows];
+    const row = updatedRows[index];
+
+    row.free = value;
+
+    const financials = computeRowLineFinancials(row, { free: value });
+    row.discountAmount = financials.discountAmount;
+    row.totalPrice = financials.totalPrice;
+    row.costPrice = financials.costPrice;
+
+    setSelectedRows(updatedRows);
   };
 
   return (
@@ -988,6 +1054,14 @@ const GRNCreate = () => {
                       <TableCell sx={{ color: "#fff" }}>
                         Selling&nbsp;Price
                       </TableCell>
+                      {IsProfitVisibleOnGRNAndPO && (
+                        <>
+                          <TableCell sx={{ color: "#fff" }}>Profit</TableCell>
+                          <TableCell sx={{ color: "#fff" }}>
+                            Profit&nbsp;Margin&nbsp;(%)
+                          </TableCell>
+                        </>
+                      )}
                       <TableCell sx={{ color: "#fff" }}>Status</TableCell>
                       <TableCell sx={{ color: "#fff" }}>Remark</TableCell>
                       <TableCell sx={{ color: "#fff" }}>
@@ -1103,26 +1177,7 @@ const GRNCreate = () => {
                             fullWidth
                             name=""
                             value={row.free || "0"}
-                            onChange={(e) => {
-                              const updatedRows = [...selectedRows];
-                              updatedRows[index].free = e.target.value;
-                              setSelectedRows(updatedRows);
-                              const x = parseFloat(
-                                updatedRows[index].averagePrice
-                              );
-                              const y =
-                                x * updatedRows[index].quantity -
-                                parseFloat(
-                                  updatedRows[index].discountAmount || 0
-                                );
-                              const z =
-                                parseFloat(row.quantity) +
-                                parseFloat(e.target.value || 0);
-
-                              const costP = y / z;
-
-                              row.costPrice = costP;
-                            }}
+                            onChange={(e) => handleFreeQtyChange(index, e.target.value)}
                           />
                         </TableCell>
                         <TableCell sx={{ p: 1 }}>
@@ -1154,33 +1209,10 @@ const GRNCreate = () => {
                             onChange={(e) => {
                               const input = e.target.value;
                               const value =
-                                input === "" ? "" : Math.max(0, Math.min(100, parseFloat(input)));
-
-                              const updatedRows = [...selectedRows];
-                              updatedRows[index].discount = value;
-
-                              if (value === "") {
-                                setSelectedRows(updatedRows);
-                                return;
-                              }
-
-                              const quantity = Number(updatedRows[index].quantity) || 0;
-                              const averagePrice = Number(updatedRows[index].averagePrice) || 0;
-
-                              const totalPrice = averagePrice * quantity;
-                              const discountAmount = (totalPrice * value) / 100;
-
-                              const total = totalPrice - discountAmount;
-                              row.totalPrice = total;
-
-                              const y = averagePrice * quantity - discountAmount;
-                              const z =
-                                parseFloat(row.quantity) + parseFloat(updatedRows[index].free || 0);
-                              const costP = y / z;
-
-                              row.costPrice = costP;
-                              updatedRows[index].discountAmount = discountAmount.toFixed(2);
-                              setSelectedRows(updatedRows);
+                                input === ""
+                                  ? ""
+                                  : Math.max(0, Math.min(100, parseFloat(input)));
+                              handleLineDiscountChange(index, value);
                             }}
                           />
 
@@ -1221,6 +1253,21 @@ const GRNCreate = () => {
                             }}
                           />
                         </TableCell>
+                        {IsProfitVisibleOnGRNAndPO && (
+                          <>
+                            <TableCell sx={{ p: 1 }}>
+                              {formatCurrency(
+                                calculateProfit(row.sellingPrice, row.costPrice)
+                              )}
+                            </TableCell>
+                            <TableCell sx={{ p: 1 }}>
+                              {calculateProfitMargin(
+                                row.sellingPrice,
+                                row.costPrice
+                              ).toFixed(2)}
+                            </TableCell>
+                          </>
+                        )}
                         <TableCell sx={{ p: 1 }}>
                           <Select
                             labelId="demo-simple-select-label"
@@ -1262,7 +1309,8 @@ const GRNCreate = () => {
                           11 +
                           (IsBatchNumberAvailable ? 1 : 0) +
                           (IsExpireDateAvailable ? 1 : 0) +
-                          (IsFreightDutyEnabled ? 1 : 0)
+                          (IsFreightDutyEnabled ? 1 : 0) +
+                          (IsProfitVisibleOnGRNAndPO ? 2 : 0)
                         }
                       >
                         <Typography fontWeight="bold">Total</Typography>
@@ -1278,7 +1326,8 @@ const GRNCreate = () => {
                           11 +
                           (IsBatchNumberAvailable ? 1 : 0) +
                           (IsExpireDateAvailable ? 1 : 0) +
-                          (IsFreightDutyEnabled ? 1 : 0)
+                          (IsFreightDutyEnabled ? 1 : 0) +
+                          (IsProfitVisibleOnGRNAndPO ? 2 : 0)
                         }
                       >
                         <Typography fontWeight="bold">Order Discount (%)</Typography>
@@ -1300,7 +1349,8 @@ const GRNCreate = () => {
                           11 +
                           (IsBatchNumberAvailable ? 1 : 0) +
                           (IsExpireDateAvailable ? 1 : 0) +
-                          (IsFreightDutyEnabled ? 1 : 0)
+                          (IsFreightDutyEnabled ? 1 : 0) +
+                          (IsProfitVisibleOnGRNAndPO ? 2 : 0)
                         }
                       >
                         <Typography fontWeight="bold">
@@ -1318,7 +1368,8 @@ const GRNCreate = () => {
                           11 +
                           (IsBatchNumberAvailable ? 1 : 0) +
                           (IsExpireDateAvailable ? 1 : 0) +
-                          (IsFreightDutyEnabled ? 1 : 0)
+                          (IsFreightDutyEnabled ? 1 : 0) +
+                          (IsProfitVisibleOnGRNAndPO ? 2 : 0)
                         }
                       >
                         <Typography fontWeight="bold">Gross Total</Typography>

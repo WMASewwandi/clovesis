@@ -15,7 +15,7 @@ import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import usePaginatedFetch from "@/components/hooks/usePaginatedFetch";
 import { useRouter } from "next/router";
 import { formatCurrency, formatDate } from "@/components/utils/formatHelper";
-import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
+import DescriptionIcon from "@mui/icons-material/Description";
 import GetReportSettingValueByName from "@/components/utils/GetReportSettingValueByName";
 import { Report } from "Base/report";
 import useShiftCheck from "@/components/utils/useShiftCheck";
@@ -154,10 +154,10 @@ export default function Receipt() {
                         <TableCell align="right">
                           <Box display="flex" justifyContent="end" gap={1}>
                             <ShareReports url={whatsapp} mobile={item.customerContactNo} />
-                            {print ? <Tooltip title="Print" placement="top">
-                              <a href={`${Report}` + reportLink} target="_blank">
-                                <IconButton aria-label="print" size="small">
-                                  <LocalPrintshopIcon color="primary" fontSize="medium" />
+                            {print ? <Tooltip title="Print (Custom)" placement="top">
+                              <a href={`${Report}` + reportLink} target="_blank" rel="noopener noreferrer">
+                                <IconButton aria-label="print custom" size="small">
+                                  <DescriptionIcon color="action" fontSize="medium" />
                                 </IconButton>
                               </a>
                             </Tooltip> : ""}

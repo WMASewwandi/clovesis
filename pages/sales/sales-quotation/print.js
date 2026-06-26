@@ -7,10 +7,11 @@ import Typography from "@mui/material/Typography";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import PrintIcon from "@mui/icons-material/Print";
 import BASE_URL from "Base/api";
-import { ProjectNo } from "Base/catelogue";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import useLoggedUserCompanyLetterhead from "@/hooks/useLoggedUserCompanyLetterhead";
+import PrintCompanyLogo from "@/components/UIElements/Print/PrintCompanyLogo";
+import PrintPoweredByFooter from "@/components/UIElements/Print/PrintPoweredByFooter";
 
 const FIRST_PAGE_ROW_LIMIT = 8;
 const NEXT_PAGE_ROW_LIMIT = 14;
@@ -212,9 +213,6 @@ export default function SalesQuotationPrintPage() {
     return lines;
   }, [companyData?.contactNumber, warehouseData]);
 
-  const companyLogoSrc =
-    sidebarLogo || (ProjectNo === 1 ? "/images/cbass.png" : "/images/db-logo.png");
-
   const quotationPages = useMemo(() => {
     if (lineItems.length === 0) {
       return [[]];
@@ -238,8 +236,45 @@ export default function SalesQuotationPrintPage() {
     [lineItems]
   );
 
-  const grossTotal = Number(salesQuotationData?.grossTotal ?? 0);
-  const netTotal = Number(salesQuotationData?.netTotal ?? 0);
+  const sumLineTotals = useMemo(
+    () =>
+      lineItems.reduce((sum, item) => sum + Number(item.lineTotal ?? item.LineTotal ?? 0), 0),
+    [lineItems]
+  );
+
+  const grossHeader = Number(salesQuotationData?.grossTotal ?? salesQuotationData?.GrossTotal ?? 0);
+  const rawLineDisc = salesQuotationData?.lineDiscountTotal ?? salesQuotationData?.LineDiscountTotal;
+  const lineDiscountFromHeader = Number(rawLineDisc);
+  const storedLineDisc =
+    Number.isFinite(lineDiscountFromHeader) && !Number.isNaN(lineDiscountFromHeader)
+      ? lineDiscountFromHeader
+      : 0;
+  const derivedLineDisc = Math.max(0, Number((grossHeader - sumLineTotals).toFixed(2)));
+  const lineDisc = Math.max(storedLineDisc, derivedLineDisc);
+  const merchandiseTotal = Number(sumLineTotals.toFixed(2));
+  const orderDiscountAmount = Number(
+    salesQuotationData?.orderDiscountAmount ?? salesQuotationData?.OrderDiscountAmount ?? 0
+  );
+  const orderDiscountPercent = Number(
+    salesQuotationData?.orderDiscountPercent ?? salesQuotationData?.OrderDiscountPercent ?? 0
+  );
+  const finalNetTotal = Number(
+    salesQuotationData?.netTotal ?? salesQuotationData?.NetTotal ?? 0
+  );
+
+  const showLineDiscountRow = lineDisc >= 0.01;
+  const showOrderDiscountRow = orderDiscountAmount >= 0.01;
+  const hasStoredLineDiscountColumn =
+    Number.isFinite(lineDiscountFromHeader) && !Number.isNaN(lineDiscountFromHeader);
+  /** Older quotations: no split columns; one combined discount between subtotal and net. */
+  const legacyCombinedDiscount =
+    !hasStoredLineDiscountColumn &&
+    !showOrderDiscountRow &&
+    !showLineDiscountRow &&
+    Math.max(0, grossHeader - finalNetTotal) >= 0.01;
+  const legacyDiscountAmount = Math.max(0, Number((grossHeader - finalNetTotal).toFixed(2)));
+  const showMerchandiseTotalRow =
+    showOrderDiscountRow || Math.abs(merchandiseTotal - finalNetTotal) >= 0.01;
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) {
@@ -368,12 +403,52 @@ export default function SalesQuotationPrintPage() {
         <Box sx={{ display: "flex", justifyContent: "flex-end", borderTop: "1px solid #333", p: { xs: "8px 4px", sm: "10px 6px" } }}>
           <Box sx={{ width: { xs: "60%", sm: "35%" } }}>
             <Box display="flex" justifyContent="space-between" mb={0.5}>
-              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 700 }}>Gross Total</Typography>
-              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 700 }}>{formatAmount(grossTotal)}</Typography>
+              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 700 }}>Sub Total</Typography>
+              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 700 }}>
+                {formatAmount(grossHeader)}
+              </Typography>
             </Box>
+            {showLineDiscountRow && (
+              <Box display="flex" justifyContent="space-between" mb={0.5}>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>Line Discount</Typography>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>
+                  {formatAmount(lineDisc)}
+                </Typography>
+              </Box>
+            )}
+            {showMerchandiseTotalRow && (
+              <Box display="flex" justifyContent="space-between" mb={0.5}>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>Total</Typography>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>
+                  {formatAmount(merchandiseTotal)}
+                </Typography>
+              </Box>
+            )}
+            {showOrderDiscountRow && (
+              <>
+                <Box display="flex" justifyContent="space-between" mb={0.5}>
+                  <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>
+                    Order Discount ({Number(orderDiscountPercent.toFixed(2))}%)
+                  </Typography>
+                  <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>
+                    {formatAmount(orderDiscountAmount)}
+                  </Typography>
+                </Box>
+              </>
+            )}
+            {legacyCombinedDiscount && (
+              <Box display="flex" justifyContent="space-between" mb={0.5}>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>Discount</Typography>
+                <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.8rem" }, fontWeight: 600 }}>
+                  {formatAmount(legacyDiscountAmount)}
+                </Typography>
+              </Box>
+            )}
             <Box display="flex" justifyContent="space-between" pt={0.5} borderTop="2px solid #333">
-              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.84rem" }, fontWeight: 700 }}>Net Total</Typography>
-              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.84rem" }, fontWeight: 700 }}>{formatAmount(netTotal)}</Typography>
+              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.84rem" }, fontWeight: 700 }}>Gross Total</Typography>
+              <Typography sx={{ fontSize: { xs: "0.56rem", sm: "0.84rem" }, fontWeight: 700 }}>
+                {formatAmount(finalNetTotal)}
+              </Typography>
             </Box>
           </Box>
         </Box>
@@ -394,13 +469,7 @@ export default function SalesQuotationPrintPage() {
           pb: 2,
         }}
       >
-        <Box sx={{ width: { xs: "135px", sm: "220px" }, flexShrink: 0 }}>
-          <img
-            src={companyLogoSrc}
-            alt="Company logo"
-            style={{ width: "100%", height: "auto", objectFit: "contain" }}
-          />
-        </Box>
+        <PrintCompanyLogo src={sidebarLogo} />
         <Box sx={{ flex: 1, textAlign: "right", display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
           <Typography sx={{ fontWeight: 700, fontSize: { xs: "1rem", sm: "1.25rem" }, lineHeight: 1.2 }}>
             {companyData?.name || warehouseData?.name || "Company"}
@@ -586,18 +655,7 @@ export default function SalesQuotationPrintPage() {
                   <Box sx={{ position: "relative", width: "100%", mx: "auto", boxSizing: "border-box", backgroundColor: "transparent", flex: 1 }}>
                     {renderPageContent(items, pageIndex, isLastPage)}
                   </Box>
-                  <Typography
-                    sx={{
-                      mt: 2,
-                      pt: 1,
-                      borderTop: "1px solid #d9d9d9",
-                      textAlign: "center",
-                      fontSize: { xs: "0.62rem", sm: "0.8rem" },
-                      fontWeight: 600,
-                    }}
-                  >
-                    Powered By : CBASS-AI
-                  </Typography>
+                  <PrintPoweredByFooter />
                 </Box>
               );
             })

@@ -37,7 +37,7 @@ const style = {
     p: 3,
 };
 
-export default function ViewOutstanding({ item }) {
+export default function ViewOutstanding({ item, asOfDate }) {
     const [open, setOpen] = React.useState(false);
     const [result, setResult] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -52,8 +52,9 @@ export default function ViewOutstanding({ item }) {
     const fetchOutstandingBalance = async () => {
         try {
             setLoading(true);
+            const dateQuery = asOfDate ? `&asOfDate=${asOfDate}` : "";
             const response = await fetch(
-                `${BASE_URL}/Outstanding/GetAllCustomerwiseOutstandings?customerId=${item.customerId}`,
+                `${BASE_URL}/Outstanding/GetAllCustomerwiseOutstandings?customerId=${item.customerId}${dateQuery}`,
                 {
                     method: "GET",
                     headers: {

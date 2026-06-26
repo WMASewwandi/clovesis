@@ -77,6 +77,10 @@ export default function AddCategory({
   }, [open]);
 
   const handleSubmit = (values) => {
+    if (values.IsWebView && !file) {
+      toast.warning("Please upload a category image before enabling Show in web.");
+      return;
+    }
     const formData = new FormData();
 
     formData.append("Name", values.Name);
@@ -229,12 +233,22 @@ export default function AddCategory({
                         {IsEcommerceWebSiteAvailable && (
                           <Grid item xs={12} lg={6} mt={1}>
                             <FormControlLabel
+                              disabled={!file && !values.IsWebView}
                               control={
                                 <Field
                                   as={Checkbox}
                                   name="IsWebView"
                                   checked={values.IsWebView}
-                                  onChange={() => setFieldValue("IsWebView", !values.IsWebView)}
+                                  disabled={!file && !values.IsWebView}
+                                  onChange={() => {
+                                    if (!values.IsWebView && !file) {
+                                      toast.warning(
+                                        "Please upload a category image before enabling Show in web."
+                                      );
+                                      return;
+                                    }
+                                    setFieldValue("IsWebView", !values.IsWebView);
+                                  }}
                                 />
                               }
                               label="Show in web"

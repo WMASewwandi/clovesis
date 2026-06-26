@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Grid,
   IconButton,
@@ -18,9 +18,12 @@ import * as Yup from "yup";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BASE_URL from "Base/api";
+import { createAuthHeadersFormData } from "@/components/utils/apiHelpers";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import getNext from "@/components/utils/getNext";
+import { encryptLink } from "@/components/utils/linkCrypto";
 import Modules from "./modules";
 import { styled } from "@mui/material/styles";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -94,6 +97,7 @@ export default function EditCompany({ item, fetchItems }) {
   const [letterheadFile, setLetterheadFile] = useState(null);
   const [deleteLetterhead, setDeleteLetterhead] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [apiKey, setApiKey] = useState(item?.apiKey || "");
   const inputRef = useRef(null);
 
   const handleOpen = () => setOpen(true);
@@ -127,29 +131,46 @@ export default function EditCompany({ item, fetchItems }) {
       setLetterheadImage(item.letterHeadImage || "");
       setDeleteLetterhead(false);
       setLetterheadFile(null);
+      setApiKey(item.apiKey || "");
     }
   }, [code, item]);
 
-  const validateA4Size = (file) => {
+  const handleCopyApiKey = async (value) => {
+    const text = value || apiKey;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("API Key copied to clipboard");
+    } catch {
+      toast.error("Unable to copy API Key");
+    }
+  };
+
+  const validateLetterheadDimensions = (file) => {
+    const minWidthPrint = 2480;
+    const minWidthRelaxed = 690;
     return new Promise((resolve, reject) => {
       const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
         const width = img.width;
         const height = img.height;
-        // A4 aspect ratio: 210mm x 297mm = 0.707 (width/height)
-        // Allow ±5% tolerance
-        const aspectRatio = width / height;
-        const a4Ratio = 210 / 297; // 0.707
-        const tolerance = 0.05;
-
-        if (Math.abs(aspectRatio - a4Ratio) <= tolerance) {
+        if (width >= minWidthPrint || width >= minWidthRelaxed) {
           resolve(true);
         } else {
-          reject(new Error(`Image must be A4 size (210mm x 297mm / 2480 x 3508 px at 300 DPI). Current dimensions: ${width} x ${height}px`));
+          reject(
+            new Error(
+              `Letterhead width must be at least ${minWidthRelaxed}px (or ${minWidthPrint}px+ for print). Any height is allowed. Current: ${width} × ${height}px`
+            )
+          );
         }
       };
-      img.onerror = () => reject(new Error("Invalid image file"));
-      img.src = URL.createObjectURL(file);
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Invalid image file"));
+      };
+      img.src = objectUrl;
     });
   };
 
@@ -164,7 +185,7 @@ export default function EditCompany({ item, fetchItems }) {
     }
 
     try {
-      await validateA4Size(file);
+      await validateLetterheadDimensions(file);
       setLetterheadFile(file);
       setLetterheadImage(URL.createObjectURL(file));
       setDeleteLetterhead(false);
@@ -183,31 +204,55 @@ export default function EditCompany({ item, fetchItems }) {
   const handleSubmit = async (values) => {
     const formData = new FormData();
 
-    formData.append("Id", values.Id);
-    formData.append("Code", values.Code);
-    formData.append("Name", values.Name);
-    formData.append("Description", values.Description);
+    formData.append("Id", String(values.Id));
+    formData.append("Code", values.Code ?? "");
+    formData.append("Name", values.Name ?? "");
+    formData.append("Description", values.Description ?? "");
     formData.append("ContactPerson", values.ContactPerson);
     formData.append("ContactNumber", values.ContactNumber);
-    formData.append("CompanyLogo", logo ? logo : null);
-    if (deleteLetterhead) {
-      formData.append("LetterHeadImage", null);
-    } else {
-      formData.append("LetterHeadImage", letterheadFile ? letterheadFile : null);
+    if (logo) {
+      formData.append("CompanyLogo", logo);
     }
-    formData.append("LandingPage", values.LandingPage);
-    formData.append("RenewalDate", values.RenewalDate ? Number(values.RenewalDate) : "");
-    formData.append("RenewalMonth", values.BillingType === "2" && values.RenewalMonth ? Number(values.RenewalMonth) : "");
-    formData.append("HostingFee", values.HostingFee || null);
-    formData.append("BillingType", values.BillingType || 1);
-    // append fields
+    formData.append("ClearLetterHead", deleteLetterhead ? "true" : "false");
+    if (!deleteLetterhead && letterheadFile) {
+      formData.append("LetterHeadImage", letterheadFile);
+    }
+    formData.append("UsersUrl", values.UsersUrl ?? "");
+    formData.append("LandingPage", String(values.LandingPage ?? ""));
+    formData.append(
+      "RenewalDate",
+      values.RenewalDate ? String(Number(values.RenewalDate)) : ""
+    );
+    formData.append(
+      "RenewalMonth",
+      values.BillingType === "2" && values.RenewalMonth
+        ? String(Number(values.RenewalMonth))
+        : ""
+    );
+    formData.append(
+      "HostingFee",
+      values.HostingFee !== undefined && values.HostingFee !== null && values.HostingFee !== ""
+        ? String(values.HostingFee)
+        : ""
+    );
+    formData.append("BillingType", String(values.BillingType || 1));
+
+    if (process.env.NODE_ENV === "development") {
+      for (const [key, val] of formData.entries()) {
+        console.log(
+          "[UpdateCompany FormData]",
+          key,
+          val instanceof File ? `${val.name} (${val.size}b)` : val
+        );
+      }
+    }
+
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
       const response = await fetch(`${BASE_URL}/Company/UpdateCompany`, {
         method: "POST",
         body: formData,
-        headers: { Authorization: `Bearer ${token}` },
+        headers: createAuthHeadersFormData(),
       });
       const data = await response.json();
       if (data.statusCode === 200) {
@@ -263,6 +308,7 @@ export default function EditCompany({ item, fetchItems }) {
               ContactPerson: item.contactPerson || "",
               ContactNumber: item.contactNumber || "",
               Description: item.description || "",
+              UsersUrl: item.usersUrl || "",
               LandingPage:
                 item.landingPage === null || item.landingPage === undefined
                   ? "1"
@@ -282,7 +328,15 @@ export default function EditCompany({ item, fetchItems }) {
                   setFieldValue("RenewalMonth", "");
                 }
               }, [values.BillingType, values.RenewalMonth, setFieldValue]);
-              
+
+              // Derive the API key by encrypting the Users URL. The mobile app
+              // decrypts this exact value back into the URL using the same
+              // shared secret. Memoized so the ciphertext is stable per URL.
+              const encryptedApiKey = useMemo(
+                () => encryptLink(values.UsersUrl),
+                [values.UsersUrl]
+              );
+
               return (
               <Form>
                 {tabIndex === 0 && (
@@ -349,6 +403,47 @@ export default function EditCompany({ item, fetchItems }) {
                         />
                       </Grid>
                       <Grid item xs={12}>
+                        <Typography>Users URL</Typography>
+                        <Field
+                          as={TextField}
+                          fullWidth
+                          name="UsersUrl"
+                          size="small"
+                          placeholder="https://your-company.apexflow.example"
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <Typography>API Key</Typography>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={
+                            encryptedApiKey ||
+                            "Enter a Users URL to generate the key"
+                          }
+                          InputProps={{
+                            readOnly: true,
+                            endAdornment: (
+                              <Box display="flex">
+                                <Tooltip title="Copy API Key">
+                                  <span>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        handleCopyApiKey(encryptedApiKey)
+                                      }
+                                      disabled={!encryptedApiKey}
+                                    >
+                                      <ContentCopyIcon fontSize="inherit" />
+                                    </IconButton>
+                                  </span>
+                                </Tooltip>
+                              </Box>
+                            ),
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
                         <Typography>Landing Page</Typography>
                         <Field
                           as={TextField}
@@ -402,7 +497,7 @@ export default function EditCompany({ item, fetchItems }) {
                       </Grid>
                       <Grid item xs={12}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          Upload Letterhead Image (A4 size: 210mm x 297mm / 2480 x 3508 px at 300 DPI)
+                          Upload Letterhead Image (min width 690px, or 2480px+ for print quality; any height)
                         </Typography>
                         <Button
                           component="label"

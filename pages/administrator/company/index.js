@@ -23,6 +23,8 @@ import {
 } from "@mui/material";
 import ImageIcon from "@mui/icons-material/Image";
 import CloseIcon from "@mui/icons-material/Close";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { toast } from "react-toastify";
 import { Search, StyledInputBase } from "@/styles/main/search-styles";
 import BASE_URL from "Base/api";
 import { ToastContainer } from "react-toastify";
@@ -79,6 +81,16 @@ export default function Company() {
   const handleCloseLetterheadModal = () => {
     setLetterheadModalOpen(false);
     setSelectedLetterheadImage("");
+  };
+
+  const handleCopyApiKey = async (apiKey) => {
+    if (!apiKey) return;
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      toast.success("API Key copied to clipboard");
+    } catch {
+      toast.error("Unable to copy API Key");
+    }
   };
 
 
@@ -190,6 +202,7 @@ export default function Company() {
                   <TableCell>Billing Type</TableCell>
                   <TableCell>Description</TableCell>
                   <TableCell>Letter Head</TableCell>
+                  <TableCell>API Key</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -198,7 +211,7 @@ export default function Company() {
                   <TableRow
                     sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
                   >
-                    <TableCell component="th" scope="row" colSpan={8}>
+                    <TableCell component="th" scope="row" colSpan={12}>
                       <Typography color="error">
                         No Companies Available
                       </Typography>
@@ -234,6 +247,28 @@ export default function Company() {
                               <ImageIcon fontSize="inherit" />
                             </IconButton>
                           </Tooltip>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            -
+                          </Typography>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {company.apiKey ? (
+                          <Box display="flex" alignItems="center" gap={0.5}>
+                            <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                              {`${String(company.apiKey).slice(0, 6)}...${String(company.apiKey).slice(-4)}`}
+                            </Typography>
+                            <Tooltip title="Copy API Key">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => handleCopyApiKey(company.apiKey)}
+                              >
+                                <ContentCopyIcon fontSize="inherit" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         ) : (
                           <Typography variant="body2" color="text.secondary">
                             -
